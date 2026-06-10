@@ -170,5 +170,25 @@
                 "code": 314
             }
         ]
-    }
+    },
+    "gallery": [
+        {
+            "id": "g1",
+            "image": "galeria/ejemplo1.svg",
+            "caption": "Circular en vinilo 3,0 cm, 25 planchas",
+            "order": "v1.m11.s201.q25.f2.d0"
+        },
+        {
+            "id": "g2",
+            "image": "galeria/ejemplo2.svg",
+            "caption": "Forma en papel 5,0 cm, troquel individual",
+            "order": "v1.m10.s304.q10.f1.d1"
+        },
+        {
+            "id": "g3",
+            "image": "galeria/ejemplo3.svg",
+            "caption": "Rectangular 5x3 cm en vinilo, 50 planchas",
+            "order": "v1.m11.r5x3.q50.f0.d0"
+        }
+    ]
 }

@@ -59,11 +59,21 @@ export interface Order {
   customDesignTime: number;
 }
 
+// Foto de ejemplo para la mini-galería. Al tocarla se carga `order` (código v1)
+// en la calculadora. Todo es dato editable en Admin (nada hardcodeado).
+export interface GalleryItem {
+  id: string;
+  image: string; // URL de la imagen (puede ser relativa a assetsUrl o absoluta).
+  caption?: string; // Texto opcional que se muestra bajo la foto.
+  order: string; // Código de pedido v1 (ej. "v1.m11.s201.q25.f2.d0").
+}
+
 // Estructura persistida en datos_config.json (la fuente de datos del admin).
 export interface AppData {
   config: Config;
   materials: Material[];
   shapesCatalog: ShapesCatalog;
+  gallery?: GalleryItem[];
 }
 
 export type A4FitType = 'portrait' | 'landscape' | 'none';

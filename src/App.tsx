@@ -6,9 +6,9 @@ import {
   Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle,
 } from 'lucide-react';
 
-import type { A4Layout, Order } from './types';
+import type { A4Layout, GalleryItem, Order } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
-import { decodeOrder, decodeAnyOrder } from './core/orderCodec';
+import { decodeOrder, decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
 import { calcularPrecio, autoComplexity, missingSelections } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
@@ -16,6 +16,7 @@ import { useConfig } from './hooks/useConfig';
 import PriceTable from './components/PriceTable';
 import StepSection from './components/StepSection';
 import MobileSummaryBar from './components/MobileSummaryBar';
+import MiniGallery from './components/MiniGallery';
 
 const ASSETS_PATH = ASSETS_URL;
 
@@ -30,8 +31,8 @@ const App = () => {
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
   const {
-    config, materials, shapesCatalog,
-    setConfig, setMaterials, setShapesCatalog,
+    config, materials, shapesCatalog, gallery,
+    setConfig, setMaterials, setShapesCatalog, setGallery,
     isLoaded, loadError,
   } = useConfig(isAdmin);
 
@@ -200,6 +201,46 @@ const App = () => {
     }
   };
 
+  // --- GALERÍA ---
+  // Resuelve la imagen: deja pasar URLs absolutas y rutas raíz; el resto se
+  // interpreta relativo a la carpeta de assets del tema.
+  const resolveImage = (src: string): string =>
+    /^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : `${ASSETS_PATH}/${src}`;
+
+  // Carga el pedido de una foto en la calculadora (requiere catálogo cargado).
+  const loadOrderFromCode = (code: string) => {
+    if (!materials || !shapesCatalog) return;
+    const decoded = decodeAnyOrder(code, materials, shapesCatalog);
+    if (!decoded) {
+      console.warn('Código de pedido inválido en la galería:', code);
+      return;
+    }
+    setOrder(decoded);
+    setActiveTab('calculator');
+    setActiveStep(3);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const updateGalleryItem = (id: string, field: keyof GalleryItem, value: string) =>
+    setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, [field]: value } : g)));
+
+  const addGalleryItem = () =>
+    setGallery((prev) => [...prev, { id: `g${Date.now()}`, image: '', caption: '', order: '' }]);
+
+  const removeGalleryItem = (id: string) =>
+    setGallery((prev) => prev.filter((g) => g.id !== id));
+
+  // Vuelca el pedido actualmente configurado en el cotizador como código v1 de la
+  // foto (atajo para el admin: configura el pedido y lo "captura"). Requiere que el
+  // pedido esté completo.
+  const captureCurrentOrder = (id: string): boolean => {
+    if (!materials || !shapesCatalog) return false;
+    const code = encodeOrderCode(order, materials, shapesCatalog);
+    if (!code) return false;
+    updateGalleryItem(id, 'order', code);
+    return true;
+  };
+
   // --- VARIABLES DERIVADAS PARA WHATSAPP Y TICKET ---
   const sizeText = order.shapeType === 'Rectangulares'
     ? `${order.customRectW}x${order.customRectH}cm`
@@ -294,6 +335,9 @@ const App = () => {
         {/* CONTENIDO PRINCIPAL */}
         {activeTab === 'calculator' ? (
           <>
+          {/* Mini-galería de ejemplos (arriba): cargar un pedido al tocar una foto. */}
+          <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} />
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
             {/* COLUMNA IZQUIERDA: CONFIGURADOR UI */}
@@ -746,6 +790,55 @@ const App = () => {
 
           /* PESTAÑA SETTINGS (ADMIN PANEL) */
           <div className="space-y-8 animate-in fade-in duration-300">
+
+            {/* Galería de ejemplos */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4 mb-6">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <ImageIcon className="w-6 h-6 text-blue-600" /> Galería de ejemplos
+                </h2>
+                <button onClick={addGalleryItem} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20">
+                  <Plus className="w-4 h-4" /> Añadir foto
+                </button>
+              </div>
+              <p className="text-sm text-slate-500 mb-6">Cada foto carga un pedido al tocarla (vista cliente). Pegá la URL de la imagen, un texto opcional y el <strong>código de pedido</strong>. Para obtener el código: armá el pedido en el Cotizador y tocá <em>“Usar pedido actual”</em>.</p>
+
+              {gallery.length === 0 ? (
+                <p className="text-sm text-slate-400 italic">Todavía no hay fotos. Tocá “Añadir foto” para empezar.</p>
+              ) : (
+                <div className="space-y-4">
+                  {gallery.map((g) => (
+                    <div key={g.id} className="flex flex-col sm:flex-row gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="w-full sm:w-28 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-slate-200 border border-slate-300 flex items-center justify-center">
+                        {g.image ? (
+                          <img src={resolveImage(g.image)} alt={g.caption || 'Ejemplo'} className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-slate-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">URL de la imagen</label>
+                          <input type="text" value={g.image} onChange={(e) => updateGalleryItem(g.id, 'image', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://… o galeria/foto1.webp" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Descripción (opcional)</label>
+                          <input type="text" value={g.caption ?? ''} onChange={(e) => updateGalleryItem(g.id, 'caption', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Vinilo circular 3cm, ideal para logos" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Código de pedido</label>
+                          <div className="flex gap-2">
+                            <input type="text" value={g.order} onChange={(e) => updateGalleryItem(g.id, 'order', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono" placeholder="v1.m11.s201.q25.f2.d0" />
+                            <button onClick={() => captureCurrentOrder(g.id)} className="text-xs whitespace-nowrap bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-lg hover:text-blue-600 hover:border-blue-400 transition-colors" title="Volcar el pedido configurado en el Cotizador">Usar pedido actual</button>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => removeGalleryItem(g.id)} className="self-start text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors flex-shrink-0" title="Borrar foto"><Trash2 className="w-5 h-5" /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
