@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Reset mínimo SOLO dentro del contenedor del widget.
+ * Como Preflight está desactivado (para no pisar GeneratePress), reponemos
+ * box-sizing border-box, que es lo que asumen las utilidades de Tailwind.
+ */
+#mu-sticker-calculator-root,
+#mu-sticker-calculator-root *,
+#mu-sticker-calculator-root *::before,
+#mu-sticker-calculator-root *::after {
+  box-sizing: border-box;
+}
