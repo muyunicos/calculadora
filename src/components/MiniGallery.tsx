@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Images, X, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react';
-import type { GalleryItem } from '../types';
+import type { GalleryItem, GalleryPricing } from '../types';
 
 interface MiniGalleryProps {
   items: GalleryItem[];
@@ -8,16 +8,62 @@ interface MiniGalleryProps {
   resolveImage: (src: string) => string;
   // Carga el pedido asociado a la foto en la calculadora.
   onUse: (orderCode: string) => void;
+  // Precio marketinero (1 plancha vs. máximo) para la foto; null si no se puede calcular.
+  getPricing: (orderCode: string) => GalleryPricing | null;
 }
 
+const fmt = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 2 });
+const fmt0 = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+
+// Bloque de precio "marketinero": precio por unidad al máximo (destacado), con el
+// precio caro (1 plancha) tachado, el % de ahorro y la inversión total.
+const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pricing, compact }) => {
+  const hasDeal = pricing.savingsPct > 0.5;
+  if (compact) {
+    return (
+      <span className="flex items-baseline gap-1">
+        <span className="text-emerald-600 font-extrabold">${fmt(pricing.perUnit)}</span>
+        <span className="text-[10px] text-slate-500">c/u</span>
+        {hasDeal && (
+          <span className="text-[9px] font-bold text-white bg-red-500 px-1 py-px rounded">
+            -{pricing.savingsPct.toFixed(0)}%
+          </span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <div>
+      <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
+        <span className="text-2xl font-extrabold text-emerald-600">${fmt(pricing.perUnit)}</span>
+        <span className="text-sm text-slate-500">c/u</span>
+        {hasDeal && (
+          <>
+            <span className="text-sm text-slate-400 line-through">${fmt(pricing.perUnitBase)}</span>
+            <span className="text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
+              {pricing.savingsPct.toFixed(0)}% OFF
+            </span>
+          </>
+        )}
+      </div>
+      <p className="text-xs text-slate-500 mt-1">
+        Llevando {pricing.sheets} planchas (~{fmt0(pricing.totalStickers)} u):{' '}
+        <strong className="text-slate-700">${fmt0(pricing.total)}</strong>
+      </p>
+    </div>
+  );
+};
+
 // Mini-galería de ejemplos: una fila de miniaturas con scroll horizontal. Al tocar
-// una foto se abre un lightbox para verla en grande, con un botón para cargar ese
-// pedido en la calculadora. Pensada para el cliente que no sabe qué elegir.
-const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse }) => {
+// una foto se abre un lightbox para verla en grande, con el precio destacado y un
+// botón para personalizar (cargar ese pedido como base). Pensada para el cliente
+// que no sabe qué elegir.
+const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, getPricing }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const isOpen = openIndex !== null;
   const current = isOpen ? items[openIndex] : null;
+  const currentPricing = current ? getPricing(current.order) : null;
 
   const close = () => setOpenIndex(null);
   const prev = () => setOpenIndex((i) => (i === null ? i : (i - 1 + items.length) % items.length));
@@ -49,26 +95,37 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse })
         <h3 className="font-bold text-slate-800">¿No sabés qué elegir? Inspirate</h3>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
-        {items.map((item, idx) => (
-          <button
-            key={item.id}
-            onClick={() => setOpenIndex(idx)}
-            className="group relative flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
-            title={item.caption || 'Ver ejemplo'}
-          >
-            <img
-              src={resolveImage(item.image)}
-              alt={item.caption || 'Ejemplo de sticker'}
-              loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-            />
-            {item.caption && (
-              <span className="absolute inset-x-0 bottom-0 bg-black/55 text-white text-[10px] leading-tight px-1.5 py-1 text-left line-clamp-2">
-                {item.caption}
-              </span>
-            )}
-          </button>
-        ))}
+        {items.map((item, idx) => {
+          const label = item.title || item.caption;
+          const pricing = getPricing(item.order);
+          return (
+            <button
+              key={item.id}
+              onClick={() => setOpenIndex(idx)}
+              className="group relative flex-shrink-0 w-32 sm:w-36 rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
+              title={label || 'Ver ejemplo'}
+            >
+              <div className="relative w-full h-28 sm:h-32 bg-slate-50 overflow-hidden">
+                <img
+                  src={resolveImage(item.image)}
+                  alt={label || 'Ejemplo de sticker'}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+                {label && (
+                  <span className="absolute inset-x-0 bottom-0 bg-black/55 text-white text-[11px] font-semibold leading-tight px-1.5 py-1 line-clamp-2">
+                    {label}
+                  </span>
+                )}
+              </div>
+              {pricing && (
+                <div className="px-2 py-1.5 border-t border-slate-100">
+                  <PriceTag pricing={pricing} compact />
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Lightbox / vista expandida */}
@@ -91,11 +148,17 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse })
               <X className="w-5 h-5" />
             </button>
 
+            {current.title && (
+              <div className="px-5 py-3 border-b border-slate-100 pr-14">
+                <h4 className="font-bold text-slate-800 leading-tight">{current.title}</h4>
+              </div>
+            )}
+
             <div className="relative bg-slate-900 flex items-center justify-center">
               <img
                 src={resolveImage(current.image)}
-                alt={current.caption || 'Ejemplo de sticker'}
-                className="max-h-[60vh] w-auto object-contain"
+                alt={current.title || current.caption || 'Ejemplo de sticker'}
+                className="max-h-[55vh] w-auto object-contain"
               />
               {items.length > 1 && (
                 <>
@@ -117,17 +180,20 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse })
               )}
             </div>
 
-            <div className="p-5 flex flex-col sm:flex-row sm:items-center gap-4 border-t border-slate-100">
-              <p className="flex-1 text-sm text-slate-600">{current.caption || 'Ejemplo de pedido.'}</p>
-              <button
-                onClick={() => {
-                  onUse(current.order);
-                  close();
-                }}
-                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20 flex-shrink-0"
-              >
-                <Wand2 className="w-4 h-4" /> Usar este diseño
-              </button>
+            <div className="p-5 flex flex-col gap-4 border-t border-slate-100 overflow-y-auto">
+              {current.caption && <p className="text-sm text-slate-600">{current.caption}</p>}
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                <div className="flex-1">{currentPricing && <PriceTag pricing={currentPricing} />}</div>
+                <button
+                  onClick={() => {
+                    onUse(current.order);
+                    close();
+                  }}
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20 flex-shrink-0"
+                >
+                  <Wand2 className="w-4 h-4" /> Personalizar
+                </button>
+              </div>
             </div>
           </div>
         </div>
