@@ -38,33 +38,108 @@
     ],
     "shapesCatalog": {
         "Circulares": [
-            { "size": "2,5 cm", "qty": 90 },
-            { "size": "3,0 cm", "qty": 60 },
-            { "size": "3,5 cm", "qty": 45 },
-            { "size": "4,0 cm", "qty": 36 },
-            { "size": "5,0 cm", "qty": 21 },
-            { "size": "6,0 cm", "qty": 15 },
-            { "size": "4,5 cm", "qty": 25 },
-            { "size": "8 cm", "qty": 8 },
-            { "size": "9 cm", "qty": 6 },
-            { "size": "10 cm", "qty": 3 }
+            {
+                "size": "2,5 cm",
+                "qty": 90
+            },
+            {
+                "size": "3,0 cm",
+                "qty": 60
+            },
+            {
+                "size": "3,5 cm",
+                "qty": 45
+            },
+            {
+                "size": "4,0 cm",
+                "qty": 36
+            },
+            {
+                "size": "5,0 cm",
+                "qty": 21
+            },
+            {
+                "size": "6,0 cm",
+                "qty": 15
+            },
+            {
+                "size": "4,5 cm",
+                "qty": 25
+            },
+            {
+                "size": "8 cm",
+                "qty": 8
+            },
+            {
+                "size": "9 cm",
+                "qty": 6
+            },
+            {
+                "size": "10 cm",
+                "qty": 3
+            }
         ],
         "Formas": [
-            { "size": "7,0 cm", "qty": 10 },
-            { "size": "6,5 cm", "qty": 12 },
-            { "size": "6,0 cm", "qty": 12 },
-            { "size": "5,5 cm", "qty": 14 },
-            { "size": "5,0 cm", "qty": 22 },
-            { "size": "4,5 cm", "qty": 28 },
-            { "size": "4,0 cm", "qty": 36 },
-            { "size": "3,5 cm", "qty": 46 },
-            { "size": "3,0 cm", "qty": 60 },
-            { "size": "2,5 cm", "qty": 92 },
-            { "size": "7,5 cm", "qty": 8 },
-            { "size": "8,0 cm", "qty": 6 },
-            { "size": "8,5 cm", "qty": 6 },
-            { "size": "9,0 cm", "qty": 4 },
-            { "size": "10,0 cm", "qty": 4 }
+            {
+                "size": "7,0 cm",
+                "qty": 10
+            },
+            {
+                "size": "6,5 cm",
+                "qty": 12
+            },
+            {
+                "size": "6,0 cm",
+                "qty": 12
+            },
+            {
+                "size": "5,5 cm",
+                "qty": 14
+            },
+            {
+                "size": "5,0 cm",
+                "qty": 22
+            },
+            {
+                "size": "4,5 cm",
+                "qty": 28
+            },
+            {
+                "size": "4,0 cm",
+                "qty": 36
+            },
+            {
+                "size": "3,5 cm",
+                "qty": 46
+            },
+            {
+                "size": "3,0 cm",
+                "qty": 60
+            },
+            {
+                "size": "2,5 cm",
+                "qty": 92
+            },
+            {
+                "size": "7,5 cm",
+                "qty": 8
+            },
+            {
+                "size": "8,0 cm",
+                "qty": 6
+            },
+            {
+                "size": "8,5 cm",
+                "qty": 6
+            },
+            {
+                "size": "9,0 cm",
+                "qty": 4
+            },
+            {
+                "size": "10,0 cm",
+                "qty": 4
+            }
         ]
     }
 }
