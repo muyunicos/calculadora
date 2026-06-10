@@ -1,4 +1,4 @@
-import type { Config, Material, Order, PriceResult, ShapesCatalog } from '../types';
+import type { Config, GalleryPricing, Material, Order, PriceResult, ShapesCatalog } from '../types';
 import { calcA4Layout } from './a4Layout';
 
 // Motor de precios. Función PURA: mismas entradas -> mismas salidas, sin estado
@@ -98,6 +98,44 @@ export function calcularPrecio(
 // Calcula la complejidad automática de corte según unidades por hoja (1..10).
 export function autoComplexity(qtyStickersPerSheet: number): number {
   return Math.max(1, Math.min(10, Math.ceil(qtyStickersPerSheet / 10)));
+}
+
+// Planchas de referencia para el precio "barato" que se destaca en la galería.
+export const GALLERY_REF_SHEETS = 100;
+
+// Precio de una foto de la galería para mostrarlo de forma marketinera: compara el
+// $/unidad a 1 plancha (caro) contra el máximo de referencia (barato) y el ahorro.
+// La complejidad se recalcula sola (igual que al cargar el pedido), así no depende
+// del valor neutro que trae el código.
+export function galleryPricing(
+  order: Order,
+  config: Config,
+  materials: Material[],
+  shapesCatalog: ShapesCatalog,
+): GalleryPricing | null {
+  const qtyPerSheet =
+    order.shapeType === 'Rectangulares'
+      ? calcA4Layout(order.customRectW, order.customRectH).qty
+      : shapesCatalog[order.shapeType]?.[order.sizeIndex]?.qty || 0;
+  const complexity = autoComplexity(qtyPerSheet);
+
+  const base = calcularPrecio({ ...order, sheetsQty: 1, complexity }, config, materials, shapesCatalog);
+  const max = calcularPrecio(
+    { ...order, sheetsQty: GALLERY_REF_SHEETS, complexity },
+    config,
+    materials,
+    shapesCatalog,
+  );
+  if (!base || !max || base.pricePerSticker <= 0) return null;
+
+  return {
+    perUnit: max.pricePerSticker,
+    perUnitBase: base.pricePerSticker,
+    total: max.finalPrice,
+    totalStickers: max.totalStickers,
+    sheets: GALLERY_REF_SHEETS,
+    savingsPct: ((base.pricePerSticker - max.pricePerSticker) / base.pricePerSticker) * 100,
+  };
 }
 
 // Lista de selecciones que faltan para poder cotizar (orden = pasos del flujo).

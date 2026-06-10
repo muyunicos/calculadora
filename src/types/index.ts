@@ -64,8 +64,21 @@ export interface Order {
 export interface GalleryItem {
   id: string;
   image: string; // URL de la imagen (puede ser relativa a assetsUrl o absoluta).
-  caption?: string; // Texto opcional que se muestra bajo la foto.
+  title?: string; // Título corto que se ve en la miniatura y arriba en el lightbox.
+  caption?: string; // Descripción que se muestra debajo de la foto en el lightbox.
   order: string; // Código de pedido v1 (ej. "v1.m11.s201.q25.f2.d0").
+}
+
+// Precios calculados para mostrar en la galería de forma "marketinera": el precio
+// por unidad a 1 plancha (caro, tachado) vs. al máximo de referencia (barato) y el
+// % de ahorro. Se deriva del motor puro a partir del código de pedido de la foto.
+export interface GalleryPricing {
+  perUnit: number; // $/unidad al máximo de referencia (precio destacado).
+  perUnitBase: number; // $/unidad a 1 plancha (precio "caro" tachado).
+  total: number; // Inversión total al máximo de referencia.
+  totalStickers: number; // Unidades al máximo de referencia.
+  sheets: number; // Planchas de referencia (máximo).
+  savingsPct: number; // Ahorro % por unidad vs. 1 plancha.
 }
 
 // Estructura persistida en datos_config.json (la fuente de datos del admin).
