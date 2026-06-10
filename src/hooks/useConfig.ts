@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Config, Material, ShapesCatalog } from '../types';
+import type { Config, GalleryItem, Material, ShapesCatalog } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 
 export interface UseConfigResult {
   config: Config | null;
   materials: Material[] | null;
   shapesCatalog: ShapesCatalog | null;
+  gallery: GalleryItem[];
   setConfig: React.Dispatch<React.SetStateAction<Config | null>>;
   setMaterials: React.Dispatch<React.SetStateAction<Material[] | null>>;
   setShapesCatalog: React.Dispatch<React.SetStateAction<ShapesCatalog | null>>;
+  setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
   isLoaded: boolean;
   loadError: string | null;
 }
@@ -20,6 +22,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [config, setConfig] = useState<Config | null>(null);
   const [materials, setMaterials] = useState<Material[] | null>(null);
   const [shapesCatalog, setShapesCatalog] = useState<ShapesCatalog | null>(null);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -39,6 +42,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         setConfig(data.config);
         setMaterials(data.materials);
         setShapesCatalog(data.shapesCatalog);
+        if (Array.isArray(data.gallery)) setGallery(data.gallery);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -65,7 +69,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, materials, shapesCatalog }),
+        body: JSON.stringify({ config, materials, shapesCatalog, gallery }),
       })
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -75,15 +79,17 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [config, materials, shapesCatalog, isAdmin, isLoaded]);
+  }, [config, materials, shapesCatalog, gallery, isAdmin, isLoaded]);
 
   return {
     config,
     materials,
     shapesCatalog,
+    gallery,
     setConfig,
     setMaterials,
     setShapesCatalog,
+    setGallery,
     isLoaded,
     loadError,
   };
