@@ -13,7 +13,10 @@ export function calcularPrecio(
   materials: Material[],
   shapesCatalog: ShapesCatalog,
 ): PriceResult | null {
-  const activeMaterial = materials.find((m) => m.id === order.materialId) || materials[0];
+  // Sin precio hasta que el cliente haya elegido TODAS las opciones (sin defaults).
+  if (!isOrderComplete(order, materials, shapesCatalog)) return null;
+
+  const activeMaterial = materials.find((m) => m.id === order.materialId);
   if (!activeMaterial) return null;
 
   // 1. Cantidades
@@ -95,4 +98,43 @@ export function calcularPrecio(
 // Calcula la complejidad automática de corte según unidades por hoja (1..10).
 export function autoComplexity(qtyStickersPerSheet: number): number {
   return Math.max(1, Math.min(10, Math.ceil(qtyStickersPerSheet / 10)));
+}
+
+// Lista de selecciones que faltan para poder cotizar (orden = pasos del flujo).
+// Si está vacía, el pedido está completo. Permite mostrar al cliente qué le falta.
+export function missingSelections(
+  order: Order,
+  materials: Material[],
+  shapesCatalog: ShapesCatalog,
+): string[] {
+  const missing: string[] = [];
+
+  if (!order.materialId || !materials.find((m) => m.id === order.materialId)) {
+    missing.push('material');
+  }
+
+  if (!order.shapeType) {
+    missing.push('forma');
+  } else if (order.shapeType === 'Rectangulares') {
+    const w = Number(order.customRectW);
+    const h = Number(order.customRectH);
+    if (!w || !h || w <= 0 || h <= 0) missing.push('medidas');
+  } else if (order.sizeIndex < 0 || !shapesCatalog[order.shapeType]?.[order.sizeIndex]) {
+    missing.push('tamaño');
+  }
+
+  if (!order.deliveryFormat) missing.push('formato');
+  if (!order.designType) missing.push('diseño');
+  if (!order.sheetsQty || order.sheetsQty < 1) missing.push('cantidad');
+
+  return missing;
+}
+
+// El pedido está completo cuando no falta ninguna selección.
+export function isOrderComplete(
+  order: Order,
+  materials: Material[],
+  shapesCatalog: ShapesCatalog,
+): boolean {
+  return missingSelections(order, materials, shapesCatalog).length === 0;
 }

@@ -46,9 +46,10 @@ export interface Order {
   customRectH: number | string;
   sheetsQty: number;
   materialId: string;
-  deliveryFormat: DeliveryFormat;
+  // '' = sin elegir (no se pre-selecciona ninguna opción por defecto).
+  deliveryFormat: DeliveryFormat | '';
   complexity: number;
-  designType: DesignType;
+  designType: DesignType | '';
   customDesignTime: number;
 }
 
