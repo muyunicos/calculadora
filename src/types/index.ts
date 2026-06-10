@@ -17,6 +17,9 @@ export interface Config {
 export interface Material {
   id: string;
   name: string;
+  // Código numérico estable, visible/editable en Admin. Identifica el material en
+  // el código de pedido compartible (ver core/orderCodec). Debe ser único.
+  code?: number;
   // Texto opcional para el cliente (se muestra al tocar la (i)). Editable en Admin.
   description?: string;
   sheetCost: number;
@@ -31,6 +34,9 @@ export interface Material {
 export interface ShapeItem {
   size: string;
   qty: number;
+  // Código numérico estable y único (entre TODOS los tamaños de todas las
+  // categorías). Identifica forma+tamaño en el código de pedido compartible.
+  code?: number;
 }
 
 // Catálogo de formas: cada categoría (ej. "Circulares", "Formas") -> lista de tamaños.

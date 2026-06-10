@@ -15,6 +15,7 @@
     "materials": [
         {
             "id": "m2",
+            "code": 10,
             "name": "Papel Adhesivo Fotográfico",
             "description": "Acabado brillante y colores vivos. Ideal para uso en interior (agendas, cuadernos, packaging). Editá este texto desde el panel Admin.",
             "sheetCost": 200,
@@ -27,6 +28,7 @@
         },
         {
             "id": "m1",
+            "code": 11,
             "name": "Vinilo Adhesivo Blanco",
             "description": "Resistente al agua y a roces, adhesivo fuerte. Ideal para exterior, botellas, autos y termos. Editá este texto desde el panel Admin.",
             "sheetCost": 600,
@@ -42,105 +44,130 @@
         "Circulares": [
             {
                 "size": "2,5 cm",
-                "qty": 90
+                "qty": 90,
+                "code": 200
             },
             {
                 "size": "3,0 cm",
-                "qty": 60
+                "qty": 60,
+                "code": 201
             },
             {
                 "size": "3,5 cm",
-                "qty": 45
+                "qty": 45,
+                "code": 202
             },
             {
                 "size": "4,0 cm",
-                "qty": 36
+                "qty": 36,
+                "code": 203
             },
             {
                 "size": "5,0 cm",
-                "qty": 21
+                "qty": 21,
+                "code": 204
             },
             {
                 "size": "6,0 cm",
-                "qty": 15
+                "qty": 15,
+                "code": 205
             },
             {
                 "size": "4,5 cm",
-                "qty": 25
+                "qty": 25,
+                "code": 206
             },
             {
                 "size": "8 cm",
-                "qty": 8
+                "qty": 8,
+                "code": 207
             },
             {
                 "size": "9 cm",
-                "qty": 6
+                "qty": 6,
+                "code": 208
             },
             {
                 "size": "10 cm",
-                "qty": 3
+                "qty": 3,
+                "code": 209
             }
         ],
         "Formas": [
             {
                 "size": "7,0 cm",
-                "qty": 10
+                "qty": 10,
+                "code": 300
             },
             {
                 "size": "6,5 cm",
-                "qty": 12
+                "qty": 12,
+                "code": 301
             },
             {
                 "size": "6,0 cm",
-                "qty": 12
+                "qty": 12,
+                "code": 302
             },
             {
                 "size": "5,5 cm",
-                "qty": 14
+                "qty": 14,
+                "code": 303
             },
             {
                 "size": "5,0 cm",
-                "qty": 22
+                "qty": 22,
+                "code": 304
             },
             {
                 "size": "4,5 cm",
-                "qty": 28
+                "qty": 28,
+                "code": 305
             },
             {
                 "size": "4,0 cm",
-                "qty": 36
+                "qty": 36,
+                "code": 306
             },
             {
                 "size": "3,5 cm",
-                "qty": 46
+                "qty": 46,
+                "code": 307
             },
             {
                 "size": "3,0 cm",
-                "qty": 60
+                "qty": 60,
+                "code": 308
             },
             {
                 "size": "2,5 cm",
-                "qty": 92
+                "qty": 92,
+                "code": 309
             },
             {
                 "size": "7,5 cm",
-                "qty": 8
+                "qty": 8,
+                "code": 310
             },
             {
                 "size": "8,0 cm",
-                "qty": 6
+                "qty": 6,
+                "code": 311
             },
             {
                 "size": "8,5 cm",
-                "qty": 6
+                "qty": 6,
+                "code": 312
             },
             {
                 "size": "9,0 cm",
-                "qty": 4
+                "qty": 4,
+                "code": 313
             },
             {
                 "size": "10,0 cm",
-                "qty": 4
+                "qty": 4,
+                "code": 314
             }
         ]
     }

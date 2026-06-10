@@ -1,12 +1,19 @@
-import type { Order, PriceResult } from '../types';
-import { encodeOrder } from './orderCodec';
+import type { Material, Order, PriceResult, ShapesCatalog } from '../types';
+import { encodeOrder, encodeOrderCode } from './orderCodec';
 import { WHATSAPP_PHONE } from './wp';
 
 const SHARE_BASE_URL = 'https://muyunicos.com/calculadora';
 
-export function buildShareUrl(order: Order): string {
-  const base64Order = typeof window !== 'undefined' ? encodeOrder(order) : '';
-  return `${SHARE_BASE_URL}?o=${base64Order}`;
+// Prefiere el código corto y estable (v1.m..s..); si no puede generarse (datos sin
+// `code`), cae al base64 autocontenido para no romper el compartir.
+export function buildShareUrl(
+  order: Order,
+  materials: Material[],
+  shapesCatalog: ShapesCatalog,
+): string {
+  const shortCode = encodeOrderCode(order, materials, shapesCatalog);
+  const code = shortCode ?? (typeof window !== 'undefined' ? encodeOrder(order) : '');
+  return `${SHARE_BASE_URL}?o=${code}`;
 }
 
 const formatoLabel = (deliveryFormat: Order['deliveryFormat']): string =>

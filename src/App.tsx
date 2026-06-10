@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Calculator, Package, Printer, Clock, TrendingUp,
   Scissors, Trash2, Plus, ArrowUp, ArrowDown,
@@ -8,7 +8,7 @@ import {
 
 import type { A4Layout, Order } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
-import { decodeOrder } from './core/orderCodec';
+import { decodeOrder, decodeAnyOrder } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
 import { calcularPrecio, autoComplexity, missingSelections } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
@@ -36,15 +36,16 @@ const App = () => {
   } = useConfig(isAdmin);
 
   const [order, setOrder] = useState<Order>(() => {
-    // Si viene una orden por URL, la cargamos automáticamente
+    // El base64 viejo es autocontenido, así que se puede decodificar al instante
+    // (sin catálogo). El código corto v1 necesita el catálogo y se aplica luego,
+    // cuando termina de cargar la config (ver useEffect más abajo).
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlOrder = params.get('o');
+      const urlOrder = new URLSearchParams(window.location.search).get('o');
       if (urlOrder) {
         try {
           return decodeOrder(urlOrder);
-        } catch (e) {
-          console.error('Error al cargar la orden desde la URL', e);
+        } catch {
+          /* No es base64: puede ser un código v1, se resuelve al cargar la config. */
         }
       }
     }
@@ -63,6 +64,19 @@ const App = () => {
       customDesignTime: 45,
     };
   });
+
+  // Aplica un código de pedido corto (v1) desde la URL una vez cargado el catálogo
+  // (necesario para resolver los `code` de material/tamaño a forma+índice).
+  const urlOrderApplied = useRef(false);
+  useEffect(() => {
+    if (urlOrderApplied.current || !materials || !shapesCatalog) return;
+    if (typeof window === 'undefined') return;
+    const urlOrder = new URLSearchParams(window.location.search).get('o');
+    if (!urlOrder) return;
+    urlOrderApplied.current = true;
+    const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog);
+    if (decoded) setOrder(decoded);
+  }, [materials, shapesCatalog]);
 
   // --- CALCULADORA DE HOJA A4 PARA RECTANGULARES ---
   const customRectMath: A4Layout = useMemo(() => {
@@ -111,17 +125,29 @@ const App = () => {
   const updateMaterial = (id: string, field: string, value: string) =>
     setMaterials((prev) =>
       prev
-        ? prev.map((m) => (m.id === id ? { ...m, [field]: field === 'name' || field === 'description' ? value : parseFloat(value) || 0 } : m))
+        ? prev.map((m) =>
+            m.id === id
+              ? {
+                  ...m,
+                  [field]:
+                    field === 'name' || field === 'description'
+                      ? value
+                      : field === 'code'
+                        ? parseInt(value, 10) || 0
+                        : parseFloat(value) || 0,
+                }
+              : m,
+          )
         : prev,
     );
 
   const addMaterial = () => {
     const newId = `m${Date.now()}`;
-    setMaterials((prev) =>
-      prev
-        ? [...prev, { id: newId, name: 'Nuevo Material', sheetCost: 0, printTime: 2, inkCost: 0, printWear: 0, minCutTime: 1, maxCutTime: 5, cutWear: 0 }]
-        : prev,
-    );
+    setMaterials((prev) => {
+      if (!prev) return prev;
+      const nextCode = Math.max(9, ...prev.map((m) => m.code ?? 0)) + 1;
+      return [...prev, { id: newId, code: nextCode, name: 'Nuevo Material', sheetCost: 0, printTime: 2, inkCost: 0, printWear: 0, minCutTime: 1, maxCutTime: 5, cutWear: 0 }];
+    });
     setOrder((o) => ({ ...o, materialId: newId }));
   };
 
@@ -144,22 +170,25 @@ const App = () => {
     }
   };
 
-  const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty', value: string) => {
+  const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty' | 'code', value: string) => {
     setShapesCatalog((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         [category]: prev[category].map((it, i) =>
-          i === index ? { ...it, [field]: field === 'qty' ? parseInt(value) || 0 : value } : it,
+          i === index ? { ...it, [field]: field === 'size' ? value : parseInt(value, 10) || 0 } : it,
         ),
       };
     });
   };
 
   const addShapeItem = (category: string) => {
-    setShapesCatalog((prev) =>
-      prev ? { ...prev, [category]: [...prev[category], { size: 'Nuevo', qty: 10 }] } : prev,
-    );
+    setShapesCatalog((prev) => {
+      if (!prev) return prev;
+      const allCodes = Object.values(prev).flatMap((items) => items.map((it) => it.code ?? 0));
+      const nextCode = Math.max(199, ...allCodes) + 1;
+      return { ...prev, [category]: [...prev[category], { size: 'Nuevo', qty: 10, code: nextCode }] };
+    });
   };
 
   const removeShapeItem = (category: string, index: number) => {
@@ -175,10 +204,6 @@ const App = () => {
   const sizeText = order.shapeType === 'Rectangulares'
     ? `${order.customRectW}x${order.customRectH}cm`
     : shapesCatalog?.[order.shapeType]?.[order.sizeIndex]?.size || '';
-
-  const shareUrl = buildShareUrl(order);
-  const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl);
-  const whatsappLink = buildWhatsappLink(wpMessage);
 
   // --- ESTADOS DE CARGA / ERROR ---
   if (!isLoaded) {
@@ -208,6 +233,10 @@ const App = () => {
   const formatoLabel = order.deliveryFormat === 'sincorte' ? 'Sin cortar' : order.deliveryFormat === 'individual' ? 'Troquel individual' : 'Planchas (medio corte)';
   const designLabel = order.designType === 'none' ? 'Diseño listo' : order.designType === 'basic' ? 'Armado básico' : 'Diseño a medida';
   const missing = missingSelections(order, materials, shapesCatalog);
+
+  const shareUrl = buildShareUrl(order, materials, shapesCatalog);
+  const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl);
+  const whatsappLink = buildWhatsappLink(wpMessage);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
@@ -722,7 +751,7 @@ const App = () => {
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
                 <LayoutDashboard className="w-6 h-6 text-blue-600" /> Configuración de Formas y Tamaños
               </h2>
-              <p className="text-sm text-slate-500 mb-6">Administra las opciones predefinidas y la cantidad de stickers que entran por hoja A4. Rectangulares se calcula automáticamente.</p>
+              <p className="text-sm text-slate-500 mb-6">Administra las opciones predefinidas y la cantidad de stickers que entran por hoja A4. Rectangulares se calcula automáticamente. El <strong>código</strong> es un número estable y único que identifica el tamaño en los links compartibles y la galería (no lo reutilices).</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {Object.keys(shapesCatalog).map((category) => (
@@ -734,6 +763,7 @@ const App = () => {
                     <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
                       {shapesCatalog[category].map((item, idx) => (
                         <div key={idx} className="flex gap-2 items-center">
+                          <input type="number" value={item.code ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'code', e.target.value)} className="w-16 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 outline-none text-center font-mono" title="Código estable (único)" placeholder="cód." />
                           <input type="text" value={item.size} onChange={(e) => updateShapeCatalog(category, idx, 'size', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 outline-none" placeholder="Ej: 4,0 cm" />
                           <input type="number" value={item.qty} onChange={(e) => updateShapeCatalog(category, idx, 'qty', e.target.value)} className="w-20 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 outline-none text-center" title="Stickers por hoja" />
                           <button onClick={() => removeShapeItem(category, idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -806,6 +836,7 @@ const App = () => {
                           <button onClick={() => moveMaterial(index, -1)} disabled={index === 0} className={`p-1 rounded-md bg-white border shadow-sm ${index === 0 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Subir"><ArrowUp className="w-3 h-3" /></button>
                           <button onClick={() => moveMaterial(index, 1)} disabled={index === materials.length - 1} className={`p-1 rounded-md bg-white border shadow-sm ${index === materials.length - 1 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Bajar"><ArrowDown className="w-3 h-3" /></button>
                         </div>
+                        <input type="number" value={m.code ?? ''} onChange={(e) => updateMaterial(m.id, 'code', e.target.value)} className="w-16 p-1.5 text-sm border border-slate-300 rounded-lg text-center font-mono focus:ring-2 focus:ring-blue-500 outline-none flex-shrink-0" title="Código estable y único del material" placeholder="cód." />
                         <input type="text" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} className="font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:outline-none px-2 py-1 w-full max-w-sm transition-all text-lg" placeholder="Nombre del Material" />
                       </div>
                       <button onClick={() => removeMaterial(m.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors flex-shrink-0" title="Borrar Material"><Trash2 className="w-5 h-5" /></button>
