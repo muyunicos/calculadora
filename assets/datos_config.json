@@ -16,6 +16,7 @@
         {
             "id": "m2",
             "name": "Papel Adhesivo Fotográfico",
+            "description": "Acabado brillante y colores vivos. Ideal para uso en interior (agendas, cuadernos, packaging). Editá este texto desde el panel Admin.",
             "sheetCost": 200,
             "printTime": 2,
             "inkCost": 70,
@@ -27,6 +28,7 @@
         {
             "id": "m1",
             "name": "Vinilo Adhesivo Blanco",
+            "description": "Resistente al agua y a roces, adhesivo fuerte. Ideal para exterior, botellas, autos y termos. Editá este texto desde el panel Admin.",
             "sheetCost": 600,
             "printTime": 3,
             "inkCost": 70,

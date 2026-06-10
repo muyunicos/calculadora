@@ -17,6 +17,8 @@ export interface Config {
 export interface Material {
   id: string;
   name: string;
+  // Texto opcional para el cliente (se muestra al tocar la (i)). Editable en Admin.
+  description?: string;
   sheetCost: number;
   printTime: number;
   inkCost: number;
