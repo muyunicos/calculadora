@@ -10,11 +10,12 @@ import type { A4Layout, Order } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeOrder } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
-import { calcularPrecio, autoComplexity } from './core/priceEngine';
+import { calcularPrecio, autoComplexity, missingSelections } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
 import { useConfig } from './hooks/useConfig';
 import PriceTable from './components/PriceTable';
 import StepSection from './components/StepSection';
+import MobileSummaryBar from './components/MobileSummaryBar';
 
 const ASSETS_PATH = ASSETS_URL;
 
@@ -47,27 +48,21 @@ const App = () => {
         }
       }
     }
+    // Sin defaults: todo arranca vacío. El precio aparece recién cuando el
+    // cliente eligió todas las opciones.
     return {
-      shapeType: 'Circulares',
-      sizeIndex: 0,
-      customRectW: 5,
-      customRectH: 5,
-      sheetsQty: 1,
-      materialId: 'm1',
-      deliveryFormat: 'sincorte',
+      shapeType: '',
+      sizeIndex: -1,
+      customRectW: '',
+      customRectH: '',
+      sheetsQty: 0,
+      materialId: '',
+      deliveryFormat: '',
       complexity: 3,
-      designType: 'none',
+      designType: '',
       customDesignTime: 45,
     };
   });
-
-  // Asegurar que el material seleccionado existe al cargar
-  useEffect(() => {
-    if (materials && materials.length > 0 && !materials.find((m) => m.id === order.materialId)) {
-      setOrder((prev) => ({ ...prev, materialId: materials[0].id }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [materials]);
 
   // --- CALCULADORA DE HOJA A4 PARA RECTANGULARES ---
   const customRectMath: A4Layout = useMemo(() => {
@@ -212,10 +207,11 @@ const App = () => {
   const materialName = materials.find((m) => m.id === order.materialId)?.name ?? '';
   const formatoLabel = order.deliveryFormat === 'sincorte' ? 'Sin cortar' : order.deliveryFormat === 'individual' ? 'Troquel individual' : 'Planchas (medio corte)';
   const designLabel = order.designType === 'none' ? 'Diseño listo' : order.designType === 'basic' ? 'Armado básico' : 'Diseño a medida';
+  const missing = missingSelections(order, materials, shapesCatalog);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6 pb-28 lg:pb-0">
 
         {/* Header Superior Dinámico */}
         <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -268,6 +264,7 @@ const App = () => {
 
         {/* CONTENIDO PRINCIPAL */}
         {activeTab === 'calculator' ? (
+          <>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
             {/* COLUMNA IZQUIERDA: CONFIGURADOR UI */}
@@ -340,7 +337,7 @@ const App = () => {
                 {/* Selector de tipo de forma */}
                 <div className="flex gap-2 mb-6 bg-slate-100 p-1.5 rounded-xl overflow-x-auto">
                   {['Circulares', 'Rectangulares', 'Formas'].map((shape) => (
-                    <button key={shape} onClick={() => setOrder({ ...order, shapeType: shape, sizeIndex: 0 })}
+                    <button key={shape} onClick={() => setOrder({ ...order, shapeType: shape, sizeIndex: -1 })}
                       className={`flex-1 min-w-[110px] py-2.5 px-3 text-sm font-semibold rounded-lg transition-all ${order.shapeType === shape ? 'bg-white shadow-sm border border-slate-200 text-blue-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'}`}>
                       {shape}
                     </button>
@@ -494,15 +491,24 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* 3.3 Cantidad */}
+                {/* 3.3 Cantidad (sin default: hay que elegir para ver el precio) */}
                 <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-                  <label className="block text-sm font-bold text-slate-800 mb-4">¿Cuántas planchas necesitas?</label>
-                  <div className="flex items-center gap-6">
-                    <input type="range" min="1" max="100" value={order.sheetsQty} onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) })} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-                    <div className="relative flex-shrink-0">
-                      <input type="number" min="1" value={order.sheetsQty} onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) || 1 })} className="w-24 text-center font-black text-xl bg-white border-2 border-blue-200 text-blue-800 py-2 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all shadow-sm" />
-                      <span className="absolute -bottom-5 left-0 w-full text-center text-[10px] text-slate-400 font-medium uppercase tracking-wider">Planchas</span>
-                    </div>
+                  <label className="block text-sm font-bold text-slate-800 mb-1">¿Cuántas planchas necesitás?</label>
+                  <p className="text-xs text-slate-500 mb-4">Elegí una cantidad para ver el precio. A más planchas, más barato sale.</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+                    {[1, 5, 10, 25, 50, 100].map((q) => (
+                      <button key={q} type="button" onClick={() => setOrder({ ...order, sheetsQty: q })}
+                        className={`py-2.5 rounded-xl border-2 font-bold text-sm transition-all ${order.sheetsQty === q ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}>
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Otra:</label>
+                    <input type="number" min="1" value={order.sheetsQty || ''} placeholder="Ej: 12"
+                      onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) || 0 })}
+                      className="w-28 text-center font-bold text-lg bg-white border-2 border-slate-200 text-slate-800 py-2 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
+                    <span className="text-xs text-slate-400 font-medium">planchas</span>
                   </div>
                 </div>
               </StepSection>
@@ -562,6 +568,18 @@ const App = () => {
                     <Calculator className="w-4 h-4" /> Resumen de tu pedido
                   </h3>
 
+                  {!results ? (
+                    <div className="relative z-10 text-center py-6">
+                      <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+                        <Calculator className="w-6 h-6 text-slate-500" />
+                      </div>
+                      <p className="text-slate-100 font-semibold mb-1">Completá los pasos para ver el precio</p>
+                      {missing.length > 0 && (
+                        <p className="text-slate-400 text-sm">Te falta elegir: {missing.join(' · ')}.</p>
+                      )}
+                    </div>
+                  ) : (
+                  <>
                   <div className="space-y-4 mb-8 relative z-10">
                     <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
                       <span className="text-slate-300 font-medium">Material:</span>
@@ -600,6 +618,8 @@ const App = () => {
                   <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="relative z-10 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl mt-6 transition-colors text-lg shadow-lg shadow-blue-900/50 flex items-center justify-center gap-2">
                     <Package className="w-5 h-5" /> Añadir al Pedido
                   </a>
+                  </>
+                  )}
                 </div>
 
                 {/* Tabla de precio por cantidad (economía de escala) */}
@@ -677,6 +697,22 @@ const App = () => {
               </div>
             </div>
           </div>
+
+          {/* Barra fija móvil + bottom sheet (solo cliente, < lg) */}
+          <MobileSummaryBar
+            order={order}
+            results={results}
+            missing={missing}
+            whatsappLink={whatsappLink}
+            config={config}
+            materials={materials}
+            shapesCatalog={shapesCatalog}
+            sizeText={sizeText}
+            materialName={materialName}
+            formatoLabel={formatoLabel}
+            designLabel={designLabel}
+          />
+          </>
         ) : (
 
           /* PESTAÑA SETTINGS (ADMIN PANEL) */
