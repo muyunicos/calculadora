@@ -14,6 +14,7 @@ import { calcularPrecio, autoComplexity } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
 import { useConfig } from './hooks/useConfig';
 import PriceTable from './components/PriceTable';
+import StepSection from './components/StepSection';
 
 const ASSETS_PATH = ASSETS_URL;
 
@@ -22,6 +23,8 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<'calculator' | 'settings'>('calculator');
   const [showMathDetail, setShowMathDetail] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
+  const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
 
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
@@ -90,6 +93,12 @@ const App = () => {
     return calcularPrecio(order, config, materials, shapesCatalog);
   }, [order, config, materials, shapesCatalog]);
 
+  // Elegir material y avanzar al paso siguiente (flujo guiado).
+  const selectMaterial = (id: string) => {
+    setOrder((prev) => ({ ...prev, materialId: id }));
+    setActiveStep(2);
+  };
+
   // --- HANDLERS (Admin) ---
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -107,7 +116,7 @@ const App = () => {
   const updateMaterial = (id: string, field: string, value: string) =>
     setMaterials((prev) =>
       prev
-        ? prev.map((m) => (m.id === id ? { ...m, [field]: field === 'name' ? value : parseFloat(value) || 0 } : m))
+        ? prev.map((m) => (m.id === id ? { ...m, [field]: field === 'name' || field === 'description' ? value : parseFloat(value) || 0 } : m))
         : prev,
     );
 
@@ -200,6 +209,10 @@ const App = () => {
     );
   }
 
+  const materialName = materials.find((m) => m.id === order.materialId)?.name ?? '';
+  const formatoLabel = order.deliveryFormat === 'sincorte' ? 'Sin cortar' : order.deliveryFormat === 'individual' ? 'Troquel individual' : 'Planchas (medio corte)';
+  const designLabel = order.designType === 'none' ? 'Diseño listo' : order.designType === 'basic' ? 'Armado básico' : 'Diseño a medida';
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -261,25 +274,47 @@ const App = () => {
             <div className="lg:col-span-7 space-y-6">
 
               {/* Paso 1: Material */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <span className="bg-blue-100 text-blue-700 w-6 h-6 flex items-center justify-center rounded-full text-sm">1</span>
-                    Elegí el material
-                  </h2>
-                </div>
-
+              <StepSection
+                index={1}
+                title="Elegí el material"
+                summary={materialName}
+                isOpen={activeStep === 1}
+                isDone={activeStep > 1}
+                onOpen={() => setActiveStep(1)}
+              >
+                <p className="text-sm text-slate-500 mb-4">Tocá la <Info className="inline w-3.5 h-3.5 -mt-0.5" /> para conocer más sobre cada material.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(showAllMaterials ? materials : materials.slice(0, 2)).map((m) => (
-                    <button key={m.id} onClick={() => setOrder({ ...order, materialId: m.id })}
-                      className={`p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${order.materialId === m.id ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
-                      {order.materialId === m.id && <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>}
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-slate-800 leading-tight group-hover:text-blue-700 transition-colors pr-6">{m.name}</span>
-                        {order.materialId === m.id && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 absolute top-4 right-4" />}
-                      </div>
-                    </button>
-                  ))}
+                  {(showAllMaterials ? materials : materials.slice(0, 2)).map((m) => {
+                    const selected = order.materialId === m.id;
+                    return (
+                    <div key={m.id} className="relative">
+                      <button onClick={() => selectMaterial(m.id)}
+                        className={`w-full h-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${selected ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
+                        {selected && <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>}
+                        <div className="flex items-start gap-2 pr-8">
+                          {selected && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}
+                          <span className="font-bold text-slate-800 leading-tight group-hover:text-blue-700 transition-colors">{m.name}</span>
+                        </div>
+                      </button>
+                      {m.description && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setExpandedMaterialId((prev) => (prev === m.id ? null : m.id)); }}
+                          className={`absolute top-3 right-3 z-10 p-1 rounded-full transition-colors ${expandedMaterialId === m.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 hover:text-blue-600 border border-slate-200'}`}
+                          title="Más info"
+                          aria-label={`Más info sobre ${m.name}`}
+                        >
+                          <Info className="w-4 h-4" />
+                        </button>
+                      )}
+                      {expandedMaterialId === m.id && m.description && (
+                        <div className="mt-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-relaxed">
+                          {m.description}
+                        </div>
+                      )}
+                    </div>
+                    );
+                  })}
                 </div>
 
                 {materials.length > 2 && (
@@ -291,15 +326,17 @@ const App = () => {
                     {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${materials.length - 2})`}
                   </button>
                 )}
-              </div>
+              </StepSection>
 
               {/* Paso 2: Forma y Tamaño */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <span className="bg-blue-100 text-blue-700 w-6 h-6 flex items-center justify-center rounded-full text-sm">2</span>
-                  Forma y Tamaño
-                </h2>
-
+              <StepSection
+                index={2}
+                title="Forma y Tamaño"
+                summary={`${order.shapeType} · ${sizeText}`}
+                isOpen={activeStep === 2}
+                isDone={activeStep > 2}
+                onOpen={() => setActiveStep(2)}
+              >
                 {/* Selector de tipo de forma */}
                 <div className="flex gap-2 mb-6 bg-slate-100 p-1.5 rounded-xl overflow-x-auto">
                   {['Circulares', 'Rectangulares', 'Formas'].map((shape) => (
@@ -389,14 +426,23 @@ const App = () => {
                     })}
                   </div>
                 )}
-              </div>
+
+                <div className="mt-6 flex justify-end">
+                  <button type="button" onClick={() => setActiveStep(3)} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 transition-colors">
+                    Continuar
+                  </button>
+                </div>
+              </StepSection>
 
               {/* Paso 3: Diseño y Entrega */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
-                  <span className="bg-blue-100 text-blue-700 w-6 h-6 flex items-center justify-center rounded-full text-sm">3</span>
-                  Detalles Finales
-                </h2>
+              <StepSection
+                index={3}
+                title="Detalles Finales"
+                summary={`${formatoLabel} · ${designLabel} · ${order.sheetsQty} planchas`}
+                isOpen={activeStep === 3}
+                isDone={false}
+                onOpen={() => setActiveStep(3)}
+              >
 
                 {/* 3.1 Diseño */}
                 <div className="mb-6">
@@ -459,7 +505,7 @@ const App = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </StepSection>
 
               {/* Ajustes Manuales ADMIN */}
               {isAdmin && (
@@ -735,6 +781,11 @@ const App = () => {
                         <div>
                           <label className="block text-sm font-semibold text-slate-700 mb-1.5">Costo de 1 Hoja Blanca ($)</label>
                           <input type="number" value={m.sheetCost} onChange={(e) => updateMaterial(m.id, 'sheetCost', e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 mb-1.5">Descripción para el cliente</label>
+                          <textarea value={m.description ?? ''} onChange={(e) => updateMaterial(m.id, 'description', e.target.value)} rows={3} placeholder="Ej: Resistente al agua, ideal para exterior…" className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-y" />
+                          <p className="text-[11px] text-slate-400 mt-1">Se muestra al cliente al tocar la (i).</p>
                         </div>
                       </div>
 
