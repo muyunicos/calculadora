@@ -1,21 +1,331 @@
 /*
- * AISLAMIENTO DEL WIDGET
- * Resetea valores heredados del tema para evitar conflictos de estilos.
+ * CLASES UNIFICADAS DEL WIDGET
+ * Sistema de clases con prefijo cl- para mantener consistencia
+ * y evitar conflictos con el tema WordPress/WooCommerce.
  */
+
 #mu-sticker-calculator-root {
-  all: initial;
-  display: contents;
-}
-
-#mu-sticker-calculator-root * {
-  all: revert;
   box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
+#mu-sticker-calculator-root *,
 #mu-sticker-calculator-root *::before,
 #mu-sticker-calculator-root *::after {
-  all: revert;
   box-sizing: border-box;
+}
+
+/* ============================================
+   BOTONES
+   ============================================ */
+
+/* Botón primario grande - CTA principal */
+.cl-button-primary-large {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.cl-button-primary-large:hover {
+  background-color: #3b82f6;
+}
+
+.cl-button-primary-large:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #2563eb, 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cl-button-primary-large:disabled {
+  background-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Botón primario pequeño */
+.cl-button-primary-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.625rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+  transition: background-color 0.2s;
+  cursor: pointer;
+  border: none;
+}
+
+.cl-button-primary-small:hover {
+  background-color: #1d4ed8;
+}
+
+.cl-button-primary-small:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Botón secundario */
+.cl-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: white;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  transition: background-color 0.2s, border-color 0.2s;
+  cursor: pointer;
+}
+
+.cl-button-secondary:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.cl-button-secondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Botón de icono */
+.cl-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem;
+  border-radius: 9999px;
+  background-color: transparent;
+  border: 1px solid #e2e8f0;
+  color: #94a3b8;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.cl-button-icon:hover {
+  background-color: #f1f5f9;
+  color: #2563eb;
+}
+
+.cl-button-icon:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Botón deshabilitado */
+.cl-button-disabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #e2e8f0;
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  cursor: not-allowed;
+  user-select: none;
+  border: none;
+}
+
+/* ============================================
+   INPUTS
+   ============================================ */
+
+/* Input numérico */
+.cl-input-number {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background-color: white;
+  font-weight: 700;
+  font-size: 1.125rem;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.cl-input-number:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Input de texto */
+.cl-input-text {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background-color: white;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cl-input-text:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Input range/slider */
+.cl-input-range {
+  width: 100%;
+  height: 0.5rem;
+  background-color: #e2e8f0;
+  border-radius: 9999px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.cl-input-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  cursor: pointer;
+}
+
+.cl-input-range::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  cursor: pointer;
+  border: none;
+}
+
+/* Select dropdown */
+.cl-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background-color: #f8fafc;
+  font-weight: 500;
+  font-size: 0.875rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.cl-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  border-color: #2563eb;
+}
+
+/* ============================================
+   OPCIONES SELECCIONABLES
+   ============================================ */
+
+/* Card seleccionable */
+.cl-option-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background-color: white;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.cl-option-card:hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+
+.cl-option-card-selected {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cl-option-card-selected::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0.25rem;
+  height: 100%;
+  background-color: #2563eb;
+}
+
+/* Botón de opción (tabs, switches) */
+.cl-option-button {
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: transparent;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cl-option-button:hover {
+  color: #334155;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cl-option-button-selected {
+  background-color: white;
+  color: #1d4ed8;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================
+   CONTENEDORES
+   ============================================ */
+
+/* Card base */
+.cl-card {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.cl-card-active {
+  border-color: #93c5fd;
+}
+
+/* Sección/step container */
+.cl-section {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: border-color 0.2s;
+}
+
+.cl-section-active {
+  border-color: #93c5fd;
 }
 
 @tailwind base;

@@ -47,7 +47,7 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
   if (!hasStickers) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="cl-card overflow-hidden">
       <div className="bg-emerald-50 p-4 border-b border-emerald-100 flex items-center gap-2">
         <TrendingDown className="w-5 h-5 text-emerald-600" />
         <h4 className="font-bold text-emerald-800">Cuanto más pedís, más barato sale</h4>

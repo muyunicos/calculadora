@@ -21,7 +21,7 @@ const StepSection: React.FC<StepSectionProps> = ({ index, title, summary, isOpen
       : 'bg-slate-100 text-slate-400';
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border transition-colors ${isOpen ? 'border-blue-300' : 'border-slate-200'}`}>
+    <div className={`cl-section ${isOpen ? 'cl-section-active' : ''}`}>
       <button
         type="button"
         onClick={onOpen}

@@ -320,7 +320,7 @@ const App = () => {
       <div className="max-w-6xl mx-auto space-y-6 pb-28 lg:pb-0">
 
         {/* Header Superior Dinámico */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div className="cl-card flex flex-col md:flex-row justify-between items-center bg-white p-6">
           <div className="flex-1 w-full flex justify-between md:justify-start items-center">
             <div>
               <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
@@ -395,8 +395,7 @@ const App = () => {
                     return (
                     <div key={m.id} className="relative">
                       <button onClick={() => selectMaterial(m.id)}
-                        className={`w-full h-full p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden group ${selected ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
-                        {selected && <div className="absolute top-0 left-0 w-1 h-full bg-blue-600"></div>}
+                        className={`w-full h-full cl-option-card ${selected ? 'cl-option-card-selected' : ''}`}>
                         <div className="flex items-start gap-2 pr-8">
                           {selected && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}
                           <span className="font-bold text-slate-800 leading-tight group-hover:text-blue-700 transition-colors">{m.name}</span>
@@ -463,11 +462,11 @@ const App = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Ancho (cm)</label>
-                          <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => setOrder({ ...order, customRectW: e.target.value })} className="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg text-center bg-white shadow-sm transition-all" />
+                          <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => setOrder({ ...order, customRectW: e.target.value })} className="cl-input-number" />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Alto (cm)</label>
-                          <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => setOrder({ ...order, customRectH: e.target.value })} className="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg text-center bg-white shadow-sm transition-all" />
+                          <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => setOrder({ ...order, customRectH: e.target.value })} className="cl-input-number" />
                         </div>
                       </div>
 
@@ -516,7 +515,7 @@ const App = () => {
 
                         return (
                           <button key={idx} onClick={() => setOrder({ ...order, sizeIndex: idx })}
-                            className={`p-3 rounded-xl border transition-all text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[100px] ${order.sizeIndex === idx ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-inner' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
+                            className={`cl-option-card flex flex-col items-center justify-center min-h-[100px] text-center ${order.sizeIndex === idx ? 'cl-option-card-selected' : ''}`}>
 
                             <div className="w-12 h-12 mb-2 flex items-center justify-center opacity-80">
                               <img
@@ -558,7 +557,7 @@ const App = () => {
                 )}
 
                 <div className="mt-6 flex justify-end">
-                  <button type="button" onClick={() => setActiveStep(3)} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-500 transition-colors">
+                  <button type="button" onClick={() => setActiveStep(3)} className="cl-button-primary-small">
                     Continuar
                   </button>
                 </div>
@@ -578,14 +577,14 @@ const App = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tu Diseño</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button onClick={() => setOrder({ ...order, designType: 'none' })} className={`p-4 rounded-xl border-2 text-left relative transition-all flex items-center gap-3 ${order.designType === 'none' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
+                    <button onClick={() => setOrder({ ...order, designType: 'none' })} className={`cl-option-card flex items-center gap-3 ${order.designType === 'none' ? 'cl-option-card-selected' : ''}`}>
                       <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${order.designType === 'none' ? 'text-blue-600' : 'text-slate-300'}`} />
                       <div>
                         <div className="font-bold text-sm text-slate-800">Ya lo tengo listo</div>
                         <div className="text-xs text-slate-500 mt-0.5">Archivo preparado para impresión.</div>
                       </div>
                     </button>
-                    <button onClick={() => setOrder({ ...order, designType: 'basic' })} className={`p-4 rounded-xl border-2 text-left relative transition-all flex items-center gap-3 ${order.designType === 'basic' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
+                    <button onClick={() => setOrder({ ...order, designType: 'basic' })} className={`cl-option-card flex items-center gap-3 ${order.designType === 'basic' ? 'cl-option-card-selected' : ''}`}>
                       <Palette className={`w-5 h-5 flex-shrink-0 ${order.designType === 'basic' ? 'text-blue-600' : 'text-slate-300'}`} />
                       <div>
                         <div className="font-bold text-sm text-slate-800">Incluir armado básico</div>
@@ -601,21 +600,21 @@ const App = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
                     {/* 1. Sin corte */}
-                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'sincorte' })} className={`p-4 rounded-xl border-2 text-left relative transition-all ${order.deliveryFormat === 'sincorte' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
+                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'sincorte' })} className={`cl-option-card ${order.deliveryFormat === 'sincorte' ? 'cl-option-card-selected' : ''}`}>
                       <div className="font-bold text-sm text-slate-800">Sin Cortar (Solo Impresión)</div>
                       <div className="text-xs text-slate-500 mt-1">Impresión con tintas UV, vos lo cortas a mano.</div>
                       {order.deliveryFormat === 'sincorte' && <CheckCircle2 className="w-5 h-5 text-blue-600 absolute top-4 right-4" />}
                     </button>
 
                     {/* 2. Troquelados Individuales */}
-                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'individual' })} className={`p-4 rounded-xl border-2 text-left relative transition-all shadow-sm ${order.deliveryFormat === 'individual' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
+                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'individual' })} className={`cl-option-card shadow-sm ${order.deliveryFormat === 'individual' ? 'cl-option-card-selected' : ''}`}>
                       <div className="font-bold text-sm text-slate-800">Troquelados Sueltos (Corte Individual)</div>
                       <div className="text-xs text-slate-500 mt-1">Stickers cortados uno por uno, listos para repartir.</div>
                       {order.deliveryFormat === 'individual' && <CheckCircle2 className="w-5 h-5 text-blue-600 absolute top-4 right-4" />}
                     </button>
 
                     {/* 3. Planchas Medio Corte */}
-                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'plancha' })} className={`p-4 rounded-xl border-2 text-left relative transition-all ${order.deliveryFormat === 'plancha' ? 'border-blue-600 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}>
+                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'plancha' })} className={`cl-option-card ${order.deliveryFormat === 'plancha' ? 'cl-option-card-selected' : ''}`}>
                       <div className="font-bold text-sm text-slate-800">Planchas A4 (Medio Corte)</div>
                       <div className="text-xs text-slate-500 mt-1">Ideales para despegar vos mismo rápidamente.</div>
                       {order.deliveryFormat === 'plancha' && <CheckCircle2 className="w-5 h-5 text-blue-600 absolute top-4 right-4" />}
@@ -662,12 +661,12 @@ const App = () => {
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mb-3">Afecta el tiempo de corte estimado: ~{results?.baseCutTime?.toFixed(1)} min/plancha.</p>
-                      <input type="range" min="1" max="10" value={order.complexity} onChange={(e) => setOrder({ ...order, complexity: parseInt(e.target.value) })} className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                      <input type="range" min="1" max="10" value={order.complexity} onChange={(e) => setOrder({ ...order, complexity: parseInt(e.target.value) })} className="cl-input-range" />
                     </div>
 
                     <div className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm">
                       <label className="block text-sm font-bold text-slate-700 mb-2">Forzar Tiempo de Diseño Personalizado</label>
-                      <select value={order.designType} onChange={(e) => setOrder({ ...order, designType: e.target.value as Order['designType'], ...(e.target.value === 'custom' ? { customDesignTime: config.timeDesignCustom } : {}) })} className="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+                      <select value={order.designType} onChange={(e) => setOrder({ ...order, designType: e.target.value as Order['designType'], ...(e.target.value === 'custom' ? { customDesignTime: config.timeDesignCustom } : {}) })} className="cl-select">
                         <option value="none">Sin costo (+0 min)</option>
                         <option value="basic">Armado en plancha (+{config.timeDesignBasic} min)</option>
                         <option value="custom">A medida (+{order.customDesignTime} min)</option>
@@ -679,7 +678,7 @@ const App = () => {
                             <label className="text-sm font-semibold text-slate-600">Minutos estimados de diseño</label>
                             <span className="text-sm font-bold text-amber-700">{order.customDesignTime} min</span>
                           </div>
-                          <input type="range" min="5" max="120" step="5" value={order.customDesignTime} onChange={(e) => setOrder({ ...order, customDesignTime: parseInt(e.target.value) })} className="w-full accent-amber-500 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                          <input type="range" min="5" max="120" step="5" value={order.customDesignTime} onChange={(e) => setOrder({ ...order, customDesignTime: parseInt(e.target.value) })} className="cl-input-range" />
                         </div>
                       )}
                     </div>
@@ -864,12 +863,12 @@ const App = () => {
           <div className="space-y-8 animate-in fade-in duration-300">
 
             {/* Galería de ejemplos */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="cl-card bg-white p-6">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4 mb-6">
                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                   <ImageIcon className="w-6 h-6 text-blue-600" /> Galería de ejemplos
                 </h2>
-                <button onClick={addGalleryItem} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20">
+                <button onClick={addGalleryItem} className="flex items-center gap-2 cl-button-primary-small">
                   <Plus className="w-4 h-4" /> Añadir foto
                 </button>
               </div>
@@ -916,7 +915,7 @@ const App = () => {
               )}
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="cl-card bg-white p-6">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
                 <LayoutDashboard className="w-6 h-6 text-blue-600" /> Configuración de Formas y Tamaños
               </h2>
@@ -1009,7 +1008,7 @@ const App = () => {
             </div>
 
             {/* Panel de Sueldo */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="cl-card bg-white p-6">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -1048,14 +1047,14 @@ const App = () => {
             </div>
 
             {/* Base de Materiales */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="cl-card bg-white p-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     <Printer className="w-6 h-6 text-blue-600" /> Base de Materiales
                   </h2>
                 </div>
-                <button onClick={addMaterial} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20">
+                <button onClick={addMaterial} className="flex items-center gap-2 cl-button-primary-small">
                   <Plus className="w-4 h-4" /> Añadir Material
                 </button>
               </div>

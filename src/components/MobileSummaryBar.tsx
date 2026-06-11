@@ -53,7 +53,7 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
           <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-200">
             <div className="sticky top-0 bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-slate-800">Detalle de tu pedido</h3>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-full text-slate-400 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Cerrar">
+              <button onClick={() => setOpen(false)} className="cl-button-icon" aria-label="Cerrar">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -119,11 +119,11 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
           </button>
 
           {isComplete ? (
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-xl text-sm flex items-center gap-2 shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="cl-button-primary-large">
               <Package className="w-4 h-4" /> Pedir
             </a>
           ) : (
-            <span className="flex-shrink-0 bg-slate-200 text-slate-400 font-bold px-4 py-3 rounded-xl text-sm flex items-center gap-2 cursor-not-allowed select-none">
+            <span className="cl-button-disabled">
               <Package className="w-4 h-4" /> Pedir
             </span>
           )}
