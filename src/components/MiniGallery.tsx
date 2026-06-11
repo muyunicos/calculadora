@@ -9,46 +9,53 @@ interface MiniGalleryProps {
   // Carga el pedido asociado a la foto en la calculadora.
   onUse: (orderCode: string) => void;
   // Precio marketinero (1 plancha vs. máximo) para la foto; null si no se puede calcular.
-  getPricing: (orderCode: string) => GalleryPricing | null;
+  // Puede recibir un segundo parámetro con la cantidad de planchas a mostrar.
+  getPricing: (orderCode: string, displaySheets?: number) => GalleryPricing | null;
 }
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 2 });
 const fmt0 = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
-// Bloque de precio "marketinero": precio por unidad al máximo (destacado), con el
-// precio caro (1 plancha) tachado, el % de ahorro y la inversión total.
+// Extrae la cantidad de planchas del código v1 (ej: "v1.m11.s201.q25.f2.d0" -> 25)
+const extractSheetsFromCode = (code: string): number => {
+  const match = code.match(/\.q(\d+)/);
+  return match ? parseInt(match[1], 10) : 1;
+};
+
+// Bloque de precio "marketinero": precio unitario regular vs. precio de mayorista
 const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pricing, compact }) => {
   const hasDeal = pricing.savingsPct > 0.5;
   if (compact) {
     return (
-      <span className="flex items-baseline gap-1">
+      <span className="flex items-baseline gap-1 flex-wrap text-[11px]">
+        <span className="text-slate-600 font-extrabold">${fmt(pricing.perUnitBase)}</span>
+        <span className="text-slate-500">~</span>
         <span className="text-emerald-600 font-extrabold">${fmt(pricing.perUnit)}</span>
-        <span className="text-[10px] text-slate-500">c/u</span>
-        {hasDeal && (
-          <span className="text-[9px] font-bold text-white bg-red-500 px-1 py-px rounded">
-            -{pricing.savingsPct.toFixed(0)}%
-          </span>
-        )}
+        <span className="text-slate-500">c/u</span>
       </span>
     );
   }
   return (
-    <div>
-      <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
-        <span className="text-2xl font-extrabold text-emerald-600">${fmt(pricing.perUnit)}</span>
-        <span className="text-sm text-slate-500">c/u</span>
-        {hasDeal && (
-          <>
-            <span className="text-sm text-slate-400 line-through">${fmt(pricing.perUnitBase)}</span>
-            <span className="text-xs font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">
+    <div className="space-y-3">
+      <div className="flex justify-between items-end gap-6">
+        <div>
+          <div className="text-xs font-bold text-slate-500 mb-2 uppercase">Precio Regular</div>
+          <div className="text-lg font-extrabold text-gray-600">${fmt(pricing.perUnitBase)} c/u</div>
+        </div>
+        <div className="flex items-end gap-1">
+          <div>
+            <div className="text-xs font-bold text-slate-500 mb-2 uppercase">Por Mayor*</div>
+            <div className="text-lg font-extrabold text-emerald-600">${fmt(pricing.perUnit)} c/u</div>
+          </div>
+          {hasDeal && (
+            <span className="text-xs font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full h-fit">
               {pricing.savingsPct.toFixed(0)}% OFF
             </span>
-          </>
-        )}
+          )}
+        </div>
       </div>
-      <p className="text-xs text-slate-500 mt-1">
-        Llevando {pricing.sheets} planchas (~{fmt0(pricing.totalStickers)} u):{' '}
-        <strong className="text-slate-700">${fmt0(pricing.total)}</strong>
+      <p className="text-xs text-slate-500">
+        * Comprando {pricing.sheets} planchas (~{fmt0(pricing.totalStickers)} u): <strong className="text-slate-700">${fmt0(pricing.total)}</strong>
       </p>
     </div>
   );
@@ -63,7 +70,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
 
   const isOpen = openIndex !== null;
   const current = isOpen ? items[openIndex] : null;
-  const currentPricing = current ? getPricing(current.order) : null;
+  const currentPricing = current ? getPricing(current.order, extractSheetsFromCode(current.order)) : null;
 
   const close = () => setOpenIndex(null);
   const prev = () => setOpenIndex((i) => (i === null ? i : (i - 1 + items.length) % items.length));
@@ -97,7 +104,8 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
         {items.map((item, idx) => {
           const label = item.title || item.caption;
-          const pricing = getPricing(item.order);
+          const displaySheets = extractSheetsFromCode(item.order);
+          const pricing = getPricing(item.order, displaySheets);
           return (
             <button
               key={item.id}
@@ -142,7 +150,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
           >
             <button
               onClick={close}
-              className="absolute top-3 right-3 z-10 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors"
+              className="absolute top-3 right-3 z-10 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white"
               aria-label="Cerrar"
             >
               <X className="w-5 h-5" />
@@ -164,14 +172,14 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
                 <>
                   <button
                     onClick={prev}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white"
                     aria-label="Anterior"
                   >
                     <ChevronLeft className="w-6 h-6" />
                   </button>
                   <button
                     onClick={next}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-white"
                     aria-label="Siguiente"
                   >
                     <ChevronRight className="w-6 h-6" />
@@ -183,13 +191,19 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
             <div className="p-5 flex flex-col gap-4 border-t border-slate-100 overflow-y-auto">
               {current.caption && <p className="text-sm text-slate-600">{current.caption}</p>}
               <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-                <div className="flex-1">{currentPricing && <PriceTag pricing={currentPricing} />}</div>
+                <div className="flex-1">
+                  {(() => {
+                    const displaySheets = extractSheetsFromCode(current.order);
+                    const pricing = currentPricing || getPricing(current.order, displaySheets);
+                    return pricing && <PriceTag pricing={pricing} />;
+                  })()}
+                </div>
                 <button
                   onClick={() => {
                     onUse(current.order);
                     close();
                   }}
-                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20 flex-shrink-0"
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md shadow-blue-600/20 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
                   <Wand2 className="w-4 h-4" /> Personalizar
                 </button>

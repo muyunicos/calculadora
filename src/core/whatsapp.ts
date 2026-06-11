@@ -41,6 +41,24 @@ export function buildWhatsappMessage(
 ${shareUrl}`;
 }
 
+export function buildConsultWhatsappMessage(
+  order: Order,
+  results: PriceResult | null,
+  sizeText: string,
+  shareUrl: string,
+): string {
+  return `Hola! Quería consultarte por estos stickers:
+
+📦 *Material:* ${results?.activeMaterial?.name || ''}
+✂️ *Formato:* ${formatoLabel(order.deliveryFormat)}
+📏 *Medida:* ${order.shapeType} ${sizeText}
+🔢 *Cantidad:* ${results?.totalStickers || 0} unid. (${order.sheetsQty} planchas)
+💰 *Total Estimado:* $${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) || 0}
+
+🔗 *Ver detalle del presupuesto:*
+${shareUrl}`;
+}
+
 export function buildWhatsappLink(message: string): string {
   return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(message)}`;
 }

@@ -3,7 +3,7 @@ import {
   Calculator, Package, Printer, Clock, TrendingUp,
   Scissors, Trash2, Plus, ArrowUp, ArrowDown,
   ShieldCheck, CheckCircle2, ChevronDown, ChevronUp, Users, Settings,
-  Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle,
+  Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
 import type { A4Layout, GalleryItem, Order } from './types';
@@ -11,7 +11,7 @@ import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeOrder, decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
 import { calcularPrecio, autoComplexity, missingSelections, galleryPricing } from './core/priceEngine';
-import { buildShareUrl, buildWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
+import { buildShareUrl, buildWhatsappMessage, buildConsultWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
 import { useConfig } from './hooks/useConfig';
 import PriceTable from './components/PriceTable';
 import StepSection from './components/StepSection';
@@ -27,12 +27,13 @@ const App = () => {
   const [showAllMaterials, setShowAllMaterials] = useState(false);
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
+  const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
 
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
   const {
-    config, materials, shapesCatalog, gallery,
-    setConfig, setMaterials, setShapesCatalog, setGallery,
+    config, materials, shapesCatalog, shapesShowMoreIndex, gallery,
+    setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setGallery,
     isLoaded, loadError,
   } = useConfig(isAdmin);
 
@@ -171,13 +172,13 @@ const App = () => {
     }
   };
 
-  const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty' | 'code', value: string) => {
+  const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image', value: string) => {
     setShapesCatalog((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         [category]: prev[category].map((it, i) =>
-          i === index ? { ...it, [field]: field === 'size' ? value : parseInt(value, 10) || 0 } : it,
+          i === index ? { ...it, [field]: field === 'size' ? value : field === 'description' || field === 'image' ? value : parseInt(value, 10) || 0 } : it,
         ),
       };
     });
@@ -199,6 +200,30 @@ const App = () => {
     if (order.shapeType === category && order.sizeIndex >= nc[category].length) {
       setOrder({ ...order, sizeIndex: Math.max(0, nc[category].length - 1) });
     }
+  };
+
+  const moveShapeItem = (category: string, index: number, direction: -1 | 1) => {
+    if (!shapesCatalog) return;
+    const items = shapesCatalog[category];
+    if (direction === -1 && index > 0) {
+      const nc = [...items];
+      [nc[index - 1], nc[index]] = [nc[index], nc[index - 1]];
+      setShapesCatalog({ ...shapesCatalog, [category]: nc });
+    } else if (direction === 1 && index < items.length - 1) {
+      const nc = [...items];
+      [nc[index + 1], nc[index]] = [nc[index], nc[index + 1]];
+      setShapesCatalog({ ...shapesCatalog, [category]: nc });
+    }
+  };
+
+  const setShowMoreIndex = (category: string, index: number) => {
+    if (!shapesCatalog || !shapesCatalog[category]) return;
+    const itemCount = shapesCatalog[category].length;
+    const validIndex = Math.max(0, Math.min(Math.floor(index), itemCount));
+    setShapesShowMoreIndex((prev) => ({
+      ...(prev || {}),
+      [category]: validIndex,
+    }));
   };
 
   // --- GALERÍA ---
@@ -228,11 +253,11 @@ const App = () => {
     setGallery((prev) => [...prev, { id: `g${Date.now()}`, image: '', title: '', caption: '', order: '' }]);
 
   // Precio marketinero de una foto (1 plancha vs. máximo). Requiere catálogo cargado.
-  const getGalleryPricing = (code: string) => {
+  const getGalleryPricing = (code: string, displaySheets?: number) => {
     if (!config || !materials || !shapesCatalog) return null;
     const decoded = decodeAnyOrder(code, materials, shapesCatalog);
     if (!decoded) return null;
-    return galleryPricing(decoded, config, materials, shapesCatalog);
+    return galleryPricing(decoded, config, materials, shapesCatalog, displaySheets);
   };
 
   const removeGalleryItem = (id: string) =>
@@ -286,6 +311,9 @@ const App = () => {
   const shareUrl = buildShareUrl(order, materials, shapesCatalog);
   const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl);
   const whatsappLink = buildWhatsappLink(wpMessage);
+  const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl);
+  const consultLink = buildWhatsappLink(consultMessage);
+  const orderCode = encodeOrderCode(order, materials, shapesCatalog);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
@@ -435,11 +463,11 @@ const App = () => {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Ancho (cm)</label>
-                          <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => setOrder({ ...order, customRectW: e.target.value })} className="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-blue-500 outline-none font-bold text-lg text-center bg-white shadow-sm" />
+                          <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => setOrder({ ...order, customRectW: e.target.value })} className="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg text-center bg-white shadow-sm transition-all" />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Alto (cm)</label>
-                          <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => setOrder({ ...order, customRectH: e.target.value })} className="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-blue-500 outline-none font-bold text-lg text-center bg-white shadow-sm" />
+                          <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => setOrder({ ...order, customRectH: e.target.value })} className="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg text-center bg-white shadow-sm transition-all" />
                         </div>
                       </div>
 
@@ -474,34 +502,58 @@ const App = () => {
                 ) : (
 
                   // VISTA PARA CIRCULARES Y FORMAS (Catálogo con imágenes)
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {shapesCatalog[order.shapeType]?.map((s, idx) => {
-                      const shapeIndex = Object.keys(shapesCatalog).indexOf(order.shapeType) + 1;
-                      const imageFileName = `2_${shapeIndex}_${idx + 1}.png`; // Ej: 2_1_1.png
-                      const imagePath = `${ASSETS_PATH}/${imageFileName}`;
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {shapesCatalog[order.shapeType]?.map((s, idx) => {
+                        const catalog = shapesCatalog[order.shapeType];
+                        const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog?.length ?? 0;
+                        const isHidden = idx >= showMoreIdx && expandedShapesCategory !== order.shapeType;
+                        if (isHidden) return null;
 
+                        const shapeIndex = Object.keys(shapesCatalog).indexOf(order.shapeType) + 1;
+                        const imageFileName = `2_${shapeIndex}_${idx + 1}.png`;
+                        const imagePath = `${ASSETS_PATH}/${imageFileName}`;
+
+                        return (
+                          <button key={idx} onClick={() => setOrder({ ...order, sizeIndex: idx })}
+                            className={`p-3 rounded-xl border transition-all text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[100px] ${order.sizeIndex === idx ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-inner' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
+
+                            <div className="w-12 h-12 mb-2 flex items-center justify-center opacity-80">
+                              <img
+                                src={imagePath}
+                                alt={s.size}
+                                className="w-full h-full object-contain"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                              <div className="absolute -z-10 w-8 h-8 rounded-full border-2 border-slate-200 border-dashed"></div>
+                            </div>
+
+                            {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
+                            <div className="font-bold">{s.size}</div>
+                            <div className="text-xs mt-0.5 font-medium text-slate-500">{s.qty} uni/plancha</div>
+                            {s.description && <div className="text-xs mt-1 text-slate-600 italic truncate">{s.description}</div>}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Botón "Ver más" si hay tamaños ocultos */}
+                    {(() => {
+                      const catalog = shapesCatalog[order.shapeType];
+                      const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog?.length ?? 0;
+                      const hasHidden = showMoreIdx < (catalog?.length ?? 0);
                       return (
-                        <button key={idx} onClick={() => setOrder({ ...order, sizeIndex: idx })}
-                          className={`p-3 rounded-xl border transition-all text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[100px] ${order.sizeIndex === idx ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-inner' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'}`}>
-
-                          {/* Contenedor de Imagen de Preview (Se oculta suavemente si no existe) */}
-                          <div className="w-12 h-12 mb-2 flex items-center justify-center opacity-80">
-                            <img
-                              src={imagePath}
-                              alt={s.size}
-                              className="w-full h-full object-contain"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
-                            {/* Placeholder sutil para diseño si la imagen no carga */}
-                            <div className="absolute -z-10 w-8 h-8 rounded-full border-2 border-slate-200 border-dashed"></div>
-                          </div>
-
-                          {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
-                          <div className="font-bold">{s.size}</div>
-                          <div className="text-xs mt-0.5 font-medium text-slate-500">{s.qty} uni/plancha</div>
-                        </button>
+                        hasHidden && (
+                          <button
+                            onClick={() => setExpandedShapesCategory(expandedShapesCategory === order.shapeType ? null : order.shapeType)}
+                            className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            {expandedShapesCategory === order.shapeType ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {expandedShapesCategory === order.shapeType ? 'Ocultar tamaños' : `Ver más (${(catalog?.length ?? 0) - showMoreIdx})`}
+                          </button>
+                        )
                       );
-                    })}
+                    })()}
                   </div>
                 )}
 
@@ -690,21 +742,33 @@ const App = () => {
                   </div>
 
                   <div className="relative z-10 bg-slate-800/50 p-5 rounded-2xl border border-slate-700 backdrop-blur-sm">
-                    <span className="text-slate-400 text-sm font-medium block mb-1">Inversión Total Estimada</span>
+                    <span className="text-slate-400 text-sm font-medium block mb-1">Total Estimado</span>
                     <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md">
                       ${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
                     </div>
                   </div>
 
-                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="relative z-10 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl mt-6 transition-colors text-lg shadow-lg shadow-blue-900/50 flex items-center justify-center gap-2">
-                    <Package className="w-5 h-5" /> Añadir al Pedido
-                  </a>
+                  <div className="relative z-10 flex gap-3 mt-6">
+                    <a href={`?add-to-cart=123&p=${orderCode || ''}`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
+                      COMPRAR
+                    </a>
+                    <a href={consultLink} target="_blank" rel="noopener noreferrer" className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-lg shadow-green-900/50 flex items-center justify-center gap-2">
+                      <MessageCircle className="w-5 h-5" />
+                      <span className="text-sm">CONSULTAR</span>
+                    </a>
+                  </div>
                   </>
                   )}
                 </div>
 
                 {/* Tabla de precio por cantidad (economía de escala) */}
-                <PriceTable order={order} config={config} materials={materials} shapesCatalog={shapesCatalog} />
+                <PriceTable
+                  order={order}
+                  config={config}
+                  materials={materials}
+                  shapesCatalog={shapesCatalog}
+                  onChangeQuantity={(qty) => setOrder({ ...order, sheetsQty: qty })}
+                />
 
                 {/* Resumen Interno Admin */}
                 {isAdmin && (
@@ -827,20 +891,20 @@ const App = () => {
                       <div className="flex-1 space-y-2">
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 mb-1">URL de la imagen</label>
-                          <input type="text" value={g.image} onChange={(e) => updateGalleryItem(g.id, 'image', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://… o galeria/foto1.webp" />
+                          <input type="text" value={g.image} onChange={(e) => updateGalleryItem(g.id, 'image', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="https://… o galeria/foto1.webp" />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 mb-1">Título (se ve en la miniatura)</label>
-                          <input type="text" value={g.title ?? ''} onChange={(e) => updateGalleryItem(g.id, 'title', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Stickers para botellas" />
+                          <input type="text" value={g.title ?? ''} onChange={(e) => updateGalleryItem(g.id, 'title', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ej: Stickers para botellas" />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 mb-1">Descripción (opcional)</label>
-                          <input type="text" value={g.caption ?? ''} onChange={(e) => updateGalleryItem(g.id, 'caption', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Vinilo circular 3cm, ideal para logos" />
+                          <input type="text" value={g.caption ?? ''} onChange={(e) => updateGalleryItem(g.id, 'caption', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ej: Vinilo circular 3cm, ideal para logos" />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-slate-500 mb-1">Código de pedido</label>
                           <div className="flex gap-2">
-                            <input type="text" value={g.order} onChange={(e) => updateGalleryItem(g.id, 'order', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono" placeholder="v1.m11.s201.q25.f2.d0" />
+                            <input type="text" value={g.order} onChange={(e) => updateGalleryItem(g.id, 'order', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono transition-all" placeholder="v1.m11.s201.q25.f2.d0" />
                             <button onClick={() => captureCurrentOrder(g.id)} className="text-xs whitespace-nowrap bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-lg hover:text-blue-600 hover:border-blue-400 transition-colors" title="Volcar el pedido configurado en el Cotizador">Usar pedido actual</button>
                           </div>
                         </div>
@@ -856,27 +920,91 @@ const App = () => {
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
                 <LayoutDashboard className="w-6 h-6 text-blue-600" /> Configuración de Formas y Tamaños
               </h2>
-              <p className="text-sm text-slate-500 mb-6">Administra las opciones predefinidas y la cantidad de stickers que entran por hoja A4. Rectangulares se calcula automáticamente. El <strong>código</strong> es un número estable y único que identifica el tamaño en los links compartibles y la galería (no lo reutilices).</p>
+              <p className="text-sm text-slate-500 mb-6">Administra las opciones predefinidas y la cantidad de stickers que entran por hoja A4. Rectangulares se calcula automáticamente. El <strong>código</strong> es un número estable y único que identifica el tamaño en los links compartibles y la galería (no lo reutilices). Cada tamaño puede tener una descripción e imagen opcional.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {Object.keys(shapesCatalog).map((category) => (
-                  <div key={category} className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="bg-slate-100 p-3 border-b border-slate-200 flex justify-between items-center">
-                      <h3 className="font-bold text-slate-700">{category}</h3>
-                      <button onClick={() => addShapeItem(category)} className="text-xs bg-white border border-slate-300 text-slate-600 px-2 py-1 rounded hover:text-blue-600 hover:border-blue-400 transition-colors">+ Añadir Tamaño</button>
-                    </div>
-                    <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
-                      {shapesCatalog[category].map((item, idx) => (
-                        <div key={idx} className="flex gap-2 items-center">
-                          <input type="number" value={item.code ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'code', e.target.value)} className="w-16 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 outline-none text-center font-mono" title="Código estable (único)" placeholder="cód." />
-                          <input type="text" value={item.size} onChange={(e) => updateShapeCatalog(category, idx, 'size', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 outline-none" placeholder="Ej: 4,0 cm" />
-                          <input type="number" value={item.qty} onChange={(e) => updateShapeCatalog(category, idx, 'qty', e.target.value)} className="w-20 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 outline-none text-center" title="Stickers por hoja" />
-                          <button onClick={() => removeShapeItem(category, idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                {Object.keys(shapesCatalog).map((category) => {
+                  const showMoreIdx = shapesShowMoreIndex?.[category] ?? shapesCatalog[category].length;
+                  return (
+                    <div key={category} className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="bg-slate-100 p-3 border-b border-slate-200 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700">{category}</h3>
+                        <button onClick={() => addShapeItem(category)} className="text-xs bg-white border border-slate-300 text-slate-600 px-2 py-1 rounded hover:text-blue-600 hover:border-blue-400 transition-colors">+ Añadir Tamaño</button>
+                      </div>
+                      <div className="p-4 space-y-4 max-h-[600px] overflow-y-auto">
+                        {shapesCatalog[category].map((item, idx) => (
+                          <div key={idx} className={`p-3 rounded-lg border transition-colors ${idx < showMoreIdx ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-300 opacity-60'}`}>
+                            {/* Línea divisoria "Ver más" */}
+                            {idx === showMoreIdx && showMoreIdx < shapesCatalog[category].length && (
+                              <div className="mb-3 text-xs font-bold text-slate-500 text-center border-t-2 border-dashed border-slate-300 pt-2 pb-1">
+                                ← Ver más →
+                              </div>
+                            )}
+
+                            {/* Row 1: Ordenamiento, código, tamaño, cantidad */}
+                            <div className="flex gap-2 items-center mb-2">
+                              <div className="flex flex-col gap-1">
+                                <button onClick={() => moveShapeItem(category, idx, -1)} disabled={idx === 0} className={`p-1 rounded-md bg-white border shadow-sm ${idx === 0 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Subir"><ArrowUp className="w-3 h-3" /></button>
+                                <button onClick={() => moveShapeItem(category, idx, 1)} disabled={idx === shapesCatalog[category].length - 1} className={`p-1 rounded-md bg-white border shadow-sm ${idx === shapesCatalog[category].length - 1 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Bajar"><ArrowDown className="w-3 h-3" /></button>
+                              </div>
+                              <input type="number" value={item.code ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'code', e.target.value)} className="w-16 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center font-mono transition-all" title="Código estable (único)" placeholder="cód." />
+                              <input type="text" value={item.size} onChange={(e) => updateShapeCatalog(category, idx, 'size', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Ej: 4,0 cm" />
+                              <input type="number" value={item.qty} onChange={(e) => updateShapeCatalog(category, idx, 'qty', e.target.value)} className="w-20 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center transition-all" title="Stickers por hoja" />
+                              <button onClick={() => removeShapeItem(category, idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+
+                            {/* Row 2: Descripción */}
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-600 mb-1">Descripción (opcional)</label>
+                              <input type="text" value={item.description ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'description', e.target.value)} className="w-full p-1.5 text-xs border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all" placeholder="Ej: ideal para frascos" />
+                            </div>
+
+                            {/* Row 3: Imagen */}
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-600 mb-1">URL imagen (opcional)</label>
+                              <input type="text" value={item.image ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'image', e.target.value)} className="w-full p-1.5 text-xs border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all" placeholder="Ej: assets/img.png o https://…" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Control de "Ver más" */}
+                      {shapesCatalog[category].length > 0 && (
+                        <div className="p-3 bg-white border-t border-slate-200">
+                          <label className="text-xs font-semibold text-slate-600 block mb-2">Línea "Ver más" después de:</label>
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="range"
+                              min="0"
+                              max={shapesCatalog[category].length}
+                              value={showMoreIdx}
+                              onChange={(e) => setShowMoreIndex(category, parseInt(e.target.value))}
+                              className="flex-1 h-2 bg-slate-300 rounded-lg appearance-none accent-blue-600"
+                            />
+                            <span className="text-xs font-bold text-slate-600 w-8 text-center">{showMoreIdx}/{shapesCatalog[category].length}</span>
+                            <button
+                              onClick={() => setShowMoreIndex(category, showMoreIdx - 1)}
+                              disabled={showMoreIdx === 0}
+                              className={`p-1 rounded-md bg-white border shadow-sm ${showMoreIdx === 0 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`}
+                              title="Subir línea Ver más"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => setShowMoreIndex(category, showMoreIdx + 1)}
+                              disabled={showMoreIdx === shapesCatalog[category].length}
+                              className={`p-1 rounded-md bg-white border shadow-sm ${showMoreIdx === shapesCatalog[category].length ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`}
+                              title="Bajar línea Ver más"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{showMoreIdx === shapesCatalog[category].length ? 'Todos los tamaños visibles (sin "Ver más")' : `Primeros ${showMoreIdx} visibles, ${shapesCatalog[category].length - showMoreIdx} ocultos`}</p>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -898,11 +1026,11 @@ const App = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Sueldo pretendido ($/mes)</label>
-                    <input type="number" name="monthlySalary" value={config.monthlySalary} onChange={handleConfigChange} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold bg-white text-lg" />
+                    <input type="number" name="monthlySalary" value={config.monthlySalary} onChange={handleConfigChange} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold bg-white text-lg transition-all" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Horas de trabajo a la semana</label>
-                    <input type="number" name="weeklyHours" value={config.weeklyHours} onChange={handleConfigChange} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold bg-white text-lg" />
+                    <input type="number" name="weeklyHours" value={config.weeklyHours} onChange={handleConfigChange} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold bg-white text-lg transition-all" />
                   </div>
                   <div className="flex flex-col justify-end">
                     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-xl flex justify-between items-center shadow-md">
@@ -914,7 +1042,7 @@ const App = () => {
               ) : (
                 <div className="max-w-sm bg-slate-50 p-6 rounded-xl border border-slate-200">
                   <label className="block text-sm font-bold text-slate-700 mb-2">Tu Valor Hora Manual ($)</label>
-                  <input type="number" name="hourlyRate" value={config.hourlyRate} onChange={handleConfigChange} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-bold bg-white text-lg shadow-inner" />
+                  <input type="number" name="hourlyRate" value={config.hourlyRate} onChange={handleConfigChange} className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold bg-white text-lg shadow-inner transition-all" />
                 </div>
               )}
             </div>
@@ -952,7 +1080,7 @@ const App = () => {
                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Costo Base</h4>
                         <div>
                           <label className="block text-sm font-semibold text-slate-700 mb-1.5">Costo de 1 Hoja Blanca ($)</label>
-                          <input type="number" value={m.sheetCost} onChange={(e) => updateMaterial(m.id, 'sheetCost', e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+                          <input type="number" value={m.sheetCost} onChange={(e) => updateMaterial(m.id, 'sheetCost', e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all" />
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-slate-700 mb-1.5">Descripción para el cliente</label>
@@ -966,15 +1094,15 @@ const App = () => {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Costo Tinta ($)</label>
-                            <input type="number" value={m.inkCost} onChange={(e) => updateMaterial(m.id, 'inkCost', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                            <input type="number" value={m.inkCost} onChange={(e) => updateMaterial(m.id, 'inkCost', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all" />
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Desgaste Imp. ($)</label>
-                            <input type="number" value={m.printWear} onChange={(e) => updateMaterial(m.id, 'printWear', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                            <input type="number" value={m.printWear} onChange={(e) => updateMaterial(m.id, 'printWear', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all" />
                           </div>
                           <div className="col-span-2">
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Tiempo de Impresión (Minutos)</label>
-                            <input type="number" step="0.5" value={m.printTime} onChange={(e) => updateMaterial(m.id, 'printTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+                            <input type="number" step="0.5" value={m.printTime} onChange={(e) => updateMaterial(m.id, 'printTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all" />
                           </div>
                         </div>
                       </div>
@@ -984,15 +1112,15 @@ const App = () => {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="col-span-2">
                             <label className="block text-xs font-semibold text-slate-600 mb-1">Desgaste Cuchilla/Plotter ($)</label>
-                            <input type="number" value={m.cutWear} onChange={(e) => updateMaterial(m.id, 'cutWear', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" />
+                            <input type="number" value={m.cutWear} onChange={(e) => updateMaterial(m.id, 'cutWear', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white transition-all" />
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">T. Mínimo (Min)</label>
-                            <input type="number" step="0.5" value={m.minCutTime} onChange={(e) => updateMaterial(m.id, 'minCutTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" />
+                            <input type="number" step="0.5" value={m.minCutTime} onChange={(e) => updateMaterial(m.id, 'minCutTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white transition-all" />
                           </div>
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1">T. Máximo (Min)</label>
-                            <input type="number" step="0.5" value={m.maxCutTime} onChange={(e) => updateMaterial(m.id, 'maxCutTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" />
+                            <input type="number" step="0.5" value={m.maxCutTime} onChange={(e) => updateMaterial(m.id, 'maxCutTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white transition-all" />
                           </div>
                         </div>
                       </div>
@@ -1009,16 +1137,21 @@ const App = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-slate-600 mb-1.5">Margen de Error (%)</label>
-                      <input type="number" name="wasteMargin" value={config.wasteMargin} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50" />
+                      <input type="number" name="wasteMargin" value={config.wasteMargin} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 transition-all" />
                     </div>
                     <div>
                       <label className="block text-sm font-black text-emerald-700 mb-1.5">Ganancia Negocio (%)</label>
-                      <input type="number" name="profitMargin" value={config.profitMargin} onChange={handleConfigChange} className="w-full p-2.5 border-2 border-emerald-300 bg-emerald-50 text-emerald-900 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-lg" />
+                      <input type="number" name="profitMargin" value={config.profitMargin} onChange={handleConfigChange} className="w-full p-2.5 border-2 border-emerald-300 bg-emerald-50 text-emerald-900 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none font-bold text-lg transition-all" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-600 mb-1.5">Costo Packaging Fijo x Pedido ($)</label>
-                    <input type="number" name="packagingCost" value={config.packagingCost} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50" />
+                    <input type="number" name="packagingCost" value={config.packagingCost} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-600 mb-1.5">Planchas de Referencia (Galería)</label>
+                    <p className="text-xs text-slate-500 mb-2">Cantidad por defecto para mostrar precio de mayorista en la mini-galería (10 recomendado).</p>
+                    <input type="number" name="galleryRefSheets" value={config.galleryRefSheets} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 transition-all" min="1" />
                   </div>
                 </div>
               </div>

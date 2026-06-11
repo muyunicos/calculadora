@@ -10,7 +10,8 @@
         "timeCustomerService": 15,
         "timeDelivery": 5,
         "timeDesignBasic": 10,
-        "timeDesignCustom": 45
+        "timeDesignCustom": 45,
+        "galleryRefSheets": 10
     },
     "materials": [
         {
@@ -170,6 +171,10 @@
                 "code": 314
             }
         ]
+    },
+    "shapesShowMoreIndex": {
+        "Circulares": 6,
+        "Formas": 10
     },
     "gallery": [
         {

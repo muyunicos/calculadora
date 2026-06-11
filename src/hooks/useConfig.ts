@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Config, GalleryItem, Material, ShapesCatalog } from '../types';
+import type { Config, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 
 export interface UseConfigResult {
   config: Config | null;
   materials: Material[] | null;
   shapesCatalog: ShapesCatalog | null;
+  shapesShowMoreIndex: ShapesShowMoreIndex | null;
   gallery: GalleryItem[];
   setConfig: React.Dispatch<React.SetStateAction<Config | null>>;
   setMaterials: React.Dispatch<React.SetStateAction<Material[] | null>>;
   setShapesCatalog: React.Dispatch<React.SetStateAction<ShapesCatalog | null>>;
+  setShapesShowMoreIndex: React.Dispatch<React.SetStateAction<ShapesShowMoreIndex | null>>;
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
   isLoaded: boolean;
   loadError: string | null;
@@ -22,6 +24,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [config, setConfig] = useState<Config | null>(null);
   const [materials, setMaterials] = useState<Material[] | null>(null);
   const [shapesCatalog, setShapesCatalog] = useState<ShapesCatalog | null>(null);
+  const [shapesShowMoreIndex, setShapesShowMoreIndex] = useState<ShapesShowMoreIndex | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -42,6 +45,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         setConfig(data.config);
         setMaterials(data.materials);
         setShapesCatalog(data.shapesCatalog);
+        setShapesShowMoreIndex(data.shapesShowMoreIndex || {});
         if (Array.isArray(data.gallery)) setGallery(data.gallery);
       })
       .catch((err: unknown) => {
@@ -69,7 +73,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, materials, shapesCatalog, gallery }),
+        body: JSON.stringify({ config, materials, shapesCatalog, shapesShowMoreIndex, gallery }),
       })
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -79,16 +83,18 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [config, materials, shapesCatalog, gallery, isAdmin, isLoaded]);
+  }, [config, materials, shapesCatalog, shapesShowMoreIndex, gallery, isAdmin, isLoaded]);
 
   return {
     config,
     materials,
     shapesCatalog,
+    shapesShowMoreIndex,
     gallery,
     setConfig,
     setMaterials,
     setShapesCatalog,
+    setShapesShowMoreIndex,
     setGallery,
     isLoaded,
     loadError,

@@ -100,28 +100,29 @@ export function autoComplexity(qtyStickersPerSheet: number): number {
   return Math.max(1, Math.min(10, Math.ceil(qtyStickersPerSheet / 10)));
 }
 
-// Planchas de referencia para el precio "barato" que se destaca en la galería.
-export const GALLERY_REF_SHEETS = 100;
-
 // Precio de una foto de la galería para mostrarlo de forma marketinera: compara el
-// $/unidad a 1 plancha (caro) contra el máximo de referencia (barato) y el ahorro.
+// $/unidad a 1 plancha (caro) contra una cantidad de referencia (barato) y el ahorro.
 // La complejidad se recalcula sola (igual que al cargar el pedido), así no depende
 // del valor neutro que trae el código.
+// displaySheets: cantidad a mostrar (si es undefined o 1, usa config.galleryRefSheets)
 export function galleryPricing(
   order: Order,
   config: Config,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  displaySheets?: number,
 ): GalleryPricing | null {
   const qtyPerSheet =
     order.shapeType === 'Rectangulares'
       ? calcA4Layout(order.customRectW, order.customRectH).qty
       : shapesCatalog[order.shapeType]?.[order.sizeIndex]?.qty || 0;
   const complexity = autoComplexity(qtyPerSheet);
+  // Si displaySheets es 1 o no se proporciona, usar la cantidad de referencia del config
+  const refSheets = (displaySheets && displaySheets > 1) ? displaySheets : (config.galleryRefSheets || 10);
 
   const base = calcularPrecio({ ...order, sheetsQty: 1, complexity }, config, materials, shapesCatalog);
   const max = calcularPrecio(
-    { ...order, sheetsQty: GALLERY_REF_SHEETS, complexity },
+    { ...order, sheetsQty: refSheets, complexity },
     config,
     materials,
     shapesCatalog,
@@ -133,7 +134,7 @@ export function galleryPricing(
     perUnitBase: base.pricePerSticker,
     total: max.finalPrice,
     totalStickers: max.totalStickers,
-    sheets: GALLERY_REF_SHEETS,
+    sheets: refSheets,
     savingsPct: ((base.pricePerSticker - max.pricePerSticker) / base.pricePerSticker) * 100,
   };
 }

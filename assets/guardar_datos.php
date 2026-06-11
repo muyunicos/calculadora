@@ -30,7 +30,7 @@ function mu_sticker_save_config($raw, $targetFile) {
         return array(400, array('ok' => false, 'error' => 'JSON invalido.'));
     }
 
-    // Estructura esperada: { config: object, materials: array, shapesCatalog: object }.
+    // Estructura esperada: { config: object, materials: array, shapesCatalog: object, shapesShowMoreIndex?: object, gallery?: array }.
     if (!isset($data['config']) || !is_array($data['config'])) {
         return array(422, array('ok' => false, 'error' => 'Falta "config".'));
     }
@@ -47,6 +47,29 @@ function mu_sticker_save_config($raw, $targetFile) {
         'materials'     => array_values($data['materials']),
         'shapesCatalog' => $data['shapesCatalog'],
     );
+
+    // Incluir shapesShowMoreIndex si está presente y válido
+    if (isset($data['shapesShowMoreIndex']) && is_array($data['shapesShowMoreIndex'])) {
+        $validatedIndex = array();
+        foreach ($data['shapesShowMoreIndex'] as $category => $idx) {
+            if (is_string($category) && is_numeric($idx)) {
+                $idx = intval($idx);
+                // Validar que el índice esté en rango [0, cantidad de items en la categoría]
+                $categorySize = isset($data['shapesCatalog'][$category]) ? count($data['shapesCatalog'][$category]) : 0;
+                if ($idx >= 0 && $idx <= $categorySize) {
+                    $validatedIndex[$category] = $idx;
+                }
+            }
+        }
+        if (!empty($validatedIndex)) {
+            $clean['shapesShowMoreIndex'] = $validatedIndex;
+        }
+    }
+
+    // Incluir gallery si está presente
+    if (isset($data['gallery']) && is_array($data['gallery'])) {
+        $clean['gallery'] = $data['gallery'];
+    }
 
     $json = json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($json === false) {

@@ -12,6 +12,7 @@ export interface Config {
   timeDelivery: number;
   timeDesignBasic: number;
   timeDesignCustom: number;
+  galleryRefSheets: number;
 }
 
 export interface Material {
@@ -37,10 +38,17 @@ export interface ShapeItem {
   // Código numérico estable y único (entre TODOS los tamaños de todas las
   // categorías). Identifica forma+tamaño en el código de pedido compartible.
   code?: number;
+  // Descripción opcional por tamaño (ej. "ideal para frascos")
+  description?: string;
+  // URL de imagen de ejemplo opcional
+  image?: string;
 }
 
 // Catálogo de formas: cada categoría (ej. "Circulares", "Formas") -> lista de tamaños.
 export type ShapesCatalog = Record<string, ShapeItem[]>;
+
+// Índices de "Ver más" por categoría (define dónde mostrar la línea divisoria)
+export type ShapesShowMoreIndex = Record<string, number>;
 
 export type DeliveryFormat = 'sincorte' | 'individual' | 'plancha';
 export type DesignType = 'none' | 'basic' | 'custom';
@@ -86,6 +94,7 @@ export interface AppData {
   config: Config;
   materials: Material[];
   shapesCatalog: ShapesCatalog;
+  shapesShowMoreIndex?: ShapesShowMoreIndex;
   gallery?: GalleryItem[];
 }
 

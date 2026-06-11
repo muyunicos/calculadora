@@ -25,7 +25,7 @@ const StepSection: React.FC<StepSectionProps> = ({ index, title, summary, isOpen
       <button
         type="button"
         onClick={onOpen}
-        className="w-full flex items-center gap-3 p-5 text-left"
+        className="w-full flex items-center gap-3 p-5 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-2xl"
         aria-expanded={isOpen}
       >
         <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0 ${badge}`}>

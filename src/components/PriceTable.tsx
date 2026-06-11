@@ -8,6 +8,7 @@ interface PriceTableProps {
   config: Config;
   materials: Material[];
   shapesCatalog: ShapesCatalog;
+  onChangeQuantity?: (qty: number) => void;
 }
 
 // Cantidades de referencia para mostrar la economía de escala.
@@ -17,7 +18,7 @@ const fmt = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 2 
 
 // Tabla de precio por cantidad: muestra cómo baja el precio por unidad al pedir
 // más planchas (los costos fijos se amortizan). Reutiliza el motor puro.
-const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shapesCatalog }) => {
+const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shapesCatalog, onChangeQuantity }) => {
   const rows = useMemo(() => {
     // Incluir la cantidad actual del cliente si no está en los escalones.
     const steps = Array.from(new Set([...QTY_STEPS, order.sheetsQty]))
@@ -67,15 +68,26 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
               return (
                 <tr
                   key={r.planchas}
-                  className={`border-b border-slate-50 last:border-0 ${
-                    isCurrent ? 'bg-blue-50 font-bold text-blue-900' : 'text-slate-600'
+                  onClick={() => !isCurrent && onChangeQuantity?.(r.planchas)}
+                  className={`border-b border-slate-50 last:border-0 transition-colors group ${
+                    isCurrent
+                      ? 'bg-blue-50 font-bold text-blue-900'
+                      : 'text-slate-600 hover:bg-slate-50 cursor-pointer focus:outline-none focus:bg-slate-100'
                   }`}
+                  tabIndex={!isCurrent ? 0 : undefined}
+                  role={!isCurrent ? "button" : undefined}
+                  onKeyPress={(e) => !isCurrent && e.key === 'Enter' && onChangeQuantity?.(r.planchas)}
                 >
                   <td className="px-4 py-2.5 text-left">
                     {r.planchas}
                     {isCurrent && (
                       <span className="ml-2 text-[10px] uppercase tracking-wider text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">
                         Tu pedido
+                      </span>
+                    )}
+                    {!isCurrent && (
+                      <span className="ml-2 text-[10px] uppercase tracking-wider text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
+                        ELEGIR
                       </span>
                     )}
                   </td>
