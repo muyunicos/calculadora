@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Config, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
+import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
+import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
 
 export interface UseConfigResult {
   config: Config | null;
@@ -8,11 +9,15 @@ export interface UseConfigResult {
   shapesCatalog: ShapesCatalog | null;
   shapesShowMoreIndex: ShapesShowMoreIndex | null;
   gallery: GalleryItem[];
+  deliveryOptions: DeliveryOption[] | null;
+  designOptions: DesignOption[] | null;
   setConfig: React.Dispatch<React.SetStateAction<Config | null>>;
   setMaterials: React.Dispatch<React.SetStateAction<Material[] | null>>;
   setShapesCatalog: React.Dispatch<React.SetStateAction<ShapesCatalog | null>>;
   setShapesShowMoreIndex: React.Dispatch<React.SetStateAction<ShapesShowMoreIndex | null>>;
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
+  setDeliveryOptions: React.Dispatch<React.SetStateAction<DeliveryOption[] | null>>;
+  setDesignOptions: React.Dispatch<React.SetStateAction<DesignOption[] | null>>;
   isLoaded: boolean;
   loadError: string | null;
 }
@@ -26,6 +31,8 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [shapesCatalog, setShapesCatalog] = useState<ShapesCatalog | null>(null);
   const [shapesShowMoreIndex, setShapesShowMoreIndex] = useState<ShapesShowMoreIndex | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOption[] | null>(null);
+  const [designOptions, setDesignOptions] = useState<DesignOption[] | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -47,6 +54,10 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         setShapesCatalog(data.shapesCatalog);
         setShapesShowMoreIndex(data.shapesShowMoreIndex || {});
         if (Array.isArray(data.gallery)) setGallery(data.gallery);
+        // Presentación de entrega/diseño: si el archivo no la trae (deploys
+        // viejos), se completa con los defaults para no romper la vista cliente.
+        setDeliveryOptions(resolveDeliveryOptions(data.deliveryOptions));
+        setDesignOptions(resolveDesignOptions(data.designOptions));
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -73,7 +84,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, materials, shapesCatalog, shapesShowMoreIndex, gallery }),
+        body: JSON.stringify({ config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions }),
       })
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -83,7 +94,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [config, materials, shapesCatalog, shapesShowMoreIndex, gallery, isAdmin, isLoaded]);
+  }, [config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions, isAdmin, isLoaded]);
 
   return {
     config,
@@ -91,11 +102,15 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     shapesCatalog,
     shapesShowMoreIndex,
     gallery,
+    deliveryOptions,
+    designOptions,
     setConfig,
     setMaterials,
     setShapesCatalog,
     setShapesShowMoreIndex,
     setGallery,
+    setDeliveryOptions,
+    setDesignOptions,
     isLoaded,
     loadError,
   };

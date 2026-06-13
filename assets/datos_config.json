@@ -198,5 +198,42 @@
             "caption": "Rectangular 5x3 cm en vinilo. Perfecto para packaging y etiquetas de producto.",
             "order": "v1.m11.r5x3.q50.f0.d0"
         }
+    ],
+    "deliveryOptions": [
+        {
+            "id": "sincorte",
+            "label": "Sin Cortar (Solo Impresión)",
+            "subtitle": "Impresión con tintas UV, vos lo cortas a mano."
+        },
+        {
+            "id": "individual",
+            "label": "Troquelados Sueltos (Corte Individual)",
+            "subtitle": "Stickers cortados uno por uno, listos para repartir."
+        },
+        {
+            "id": "plancha",
+            "label": "Planchas A4 (Medio Corte)",
+            "subtitle": "Ideales para despegar vos mismo rápidamente."
+        }
+    ],
+    "designOptions": [
+        {
+            "id": "none",
+            "label": "Ya lo tengo listo",
+            "subtitle": "Archivo preparado para impresión.",
+            "customerVisible": true
+        },
+        {
+            "id": "basic",
+            "label": "Incluir armado básico",
+            "subtitle": "Acomodamos tu logo/imagen.",
+            "customerVisible": true
+        },
+        {
+            "id": "custom",
+            "label": "Diseño a medida",
+            "subtitle": "Trabajo de diseño personalizado.",
+            "customerVisible": false
+        }
     ]
 }

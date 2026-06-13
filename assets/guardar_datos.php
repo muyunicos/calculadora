@@ -71,6 +71,14 @@ function mu_sticker_save_config($raw, $targetFile) {
         $clean['gallery'] = $data['gallery'];
     }
 
+    // Presentación editable de formatos de entrega y tipos de diseño.
+    if (isset($data['deliveryOptions']) && is_array($data['deliveryOptions']) && array_values($data['deliveryOptions']) === $data['deliveryOptions']) {
+        $clean['deliveryOptions'] = $data['deliveryOptions'];
+    }
+    if (isset($data['designOptions']) && is_array($data['designOptions']) && array_values($data['designOptions']) === $data['designOptions']) {
+        $clean['designOptions'] = $data['designOptions'];
+    }
+
     $json = json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($json === false) {
         return array(500, array('ok' => false, 'error' => 'No se pudo serializar el JSON.'));

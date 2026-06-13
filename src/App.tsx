@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
-import type { A4Layout, GalleryItem, Order } from './types';
+import type { A4Layout, DeliveryFormat, DesignType, GalleryItem, Order } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeOrder, decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
@@ -17,6 +17,8 @@ import PriceTable from './components/PriceTable';
 import StepSection from './components/StepSection';
 import MobileSummaryBar from './components/MobileSummaryBar';
 import MiniGallery from './components/MiniGallery';
+import OptionInfoPanel from './components/OptionInfoPanel';
+import InfoExtraEditor from './components/InfoExtraEditor';
 
 const ASSETS_PATH = ASSETS_URL;
 
@@ -28,12 +30,17 @@ const App = () => {
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
+  // Motor de info: opción con el panel "MÁS INFO" desplegado en cada paso (null =
+  // ninguno; al colapsar se cae al hint de la opción seleccionada, si tiene info).
+  const [infoOpenSizeIndex, setInfoOpenSizeIndex] = useState<number | null>(null);
+  const [infoOpenDeliveryId, setInfoOpenDeliveryId] = useState<DeliveryFormat | null>(null);
+  const [infoOpenDesignId, setInfoOpenDesignId] = useState<DesignType | null>(null);
 
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
   const {
-    config, materials, shapesCatalog, shapesShowMoreIndex, gallery,
-    setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setGallery,
+    config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions,
+    setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setGallery, setDeliveryOptions, setDesignOptions,
     isLoaded, loadError,
   } = useConfig(isAdmin);
 
@@ -76,9 +83,9 @@ const App = () => {
     const urlOrder = new URLSearchParams(window.location.search).get('o');
     if (!urlOrder) return;
     urlOrderApplied.current = true;
-    const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog);
+    const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog, deliveryOptions, designOptions);
     if (decoded) setOrder(decoded);
-  }, [materials, shapesCatalog]);
+  }, [materials, shapesCatalog, deliveryOptions, designOptions]);
 
   // --- CALCULADORA DE HOJA A4 PARA RECTANGULARES ---
   const customRectMath: A4Layout = useMemo(() => {
@@ -100,9 +107,9 @@ const App = () => {
 
   // --- MOTOR DE PRECIOS (función pura) ---
   const results = useMemo(() => {
-    if (!config || !materials || !shapesCatalog) return null;
-    return calcularPrecio(order, config, materials, shapesCatalog);
-  }, [order, config, materials, shapesCatalog]);
+    if (!config || !materials || !shapesCatalog || !deliveryOptions || !designOptions) return null;
+    return calcularPrecio(order, config, materials, shapesCatalog, deliveryOptions, designOptions);
+  }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
   // Elegir material y avanzar al paso siguiente (flujo guiado).
   const selectMaterial = (id: string) => {
@@ -132,7 +139,7 @@ const App = () => {
               ? {
                   ...m,
                   [field]:
-                    field === 'name' || field === 'description'
+                    field === 'name' || field === 'description' || field === 'image'
                       ? value
                       : field === 'code'
                         ? parseInt(value, 10) || 0
@@ -216,6 +223,13 @@ const App = () => {
     }
   };
 
+  // --- OPCIONES DE ENTREGA / DISEÑO (data-driven: id estable + pricing parameters) ---
+  const updateDeliveryOption = (id: DeliveryFormat, field: keyof DeliveryOption, value: string | number | boolean) =>
+    setDeliveryOptions((prev) => (prev ? prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)) : prev));
+
+  const updateDesignOption = (id: DesignType, field: keyof DesignOption, value: string | number | boolean | undefined) =>
+    setDesignOptions((prev) => (prev ? prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)) : prev));
+
   const setShowMoreIndex = (category: string, index: number) => {
     if (!shapesCatalog || !shapesCatalog[category]) return;
     const itemCount = shapesCatalog[category].length;
@@ -234,8 +248,8 @@ const App = () => {
 
   // Carga el pedido de una foto en la calculadora (requiere catálogo cargado).
   const loadOrderFromCode = (code: string) => {
-    if (!materials || !shapesCatalog) return;
-    const decoded = decodeAnyOrder(code, materials, shapesCatalog);
+    if (!materials || !shapesCatalog || !deliveryOptions || !designOptions) return;
+    const decoded = decodeAnyOrder(code, materials, shapesCatalog, deliveryOptions, designOptions);
     if (!decoded) {
       console.warn('Código de pedido inválido en la galería:', code);
       return;
@@ -254,10 +268,10 @@ const App = () => {
 
   // Precio marketinero de una foto (1 plancha vs. máximo). Requiere catálogo cargado.
   const getGalleryPricing = (code: string, displaySheets?: number) => {
-    if (!config || !materials || !shapesCatalog) return null;
-    const decoded = decodeAnyOrder(code, materials, shapesCatalog);
+    if (!config || !materials || !shapesCatalog || !deliveryOptions || !designOptions) return null;
+    const decoded = decodeAnyOrder(code, materials, shapesCatalog, deliveryOptions, designOptions);
     if (!decoded) return null;
-    return galleryPricing(decoded, config, materials, shapesCatalog, displaySheets);
+    return galleryPricing(decoded, config, materials, shapesCatalog, deliveryOptions, designOptions, displaySheets);
   };
 
   const removeGalleryItem = (id: string) =>
@@ -267,8 +281,8 @@ const App = () => {
   // foto (atajo para el admin: configura el pedido y lo "captura"). Requiere que el
   // pedido esté completo.
   const captureCurrentOrder = (id: string): boolean => {
-    if (!materials || !shapesCatalog) return false;
-    const code = encodeOrderCode(order, materials, shapesCatalog);
+    if (!materials || !shapesCatalog || !deliveryOptions || !designOptions) return false;
+    const code = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions);
     if (!code) return false;
     updateGalleryItem(id, 'order', code);
     return true;
@@ -289,7 +303,7 @@ const App = () => {
     );
   }
 
-  if (loadError || !config || !materials || !shapesCatalog) {
+  if (loadError || !config || !materials || !shapesCatalog || !deliveryOptions || !designOptions) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 p-6 text-center font-sans">
         <AlertTriangle className="w-10 h-10 text-amber-500" />
@@ -297,15 +311,15 @@ const App = () => {
         <p className="text-sm text-slate-500 max-w-md">
           No se pudo leer <code className="bg-slate-100 px-1 rounded">datos_config.json</code>.
           {loadError ? ` Detalle: ${loadError}.` : ''} Verificá que el archivo exista y tenga la
-          estructura esperada (config, materials, shapesCatalog).
+          estructura esperada (config, materials, shapesCatalog, deliveryOptions, designOptions).
         </p>
       </div>
     );
   }
 
   const materialName = materials.find((m) => m.id === order.materialId)?.name ?? '';
-  const formatoLabel = order.deliveryFormat === 'sincorte' ? 'Sin cortar' : order.deliveryFormat === 'individual' ? 'Troquel individual' : 'Planchas (medio corte)';
-  const designLabel = order.designType === 'none' ? 'Diseño listo' : order.designType === 'basic' ? 'Armado básico' : 'Diseño a medida';
+  const formatoLabel = deliveryOptions.find((o) => o.id === order.deliveryFormat)?.label ?? '';
+  const designLabel = designOptions.find((o) => o.id === order.designType)?.label ?? '';
   const missing = missingSelections(order, materials, shapesCatalog);
 
   const shareUrl = buildShareUrl(order, materials, shapesCatalog);
@@ -313,7 +327,11 @@ const App = () => {
   const whatsappLink = buildWhatsappLink(wpMessage);
   const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl);
   const consultLink = buildWhatsappLink(consultMessage);
-  const orderCode = encodeOrderCode(order, materials, shapesCatalog);
+  const orderCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions);
+
+  // Clase del botón (i) del motor de info (activo = panel desplegado).
+  const infoBtnClass = (active: boolean) =>
+    `absolute top-3 right-3 z-10 p-1 rounded-full transition-colors ${active ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 hover:text-blue-600 border border-slate-200'}`;
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
@@ -401,26 +419,38 @@ const App = () => {
                           <span className="font-bold text-slate-800 leading-tight group-hover:text-blue-700 transition-colors">{m.name}</span>
                         </div>
                       </button>
-                      {m.description && (
+                      {(m.description || m.image) && (
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setExpandedMaterialId((prev) => (prev === m.id ? null : m.id)); }}
-                          className={`absolute top-3 right-3 z-10 p-1 rounded-full transition-colors ${expandedMaterialId === m.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 hover:text-blue-600 border border-slate-200'}`}
+                          className={infoBtnClass(expandedMaterialId === m.id)}
                           title="Más info"
                           aria-label={`Más info sobre ${m.name}`}
                         >
                           <Info className="w-4 h-4" />
                         </button>
                       )}
-                      {expandedMaterialId === m.id && m.description && (
-                        <div className="mt-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 leading-relaxed">
-                          {m.description}
-                        </div>
-                      )}
                     </div>
                     );
                   })}
                 </div>
+
+                {/* Motor de info: panel "MÁS INFO" del material (desplegado por la (i),
+                    o hint colapsado para el material elegido si tiene info). */}
+                {(() => {
+                  const expanded = expandedMaterialId ? materials.find((m) => m.id === expandedMaterialId) : null;
+                  const selectedM = materials.find((m) => m.id === order.materialId);
+                  const subject = expanded ?? (selectedM && (selectedM.description || selectedM.image) ? selectedM : null);
+                  if (!subject) return null;
+                  return (
+                    <OptionInfoPanel
+                      option={{ name: subject.name, description: subject.description, image: subject.image }}
+                      isOpen={!!expanded && expanded.id === subject.id}
+                      onToggle={() => setExpandedMaterialId((prev) => (prev === subject.id ? null : subject.id))}
+                      resolveImage={resolveImage}
+                    />
+                  );
+                })()}
 
                 {materials.length > 2 && (
                   <button
@@ -445,7 +475,7 @@ const App = () => {
                 {/* Selector de tipo de forma */}
                 <div className="flex gap-2 mb-6 bg-slate-100 p-1.5 rounded-xl overflow-x-auto">
                   {['Circulares', 'Rectangulares', 'Formas'].map((shape) => (
-                    <button key={shape} onClick={() => setOrder({ ...order, shapeType: shape, sizeIndex: -1 })}
+                    <button key={shape} onClick={() => { setOrder({ ...order, shapeType: shape, sizeIndex: -1 }); setInfoOpenSizeIndex(null); }}
                       className={`flex-1 min-w-[110px] py-2.5 px-3 text-sm font-semibold rounded-lg transition-all ${order.shapeType === shape ? 'bg-white shadow-sm border border-slate-200 text-blue-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'}`}>
                       {shape}
                     </button>
@@ -513,25 +543,38 @@ const App = () => {
                         const imageFileName = `2_${shapeIndex}_${idx + 1}.png`;
                         const imagePath = `${ASSETS_PATH}/${imageFileName}`;
 
+                        const hasInfo = !!(s.description || s.image);
                         return (
-                          <button key={idx} onClick={() => setOrder({ ...order, sizeIndex: idx })}
-                            className={`cl-option-card flex flex-col items-center justify-center min-h-[100px] text-center ${order.sizeIndex === idx ? 'cl-option-card-selected' : ''}`}>
+                          <div key={idx} className="relative">
+                            <button onClick={() => setOrder({ ...order, sizeIndex: idx })}
+                              className={`w-full h-full cl-option-card flex flex-col items-center justify-center min-h-[100px] text-center ${order.sizeIndex === idx ? 'cl-option-card-selected' : ''}`}>
 
-                            <div className="w-12 h-12 mb-2 flex items-center justify-center opacity-80">
-                              <img
-                                src={imagePath}
-                                alt={s.size}
-                                className="w-full h-full object-contain"
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                              />
-                              <div className="absolute -z-10 w-8 h-8 rounded-full border-2 border-slate-200 border-dashed"></div>
-                            </div>
+                              <div className="w-12 h-12 mb-2 flex items-center justify-center opacity-80">
+                                <img
+                                  src={imagePath}
+                                  alt={s.size}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                                <div className="absolute -z-10 w-8 h-8 rounded-full border-2 border-slate-200 border-dashed"></div>
+                              </div>
 
-                            {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
-                            <div className="font-bold">{s.size}</div>
-                            <div className="text-xs mt-0.5 font-medium text-slate-500">{s.qty} uni/plancha</div>
-                            {s.description && <div className="text-xs mt-1 text-slate-600 italic truncate">{s.description}</div>}
-                          </button>
+                              {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
+                              <div className="font-bold">{s.size}</div>
+                              <div className="text-xs mt-0.5 font-medium text-slate-500">{s.qty} uni/plancha</div>
+                            </button>
+                            {hasInfo && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setInfoOpenSizeIndex((prev) => (prev === idx ? null : idx)); }}
+                                className={infoBtnClass(infoOpenSizeIndex === idx)}
+                                title="Más info"
+                                aria-label={`Más info sobre ${s.size}`}
+                              >
+                                <Info className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -551,6 +594,26 @@ const App = () => {
                             {expandedShapesCategory === order.shapeType ? 'Ocultar tamaños' : `Ver más (${(catalog?.length ?? 0) - showMoreIdx})`}
                           </button>
                         )
+                      );
+                    })()}
+
+                    {/* Motor de info: panel "MÁS INFO" del tamaño elegido / consultado. */}
+                    {(() => {
+                      const catalog = shapesCatalog[order.shapeType] || [];
+                      const expandedIdx = infoOpenSizeIndex;
+                      const selIdx = order.sizeIndex;
+                      const idx = expandedIdx != null
+                        ? expandedIdx
+                        : (selIdx >= 0 && catalog[selIdx] && (catalog[selIdx].description || catalog[selIdx].image) ? selIdx : -1);
+                      const item = idx >= 0 ? catalog[idx] : null;
+                      if (!item) return null;
+                      return (
+                        <OptionInfoPanel
+                          option={{ name: `${order.shapeType} ${item.size}`, description: item.description, image: item.image }}
+                          isOpen={expandedIdx === idx}
+                          onToggle={() => setInfoOpenSizeIndex((prev) => (prev === idx ? null : idx))}
+                          resolveImage={resolveImage}
+                        />
                       );
                     })()}
                   </div>
@@ -577,50 +640,89 @@ const App = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tu Diseño</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button onClick={() => setOrder({ ...order, designType: 'none' })} className={`cl-option-card flex items-center gap-3 ${order.designType === 'none' ? 'cl-option-card-selected' : ''}`}>
-                      <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${order.designType === 'none' ? 'text-blue-600' : 'text-slate-300'}`} />
-                      <div>
-                        <div className="font-bold text-sm text-slate-800">Ya lo tengo listo</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Archivo preparado para impresión.</div>
-                      </div>
-                    </button>
-                    <button onClick={() => setOrder({ ...order, designType: 'basic' })} className={`cl-option-card flex items-center gap-3 ${order.designType === 'basic' ? 'cl-option-card-selected' : ''}`}>
-                      <Palette className={`w-5 h-5 flex-shrink-0 ${order.designType === 'basic' ? 'text-blue-600' : 'text-slate-300'}`} />
-                      <div>
-                        <div className="font-bold text-sm text-slate-800">Incluir armado básico</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Acomodamos tu logo/imagen.</div>
-                      </div>
-                    </button>
+                    {designOptions.filter((opt) => opt.visible).map((opt) => {
+                      const selected = order.designType === opt.id;
+                      const Icon = opt.id === 'basic' ? Palette : CheckCircle2;
+                      const hasInfo = !!(opt.description || opt.image);
+                      return (
+                        <div key={opt.id} className="relative">
+                          <button onClick={() => setOrder({ ...order, designType: opt.id })}
+                            className={`w-full h-full cl-option-card flex items-center gap-3 ${selected ? 'cl-option-card-selected' : ''}`}>
+                            <Icon className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-blue-600' : 'text-slate-300'}`} />
+                            <div className="pr-8 text-left">
+                              <div className="font-bold text-sm text-slate-800">{opt.label}</div>
+                              {opt.subtitle && <div className="text-xs text-slate-500 mt-0.5">{opt.subtitle}</div>}
+                            </div>
+                          </button>
+                          {hasInfo && (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setInfoOpenDesignId((prev) => (prev === opt.id ? null : opt.id)); }}
+                              className={infoBtnClass(infoOpenDesignId === opt.id)} title="Más info" aria-label={`Más info sobre ${opt.label}`}>
+                              <Info className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                  {(() => {
+                    const expanded = infoOpenDesignId ? designOptions.find((o) => o.id === infoOpenDesignId) : null;
+                    const selectedO = designOptions.find((o) => o.id === order.designType);
+                    const subject = expanded ?? (selectedO && (selectedO.description || selectedO.image) ? selectedO : null);
+                    if (!subject) return null;
+                    return (
+                      <OptionInfoPanel
+                        option={{ name: subject.label, description: subject.description, image: subject.image }}
+                        isOpen={!!expanded && expanded.id === subject.id}
+                        onToggle={() => setInfoOpenDesignId((prev) => (prev === subject.id ? null : subject.id))}
+                        resolveImage={resolveImage}
+                      />
+                    );
+                  })()}
                 </div>
 
                 {/* 3.2 Corte/Formato */}
                 <div className="mb-8">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Entrega</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                    {/* 1. Sin corte */}
-                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'sincorte' })} className={`cl-option-card ${order.deliveryFormat === 'sincorte' ? 'cl-option-card-selected' : ''}`}>
-                      <div className="font-bold text-sm text-slate-800">Sin Cortar (Solo Impresión)</div>
-                      <div className="text-xs text-slate-500 mt-1">Impresión con tintas UV, vos lo cortas a mano.</div>
-                      {order.deliveryFormat === 'sincorte' && <CheckCircle2 className="w-5 h-5 text-blue-600 absolute top-4 right-4" />}
-                    </button>
-
-                    {/* 2. Troquelados Individuales */}
-                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'individual' })} className={`cl-option-card shadow-sm ${order.deliveryFormat === 'individual' ? 'cl-option-card-selected' : ''}`}>
-                      <div className="font-bold text-sm text-slate-800">Troquelados Sueltos (Corte Individual)</div>
-                      <div className="text-xs text-slate-500 mt-1">Stickers cortados uno por uno, listos para repartir.</div>
-                      {order.deliveryFormat === 'individual' && <CheckCircle2 className="w-5 h-5 text-blue-600 absolute top-4 right-4" />}
-                    </button>
-
-                    {/* 3. Planchas Medio Corte */}
-                    <button onClick={() => setOrder({ ...order, deliveryFormat: 'plancha' })} className={`cl-option-card ${order.deliveryFormat === 'plancha' ? 'cl-option-card-selected' : ''}`}>
-                      <div className="font-bold text-sm text-slate-800">Planchas A4 (Medio Corte)</div>
-                      <div className="text-xs text-slate-500 mt-1">Ideales para despegar vos mismo rápidamente.</div>
-                      {order.deliveryFormat === 'plancha' && <CheckCircle2 className="w-5 h-5 text-blue-600 absolute top-4 right-4" />}
-                    </button>
-
+                    {deliveryOptions.map((opt) => {
+                      const selected = order.deliveryFormat === opt.id;
+                      const hasInfo = !!(opt.description || opt.image);
+                      return (
+                        <div key={opt.id} className="relative">
+                          <button onClick={() => setOrder({ ...order, deliveryFormat: opt.id })}
+                            className={`w-full h-full cl-option-card ${selected ? 'cl-option-card-selected' : ''}`}>
+                            <div className="flex items-start gap-2 pr-8">
+                              {selected && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}
+                              <div>
+                                <div className="font-bold text-sm text-slate-800">{opt.label}</div>
+                                {opt.subtitle && <div className="text-xs text-slate-500 mt-1">{opt.subtitle}</div>}
+                              </div>
+                            </div>
+                          </button>
+                          {hasInfo && (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setInfoOpenDeliveryId((prev) => (prev === opt.id ? null : opt.id)); }}
+                              className={infoBtnClass(infoOpenDeliveryId === opt.id)} title="Más info" aria-label={`Más info sobre ${opt.label}`}>
+                              <Info className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
+                  {(() => {
+                    const expanded = infoOpenDeliveryId ? deliveryOptions.find((o) => o.id === infoOpenDeliveryId) : null;
+                    const selectedO = deliveryOptions.find((o) => o.id === order.deliveryFormat);
+                    const subject = expanded ?? (selectedO && (selectedO.description || selectedO.image) ? selectedO : null);
+                    if (!subject) return null;
+                    return (
+                      <OptionInfoPanel
+                        option={{ name: subject.label, description: subject.description, image: subject.image }}
+                        isOpen={!!expanded && expanded.id === subject.id}
+                        onToggle={() => setInfoOpenDeliveryId((prev) => (prev === subject.id ? null : subject.id))}
+                        resolveImage={resolveImage}
+                      />
+                    );
+                  })()}
                 </div>
 
                 {/* 3.3 Cantidad (sin default: hay que elegir para ver el precio) */}
@@ -952,17 +1054,15 @@ const App = () => {
                               <button onClick={() => removeShapeItem(category, idx)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                             </div>
 
-                            {/* Row 2: Descripción */}
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-600 mb-1">Descripción (opcional)</label>
-                              <input type="text" value={item.description ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'description', e.target.value)} className="w-full p-1.5 text-xs border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all" placeholder="Ej: ideal para frascos" />
-                            </div>
-
-                            {/* Row 3: Imagen */}
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-600 mb-1">URL imagen (opcional)</label>
-                              <input type="text" value={item.image ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'image', e.target.value)} className="w-full p-1.5 text-xs border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all" placeholder="Ej: assets/img.png o https://…" />
-                            </div>
+                            {/* Info extra unificada (descripción + imagen) */}
+                            <InfoExtraEditor
+                              description={item.description}
+                              image={item.image}
+                              onChange={(field, value) => updateShapeCatalog(category, idx, field, value)}
+                              resolveImage={resolveImage}
+                              descriptionLabel="Descripción (opcional)"
+                              descriptionPlaceholder="Ej: ideal para frascos"
+                            />
                           </div>
                         ))}
                       </div>
@@ -1004,6 +1104,67 @@ const App = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Formatos de entrega y tipos de diseño (presentación editable) */}
+            <div className="cl-card bg-white p-6">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
+                <Palette className="w-6 h-6 text-blue-600" /> Entrega y Diseño
+              </h2>
+              <p className="text-sm text-slate-500 mb-6">Editá los textos, info extra (foto + descripción) y <strong>parámetros de pricing</strong> (código, factores de corte, tiempos). El cálculo de precio y los links compartibles usan estos parámetros, así que editalos con cuidado. No se pueden agregar ni borrar opciones desde acá (solo ocultar/mostrar).</p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Formato de entrega */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-slate-700">Formato de entrega</h3>
+                  {deliveryOptions.map((opt) => (
+                    <div key={opt.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Título</label>
+                        <input type="text" value={opt.label} onChange={(e) => updateDeliveryOption(opt.id, 'label', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Subtítulo</label>
+                        <input type="text" value={opt.subtitle ?? ''} onChange={(e) => updateDeliveryOption(opt.id, 'subtitle', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all" placeholder="Texto secundario de la tarjeta" />
+                      </div>
+                      <InfoExtraEditor
+                        description={opt.description}
+                        image={opt.image}
+                        onChange={(field, value) => updateDeliveryOption(opt.id, field, value)}
+                        resolveImage={resolveImage}
+                        descriptionLabel="Descripción (info extra)"
+                        descriptionPlaceholder="Ej: detalle del acabado, usos recomendados…"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tipo de diseño */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-slate-700">Tu diseño</h3>
+                  {designOptions.map((opt) => (
+                    <div key={opt.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-slate-600">Título</label>
+                        {!opt.visible && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">oculto</span>}
+                      </div>
+                      <input type="text" value={opt.label} onChange={(e) => updateDesignOption(opt.id, 'label', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all" />
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">Subtítulo</label>
+                        <input type="text" value={opt.subtitle ?? ''} onChange={(e) => updateDesignOption(opt.id, 'subtitle', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all" placeholder="Texto secundario de la tarjeta" />
+                      </div>
+                      <InfoExtraEditor
+                        description={opt.description}
+                        image={opt.image}
+                        onChange={(field, value) => updateDesignOption(opt.id, field, value)}
+                        resolveImage={resolveImage}
+                        descriptionLabel="Descripción (info extra)"
+                        descriptionPlaceholder="Ej: qué incluye, tiempos…"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1082,9 +1243,13 @@ const App = () => {
                           <input type="number" value={m.sheetCost} onChange={(e) => updateMaterial(m.id, 'sheetCost', e.target.value)} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium transition-all" />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-1.5">Descripción para el cliente</label>
-                          <textarea value={m.description ?? ''} onChange={(e) => updateMaterial(m.id, 'description', e.target.value)} rows={3} placeholder="Ej: Resistente al agua, ideal para exterior…" className="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-y" />
-                          <p className="text-[11px] text-slate-400 mt-1">Se muestra al cliente al tocar la (i).</p>
+                          <label className="block text-sm font-semibold text-slate-700 mb-1.5">Info extra para el cliente</label>
+                          <InfoExtraEditor
+                            description={m.description}
+                            image={m.image}
+                            onChange={(field, value) => updateMaterial(m.id, field, value)}
+                            resolveImage={resolveImage}
+                          />
                         </div>
                       </div>
 

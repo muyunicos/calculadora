@@ -23,6 +23,8 @@ export interface Material {
   code?: number;
   // Texto opcional para el cliente (se muestra al tocar la (i)). Editable en Admin.
   description?: string;
+  // Foto opcional para la "info extra" (se amplía al tocarla). Editable en Admin.
+  image?: string;
   sheetCost: number;
   printTime: number;
   inkCost: number;
@@ -52,6 +54,44 @@ export type ShapesShowMoreIndex = Record<string, number>;
 
 export type DeliveryFormat = 'sincorte' | 'individual' | 'plancha';
 export type DesignType = 'none' | 'basic' | 'custom';
+
+// Opción de formato de entrega. El `id` es estable: define el cálculo de precio
+// (ver core/priceEngine) y el código de pedido compartible (ver core/orderCodec).
+// Ahora incluye parámetros de pricing data-driven y es fully configurable.
+export interface DeliveryOption {
+  id: DeliveryFormat;
+  code: number; // Código numérico estable para el codec (v1.f0, v1.f1, etc.)
+  label: string; // Texto principal de la tarjeta.
+  subtitle?: string; // Texto secundario de la tarjeta.
+  description?: string; // "Info extra" (panel MÁS INFO).
+  image?: string; // Foto de la info extra (se amplía al tocarla).
+  cutFactor: number; // Multiplicador de tiempo de corte (0=sincorte, 2=individual, 1=plancha).
+  cutWearFactor: number; // Multiplicador de desgaste de corte (0=sincorte, 2=individual, 1=plancha).
+  visible: boolean; // Si se muestra al cliente.
+}
+
+// Opción de tipo de diseño. Mismo criterio que DeliveryOption: `id` estable.
+// Ahora incluye parámetros de pricing data-driven y es fully configurable.
+export interface DesignOption {
+  id: DesignType;
+  code: number; // Código numérico estable para el codec (v1.d0, v1.d1, etc.)
+  label: string;
+  subtitle?: string;
+  description?: string;
+  image?: string;
+  designMinutes?: number; // Minutos fijos de diseño (para 'basic').
+  isCustomTime: boolean; // Si permite tiempo custom del cliente (para 'custom').
+  customerVisible?: boolean; // Si se muestra como tarjeta al cliente (false para 'custom').
+  visible: boolean; // Si se muestra al cliente (unifica customerVisible).
+}
+
+// Info adicional genérica para CUALQUIER opción (material, tamaño, formato,
+// diseño…). Es lo que consume el motor de info reutilizable (OptionInfoPanel).
+export interface OptionInfo {
+  name: string; // Nombre de la opción (título "MÁS INFO: ...").
+  description?: string;
+  image?: string;
+}
 
 export interface Order {
   shapeType: string;
@@ -96,6 +136,8 @@ export interface AppData {
   shapesCatalog: ShapesCatalog;
   shapesShowMoreIndex?: ShapesShowMoreIndex;
   gallery?: GalleryItem[];
+  deliveryOptions?: DeliveryOption[];
+  designOptions?: DesignOption[];
 }
 
 export type A4FitType = 'portrait' | 'landscape' | 'none';

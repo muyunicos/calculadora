@@ -1,4 +1,4 @@
-import type { DeliveryFormat, DesignType, Material, Order, ShapesCatalog } from '../types';
+import type { DeliveryFormat, DesignType, Material, Order, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 
 // --- CODIFICACIÓN BASE64 UTF-8 (sin escape/unescape deprecados) ---
 // Produce el mismo base64 que btoa(unescape(encodeURIComponent(...))), por lo que
@@ -31,9 +31,6 @@ export const decodeOrder = (b64: string): Order => {
 // la URL compartible como para identificar pedidos en la galería.
 export const ORDER_CODE_VERSION = 'v1';
 
-// El índice define el número que viaja en el código (no cambiar el orden).
-const FORMATS: DeliveryFormat[] = ['sincorte', 'individual', 'plancha'];
-const DESIGNS: DesignType[] = ['none', 'basic', 'custom'];
 const RECT_CATEGORY = 'Rectangulares';
 
 const numToCode = (v: number | string): string => String(v).replace('.', ',');
@@ -44,6 +41,8 @@ export function encodeOrderCode(
   order: Order,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  deliveryOptions: DeliveryOption[],
+  designOptions: DesignOption[],
 ): string | null {
   const material = materials.find((m) => m.id === order.materialId);
   if (!material || material.code == null) return null;
@@ -61,12 +60,12 @@ export function encodeOrderCode(
     parts.push(`s${item.code}`);
   }
 
-  const fIdx = FORMATS.indexOf(order.deliveryFormat as DeliveryFormat);
-  const dIdx = DESIGNS.indexOf(order.designType as DesignType);
-  if (!order.sheetsQty || order.sheetsQty < 1 || fIdx < 0 || dIdx < 0) return null;
+  const deliveryOption = deliveryOptions.find((o) => o.id === order.deliveryFormat);
+  const designOption = designOptions.find((o) => o.id === order.designType);
+  if (!order.sheetsQty || order.sheetsQty < 1 || !deliveryOption || !designOption) return null;
 
-  parts.push(`q${order.sheetsQty}`, `f${fIdx}`, `d${dIdx}`);
-  if (order.designType === 'custom') parts.push(`t${order.customDesignTime}`);
+  parts.push(`q${order.sheetsQty}`, `f${deliveryOption.code}`, `d${designOption.code}`);
+  if (designOption.isCustomTime) parts.push(`t${order.customDesignTime}`);
 
   return parts.join('.');
 }
@@ -80,6 +79,8 @@ export function decodeOrderCode(
   code: string,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  deliveryOptions: DeliveryOption[],
+  designOptions: DesignOption[],
 ): Order | null {
   const tokens = code.split('.');
   if (tokens[0] !== ORDER_CODE_VERSION) return null;
@@ -132,12 +133,18 @@ export function decodeOrderCode(
       case 'q':
         order.sheetsQty = parseInt(val, 10) || 0;
         break;
-      case 'f':
-        order.deliveryFormat = FORMATS[parseInt(val, 10)] ?? '';
+      case 'f': {
+        const deliveryOption = deliveryOptions.find((o) => o.code === parseInt(val, 10));
+        if (!deliveryOption) return null;
+        order.deliveryFormat = deliveryOption.id;
         break;
-      case 'd':
-        order.designType = DESIGNS[parseInt(val, 10)] ?? '';
+      }
+      case 'd': {
+        const designOption = designOptions.find((o) => o.code === parseInt(val, 10));
+        if (!designOption) return null;
+        order.designType = designOption.id;
         break;
+      }
       case 't':
         order.customDesignTime = parseInt(val, 10) || 45;
         break;
@@ -155,8 +162,10 @@ export function decodeAnyOrder(
   param: string,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  deliveryOptions: DeliveryOption[],
+  designOptions: DesignOption[],
 ): Order | null {
-  if (isOrderCode(param)) return decodeOrderCode(param, materials, shapesCatalog);
+  if (isOrderCode(param)) return decodeOrderCode(param, materials, shapesCatalog, deliveryOptions, designOptions);
   try {
     return decodeOrder(param);
   } catch {

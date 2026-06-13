@@ -1,4 +1,4 @@
-import type { Config, GalleryPricing, Material, Order, PriceResult, ShapesCatalog } from '../types';
+import type { Config, DeliveryOption, DesignOption, GalleryPricing, Material, Order, PriceResult, ShapesCatalog } from '../types';
 import { calcA4Layout } from './a4Layout';
 
 // Motor de precios. Función PURA: mismas entradas -> mismas salidas, sin estado
@@ -12,12 +12,18 @@ export function calcularPrecio(
   config: Config,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  deliveryOptions: DeliveryOption[],
+  designOptions: DesignOption[],
 ): PriceResult | null {
   // Sin precio hasta que el cliente haya elegido TODAS las opciones (sin defaults).
   if (!isOrderComplete(order, materials, shapesCatalog)) return null;
 
   const activeMaterial = materials.find((m) => m.id === order.materialId);
   if (!activeMaterial) return null;
+
+  const activeDeliveryOption = deliveryOptions.find((o) => o.id === order.deliveryFormat);
+  const activeDesignOption = designOptions.find((o) => o.id === order.designType);
+  if (!activeDeliveryOption || !activeDesignOption) return null;
 
   // 1. Cantidades
   let qtyStickersPerSheet = 0;
@@ -39,27 +45,21 @@ export function calcularPrecio(
   let baseCutTime = activeMaterial.minCutTime + timeRange * complexityFactor;
   let cutWearCostPerSheet = activeMaterial.cutWear;
 
-  // Ajustes por formato de entrega
-  if (order.deliveryFormat === 'sincorte') {
-    baseCutTime = 0;
-    cutWearCostPerSheet = 0;
-  } else if (order.deliveryFormat === 'individual') {
-    baseCutTime *= 2;
-    cutWearCostPerSheet *= 2;
-  }
+  // Ajustes por formato de entrega (data-driven desde deliveryOptions)
+  const cutFactor = activeDeliveryOption.cutFactor;
+  const cutWearFactor = activeDeliveryOption.cutWearFactor;
+  baseCutTime *= cutFactor;
+  cutWearCostPerSheet *= cutWearFactor;
 
   // 4. Totales Material + Mermas
   const totalRawMaterial = (printCostPerSheet + cutWearCostPerSheet) * order.sheetsQty;
   const wasteAmount = totalRawMaterial * (config.wasteMargin / 100);
   const costWithWaste = totalRawMaterial + wasteAmount;
 
-  // 5. Tiempos y Mano de Obra
-  const designTime =
-    order.designType === 'basic'
-      ? config.timeDesignBasic
-      : order.designType === 'custom'
-        ? order.customDesignTime
-        : 0;
+  // 5. Tiempos y Mano de Obra (data-driven desde designOptions)
+  const designTime = activeDesignOption.isCustomTime
+    ? order.customDesignTime
+    : (activeDesignOption.designMinutes ?? 0);
   const variableTimeMins = (activeMaterial.printTime + baseCutTime) * order.sheetsQty;
 
   // Logística: plana, independientemente del formato
@@ -110,6 +110,8 @@ export function galleryPricing(
   config: Config,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  deliveryOptions: DeliveryOption[],
+  designOptions: DesignOption[],
   displaySheets?: number,
 ): GalleryPricing | null {
   const qtyPerSheet =
@@ -120,12 +122,14 @@ export function galleryPricing(
   // Si displaySheets es 1 o no se proporciona, usar la cantidad de referencia del config
   const refSheets = (displaySheets && displaySheets > 1) ? displaySheets : (config.galleryRefSheets || 10);
 
-  const base = calcularPrecio({ ...order, sheetsQty: 1, complexity }, config, materials, shapesCatalog);
+  const base = calcularPrecio({ ...order, sheetsQty: 1, complexity }, config, materials, shapesCatalog, deliveryOptions, designOptions);
   const max = calcularPrecio(
     { ...order, sheetsQty: refSheets, complexity },
     config,
     materials,
     shapesCatalog,
+    deliveryOptions,
+    designOptions,
   );
   if (!base || !max || base.pricePerSticker <= 0) return null;
 
