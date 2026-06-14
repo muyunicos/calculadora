@@ -1,0 +1,208 @@
+import React from 'react';
+import { Info, CheckCircle2, Palette, ShieldCheck } from 'lucide-react';
+import type { Order, DeliveryOption, DesignOption, Config, PriceResult, DeliveryFormat, DesignType } from '../types';
+import StepSection from './StepSection';
+import OptionInfoPanel from './OptionInfoPanel';
+
+interface FinalDetailsSelectorProps {
+  order: Order;
+  setOrder: (order: Order | ((prev: Order) => Order)) => void;
+  deliveryOptions: DeliveryOption[];
+  designOptions: DesignOption[];
+  config: Config;
+  results: PriceResult | null;
+  isAdmin: boolean;
+  infoOpenDeliveryId: DeliveryFormat | null;
+  infoOpenDesignId: DesignType | null;
+  infoBtnClass: (active: boolean) => string;
+  setInfoOpenDeliveryId: (id: DeliveryFormat | null) => void;
+  setInfoOpenDesignId: (id: DesignType | null) => void;
+  resolveImage: (src: string) => string;
+  activeStep: 1 | 2 | 3;
+  setActiveStep: (step: 1 | 2 | 3) => void;
+}
+
+export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
+  order,
+  setOrder,
+  deliveryOptions,
+  designOptions,
+  config,
+  results,
+  isAdmin,
+  infoOpenDeliveryId,
+  infoOpenDesignId,
+  infoBtnClass,
+  setInfoOpenDeliveryId,
+  setInfoOpenDesignId,
+  resolveImage,
+  activeStep,
+  setActiveStep,
+}) => {
+  const formatoLabel = deliveryOptions?.find((o) => o.id === order.deliveryFormat)?.label ?? '';
+  const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
+
+  return (
+    <>
+      <StepSection
+        index={3}
+        title="Detalles Finales"
+        summary={`${formatoLabel} · ${designLabel} · ${order.sheetsQty} planchas`}
+        isOpen={true}
+        isDone={false}
+        onOpen={() => {}}
+      >
+        {/* 3.1 Diseño */}
+        <div className="mb-6">
+          <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tu Diseño</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {designOptions.filter((opt) => opt.customerVisible !== false).map((opt) => {
+              const selected = order.designType === opt.id;
+              const Icon = opt.id === 'basic' ? Palette : CheckCircle2;
+              const hasInfo = !!(opt.description || opt.image);
+              return (
+                <div key={opt.id} className="relative">
+                  <button onClick={() => setOrder({ ...order, designType: opt.id })}
+                    className={`w-full h-full cl-option-card flex items-center gap-3 ${selected ? 'cl-option-card-selected' : ''}`}>
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-blue-600' : 'text-slate-300'}`} />
+                    <div className="pr-8 text-left">
+                      <div className="font-bold text-sm text-slate-800">{opt.label}</div>
+                      {opt.subtitle && <div className="text-xs text-slate-500 mt-0.5">{opt.subtitle}</div>}
+                    </div>
+                  </button>
+                  {hasInfo && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setInfoOpenDesignId(infoOpenDesignId === opt.id ? null : opt.id); }}
+                      className={infoBtnClass(infoOpenDesignId === opt.id)} title="Más info" aria-label={`Más info sobre ${opt.label}`}>
+                      <Info className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {(() => {
+            const expanded = infoOpenDesignId ? designOptions.find((o) => o.id === infoOpenDesignId) : null;
+            const selectedO = designOptions.find((o) => o.id === order.designType);
+            const subject = expanded ?? (selectedO && (selectedO.description || selectedO.image) ? selectedO : null);
+            if (!subject) return null;
+            return (
+              <OptionInfoPanel
+                option={{ name: subject.label, description: subject.description, image: subject.image }}
+                isOpen={!!expanded && expanded.id === subject.id}
+                onToggle={() => setInfoOpenDesignId(infoOpenDesignId === subject.id ? null : subject.id)}
+                resolveImage={resolveImage}
+              />
+            );
+          })()}
+        </div>
+
+        {/* 3.2 Corte/Formato */}
+        <div className="mb-8">
+          <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Entrega</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {deliveryOptions.map((opt) => {
+              const selected = order.deliveryFormat === opt.id;
+              const hasInfo = !!(opt.description || opt.image);
+              return (
+                <div key={opt.id} className="relative">
+                  <button onClick={() => setOrder({ ...order, deliveryFormat: opt.id })}
+                    className={`w-full h-full cl-option-card ${selected ? 'cl-option-card-selected' : ''}`}>
+                    <div className="flex items-start gap-2 pr-8">
+                      {selected && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}
+                      <div>
+                        <div className="font-bold text-sm text-slate-800">{opt.label}</div>
+                        {opt.subtitle && <div className="text-xs text-slate-500 mt-1">{opt.subtitle}</div>}
+                      </div>
+                    </div>
+                  </button>
+                  {hasInfo && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setInfoOpenDeliveryId(infoOpenDeliveryId === opt.id ? null : opt.id); }}
+                      className={infoBtnClass(infoOpenDeliveryId === opt.id)} title="Más info" aria-label={`Más info sobre ${opt.label}`}>
+                      <Info className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {(() => {
+            const expanded = infoOpenDeliveryId ? deliveryOptions.find((o) => o.id === infoOpenDeliveryId) : null;
+            const selectedO = deliveryOptions.find((o) => o.id === order.deliveryFormat);
+            const subject = expanded ?? (selectedO && (selectedO.description || selectedO.image) ? selectedO : null);
+            if (!subject) return null;
+            return (
+              <OptionInfoPanel
+                option={{ name: subject.label, description: subject.description, image: subject.image }}
+                isOpen={!!expanded && expanded.id === subject.id}
+                onToggle={() => setInfoOpenDeliveryId(infoOpenDeliveryId === subject.id ? null : subject.id)}
+                resolveImage={resolveImage}
+              />
+            );
+          })()}
+        </div>
+
+        {/* 3.3 Cantidad (sin default: hay que elegir para ver el precio) */}
+        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+          <label className="block text-sm font-bold text-slate-800 mb-1">¿Cuántas planchas necesitás?</label>
+          <p className="text-xs text-slate-500 mb-4">Elegí una cantidad para ver el precio. A más planchas, más barato sale.</p>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+            {[1, 5, 10, 25, 50, 100].map((q) => (
+              <button key={q} type="button" onClick={() => setOrder({ ...order, sheetsQty: q })}
+                className={`py-2.5 rounded-xl border-2 font-bold text-sm transition-all ${order.sheetsQty === q ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}>
+                {q}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Otra:</label>
+            <input type="number" min="1" value={order.sheetsQty || ''} placeholder="Ej: 12"
+              onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) || 0 })}
+              className="w-28 text-center font-bold text-lg bg-white border-2 border-slate-200 text-slate-800 py-2 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
+            <span className="text-xs text-slate-400 font-medium">planchas</span>
+          </div>
+        </div>
+      </StepSection>
+
+      {/* Ajustes Manuales ADMIN */}
+      {isAdmin && (
+        <div className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm">
+          <h3 className="text-sm font-black text-amber-800 mb-4 flex items-center gap-2 uppercase tracking-wide">
+            <ShieldCheck className="w-5 h-5" /> Ajustes Manuales (Solo Admin)
+          </h3>
+
+          <div className="space-y-5">
+            <div className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm">
+              <div className="flex justify-between mb-2 items-center">
+                <label className="text-sm font-bold text-slate-700">Complejidad Forzada del Corte</label>
+                <span className="text-xs font-black text-white bg-amber-500 px-2 py-1 rounded-md">
+                  Nivel {order.complexity} / 10
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">Afecta el tiempo de corte estimado: ~{results?.baseCutTime?.toFixed(1)} min/plancha.</p>
+              <input type="range" min="1" max="10" value={order.complexity} onChange={(e) => setOrder({ ...order, complexity: parseInt(e.target.value) })} className="cl-input-range" />
+            </div>
+
+            <div className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Forzar Tiempo de Diseño Personalizado</label>
+              <select value={order.designType} onChange={(e) => setOrder({ ...order, designType: e.target.value as Order['designType'], ...(e.target.value === 'custom' ? { customDesignTime: config.timeDesignCustom } : {}) })} className="cl-select">
+                <option value="none">Sin costo (+0 min)</option>
+                <option value="basic">Armado en plancha (+{config.timeDesignBasic} min)</option>
+                <option value="custom">A medida (+{order.customDesignTime} min)</option>
+              </select>
+
+              {order.designType === 'custom' && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex justify-between mb-2">
+                    <label className="text-sm font-semibold text-slate-600">Minutos estimados de diseño</label>
+                    <span className="text-sm font-bold text-amber-700">{order.customDesignTime} min</span>
+                  </div>
+                  <input type="range" min="5" max="120" step="5" value={order.customDesignTime} onChange={(e) => setOrder({ ...order, customDesignTime: parseInt(e.target.value) })} className="cl-input-range" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};

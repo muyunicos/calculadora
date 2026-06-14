@@ -3,6 +3,7 @@ import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, Shape
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
 import { validateAppData } from '../core/validation';
+import { useToast } from '../components/ToastProvider';
 
 export interface UseConfigResult {
   config: Config | null;
@@ -40,6 +41,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { showToast } = useToast();
 
   // --- CARGA INICIAL DESDE EL SERVIDOR ---
   useEffect(() => {
@@ -98,11 +100,13 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       })
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          showToast('success', 'Cambios guardados correctamente');
         })
         .catch((err) => {
           const msg = err instanceof Error ? err.message : 'Error desconocido';
           console.error('No se pudo guardar la config en el servidor', err);
           setSaveError(msg);
+          showToast('error', `Error al guardar: ${msg}`);
         })
         .finally(() => {
           setIsSaving(false);

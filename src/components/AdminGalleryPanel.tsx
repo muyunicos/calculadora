@@ -1,0 +1,93 @@
+import React from 'react';
+import { Plus, Trash2, ImageIcon } from 'lucide-react';
+import type { GalleryItem, Order } from '../types';
+
+interface AdminGalleryPanelProps {
+  gallery: GalleryItem[];
+  resolveImage: (src: string) => string;
+  updateGalleryItem: (id: string, field: keyof GalleryItem, value: string) => void;
+  addGalleryItem: () => void;
+  removeGalleryItem: (id: string) => void;
+  captureCurrentOrder: (id: string, order: Order) => boolean;
+  order: Order;
+  isDeleteMode?: boolean;
+}
+
+export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
+  gallery,
+  resolveImage,
+  updateGalleryItem,
+  addGalleryItem,
+  removeGalleryItem,
+  captureCurrentOrder,
+  order,
+  isDeleteMode = false,
+}) => {
+  return (
+    <div className="cl-card bg-white p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4 mb-6">
+        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <ImageIcon className="w-6 h-6 text-blue-600" /> Galería de ejemplos
+        </h2>
+        <button onClick={addGalleryItem} className="flex items-center gap-2 cl-button-primary-small">
+          <Plus className="w-4 h-4" /> Añadir foto
+        </button>
+      </div>
+      <p className="text-sm text-slate-500 mb-6">Cada foto carga un pedido al tocarla (vista cliente). Pegá la URL de la imagen, un texto opcional y el <strong>código de pedido</strong>. Para obtener el código: armá el pedido en el Cotizador y tocá <em>“Usar pedido actual”</em>.</p>
+
+      {gallery.length === 0 ? (
+        <p className="text-sm text-slate-400 italic">Todavía no hay fotos. Tocá "Añadir foto" para empezar.</p>
+      ) : (
+        <div className="space-y-4">
+          {gallery.map((g) => (
+            <div key={g.id} className="flex flex-col sm:flex-row gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="w-full sm:w-28 h-28 flex-shrink-0 rounded-lg overflow-hidden bg-slate-200 border border-slate-300 flex items-center justify-center">
+                {g.image ? (
+                  <img src={resolveImage(g.image)} alt={g.caption || 'Ejemplo'} className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-8 h-8 text-slate-400" />
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">URL de la imagen</label>
+                  <input type="text" value={g.image} onChange={(e) => updateGalleryItem(g.id, 'image', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="https://… o galeria/foto1.webp" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Título (se ve en la miniatura)</label>
+                  <input type="text" value={g.title ?? ''} onChange={(e) => updateGalleryItem(g.id, 'title', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ej: Stickers para botellas" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Descripción (opcional)</label>
+                  <input type="text" value={g.caption ?? ''} onChange={(e) => updateGalleryItem(g.id, 'caption', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="Ej: Vinilo circular 3cm, ideal para logos" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">Código de pedido</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={g.order} onChange={(e) => updateGalleryItem(g.id, 'order', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono transition-all" placeholder="v1.m11.s201.q25.f2.d0" />
+                    <button onClick={() => captureCurrentOrder(g.id, order)} className="text-xs whitespace-nowrap bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-lg hover:text-blue-600 hover:border-blue-400 transition-colors" title="Volcar el pedido configurado en el Cotizador">Usar pedido actual</button>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => removeGalleryItem(g.id)} 
+                className={`
+                  self-start p-2 rounded-lg transition-colors flex-shrink-0
+                  ${isDeleteMode 
+                    ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md' 
+                    : 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                  }
+                  ${!isDeleteMode ? 'opacity-40' : ''}
+                `}
+                title={isDeleteMode ? 'Borrar foto (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
+                disabled={!isDeleteMode}
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
