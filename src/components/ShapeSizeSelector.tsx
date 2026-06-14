@@ -93,13 +93,13 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
       onOpen={() => onStepOpen?.()}
     >
       {/* Selector de tipo de forma */}
-      <div className="flex cl-gap-md cl-mb-lg cl-bg-slate-100 cl-p-sm cl-rounded-xl overflow-x-auto">
+      <div className="flex cl-gap-md cl-mb-lg cl-p-sm overflow-x-auto">
         {['Circulares', 'Rectangulares', 'A Medida'].map((shape) => {
           // Map "A Medida" to "Formas" for shapesCatalog lookup
           const catalogKey = shape === 'A Medida' ? 'Formas' : shape;
           return (
             <button key={shape} onClick={() => handleShapeTypeChange(catalogKey)}
-              className={`flex-1 min-w-[100px] sm:min-w-[110px] py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all whitespace-nowrap ${order.shapeType === catalogKey ? 'cl-shape-selector-button-selected' : 'cl-shape-selector-button'}`}>
+              className={`flex-1 min-w-[100px] py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all whitespace-nowrap ${order.shapeType === catalogKey ? 'cl-shape-selector-button-selected' : 'cl-shape-selector-button'}`}>
               {shape}
             </button>
           );

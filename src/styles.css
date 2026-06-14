@@ -679,7 +679,6 @@
 .cl-shape-selector-button {
   color: #64748b !important;
   background-color: transparent !important;
-  border: 2px solid var(--resaltado);
   transition: var(--mu-transition);
 }
 
@@ -691,12 +690,8 @@
 .cl-shape-selector-button:focus {
   background-color: transparent !important;
   outline: none;
-  box-shadow: 0 0 0 2px var(--primario);
 }
 
-.cl-shape-selector-button:active {
-  transform: scale(0.95);
-}
 
 .cl-shape-selector-button-selected {
   color: #2563eb !important;
