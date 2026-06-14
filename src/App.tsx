@@ -161,8 +161,8 @@ const App = () => {
   };
 
   const removeMaterial = (id: string) => {
-    if (!materials || materials.length <= 1) return;
-    const filtered = materials.filter((m) => m.id !== id);
+    if (!materials || materials?.length <= 1) return;
+    const filtered = materials?.filter((m) => m.id !== id);
     setMaterials(filtered);
     if (order.materialId === id) setOrder({ ...order, materialId: filtered[0].id });
   };
@@ -317,9 +317,9 @@ const App = () => {
     );
   }
 
-  const materialName = materials.find((m) => m.id === order.materialId)?.name ?? '';
-  const formatoLabel = deliveryOptions.find((o) => o.id === order.deliveryFormat)?.label ?? '';
-  const designLabel = designOptions.find((o) => o.id === order.designType)?.label ?? '';
+  const materialName = materials?.find((m) => m.id === order.materialId)?.name ?? '';
+  const formatoLabel = deliveryOptions?.find((o) => o.id === order.deliveryFormat)?.label ?? '';
+  const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
   const missing = missingSelections(order, materials, shapesCatalog);
 
   const shareUrl = buildShareUrl(order, materials, shapesCatalog);
@@ -408,7 +408,7 @@ const App = () => {
               >
                 <p className="text-sm text-slate-500 mb-4">Tocá la <Info className="inline w-3.5 h-3.5 -mt-0.5" /> para conocer más sobre cada material.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(showAllMaterials ? materials : materials.slice(0, 2)).map((m) => {
+                  {(showAllMaterials ? materials : materials?.slice(0, 2)).map((m) => {
                     const selected = order.materialId === m.id;
                     return (
                     <div key={m.id} className="relative">
@@ -438,8 +438,8 @@ const App = () => {
                 {/* Motor de info: panel "MÁS INFO" del material (desplegado por la (i),
                     o hint colapsado para el material elegido si tiene info). */}
                 {(() => {
-                  const expanded = expandedMaterialId ? materials.find((m) => m.id === expandedMaterialId) : null;
-                  const selectedM = materials.find((m) => m.id === order.materialId);
+                  const expanded = expandedMaterialId ? materials?.find((m) => m.id === expandedMaterialId) : null;
+                  const selectedM = materials?.find((m) => m.id === order.materialId);
                   const subject = expanded ?? (selectedM && (selectedM.description || selectedM.image) ? selectedM : null);
                   if (!subject) return null;
                   return (
@@ -452,13 +452,13 @@ const App = () => {
                   );
                 })()}
 
-                {materials.length > 2 && (
+                {materials?.length > 2 && (
                   <button
                     onClick={() => setShowAllMaterials(!showAllMaterials)}
                     className="mt-4 w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
                   >
                     {showAllMaterials ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${materials.length - 2})`}
+                    {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${materials?.length - 2})`}
                   </button>
                 )}
               </StepSection>
@@ -640,7 +640,7 @@ const App = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tu Diseño</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {designOptions.filter((opt) => opt.visible).map((opt) => {
+                    {designOptions?.filter((opt) => opt.visible).map((opt) => {
                       const selected = order.designType === opt.id;
                       const Icon = opt.id === 'basic' ? Palette : CheckCircle2;
                       const hasInfo = !!(opt.description || opt.image);
@@ -665,8 +665,8 @@ const App = () => {
                     })}
                   </div>
                   {(() => {
-                    const expanded = infoOpenDesignId ? designOptions.find((o) => o.id === infoOpenDesignId) : null;
-                    const selectedO = designOptions.find((o) => o.id === order.designType);
+                    const expanded = infoOpenDesignId ? designOptions?.find((o) => o.id === infoOpenDesignId) : null;
+                    const selectedO = designOptions?.find((o) => o.id === order.designType);
                     const subject = expanded ?? (selectedO && (selectedO.description || selectedO.image) ? selectedO : null);
                     if (!subject) return null;
                     return (
@@ -684,7 +684,7 @@ const App = () => {
                 <div className="mb-8">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Entrega</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {deliveryOptions.map((opt) => {
+                    {deliveryOptions?.map((opt) => {
                       const selected = order.deliveryFormat === opt.id;
                       const hasInfo = !!(opt.description || opt.image);
                       return (
@@ -710,8 +710,8 @@ const App = () => {
                     })}
                   </div>
                   {(() => {
-                    const expanded = infoOpenDeliveryId ? deliveryOptions.find((o) => o.id === infoOpenDeliveryId) : null;
-                    const selectedO = deliveryOptions.find((o) => o.id === order.deliveryFormat);
+                    const expanded = infoOpenDeliveryId ? deliveryOptions?.find((o) => o.id === infoOpenDeliveryId) : null;
+                    const selectedO = deliveryOptions?.find((o) => o.id === order.deliveryFormat);
                     const subject = expanded ?? (selectedO && (selectedO.description || selectedO.image) ? selectedO : null);
                     if (!subject) return null;
                     return (
@@ -1118,7 +1118,7 @@ const App = () => {
                 {/* Formato de entrega */}
                 <div className="space-y-4">
                   <h3 className="font-bold text-slate-700">Formato de entrega</h3>
-                  {deliveryOptions.map((opt) => (
+                  {deliveryOptions?.map((opt) => (
                     <div key={opt.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Título</label>
@@ -1143,7 +1143,7 @@ const App = () => {
                 {/* Tipo de diseño */}
                 <div className="space-y-4">
                   <h3 className="font-bold text-slate-700">Tu diseño</h3>
-                  {designOptions.map((opt) => (
+                  {designOptions?.map((opt) => (
                     <div key={opt.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-semibold text-slate-600">Título</label>
@@ -1221,13 +1221,13 @@ const App = () => {
               </div>
 
               <div className="space-y-6">
-                {materials.map((m, index) => (
+                {materials?.map((m, index) => (
                   <div key={m.id} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
                       <div className="flex items-center gap-3 w-full">
                         <div className="flex flex-col gap-1">
                           <button onClick={() => moveMaterial(index, -1)} disabled={index === 0} className={`p-1 rounded-md bg-white border shadow-sm ${index === 0 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Subir"><ArrowUp className="w-3 h-3" /></button>
-                          <button onClick={() => moveMaterial(index, 1)} disabled={index === materials.length - 1} className={`p-1 rounded-md bg-white border shadow-sm ${index === materials.length - 1 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Bajar"><ArrowDown className="w-3 h-3" /></button>
+                          <button onClick={() => moveMaterial(index, 1)} disabled={index === materials?.length - 1} className={`p-1 rounded-md bg-white border shadow-sm ${index === materials?.length - 1 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Bajar"><ArrowDown className="w-3 h-3" /></button>
                         </div>
                         <input type="number" value={m.code ?? ''} onChange={(e) => updateMaterial(m.id, 'code', e.target.value)} className="w-16 p-1.5 text-sm border border-slate-300 rounded-lg text-center font-mono focus:ring-2 focus:ring-blue-500 outline-none flex-shrink-0" title="Código estable y único del material" placeholder="cód." />
                         <input type="text" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} className="font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:outline-none px-2 py-1 w-full max-w-sm transition-all text-lg" placeholder="Nombre del Material" />

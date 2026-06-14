@@ -202,38 +202,61 @@
     "deliveryOptions": [
         {
             "id": "sincorte",
-            "label": "Sin Cortar (Solo Impresión)",
-            "subtitle": "Impresión con tintas UV, vos lo cortas a mano."
+            "code": 0,
+            "label": "Sin Cortar",
+            "subtitle": "Solo Impresión",
+            "cutFactor": 0,
+            "cutWearFactor": 0,
+            "visible": true,
+            "description": "Impresión con tintas UV, vos lo cortas a mano."
         },
         {
             "id": "individual",
-            "label": "Troquelados Sueltos (Corte Individual)",
-            "subtitle": "Stickers cortados uno por uno, listos para repartir."
+            "code": 2,
+            "label": "Cortados Sueltos",
+            "subtitle": "",
+            "cutFactor": 2,
+            "cutWearFactor": 2,
+            "visible": true,
+            "description": "Stickers cortados uno por uno, listos para repartir."
         },
         {
             "id": "plancha",
-            "label": "Planchas A4 (Medio Corte)",
-            "subtitle": "Ideales para despegar vos mismo rápidamente."
+            "code": 1,
+            "label": "Plancha con Medio Corte",
+            "subtitle": "",
+            "cutFactor": 1,
+            "cutWearFactor": 1,
+            "visible": true,
+            "description": "Prácticos para despegar de la plancha y usar."
         }
     ],
     "designOptions": [
         {
             "id": "none",
+            "code": 0,
             "label": "Ya lo tengo listo",
             "subtitle": "Archivo preparado para impresión.",
-            "customerVisible": true
+            "designMinutes": 0,
+            "isCustomTime": false,
+            "visible": true
         },
         {
             "id": "basic",
+            "code": 1,
             "label": "Incluir armado básico",
             "subtitle": "Acomodamos tu logo/imagen.",
-            "customerVisible": true
+            "designMinutes": 10,
+            "isCustomTime": false,
+            "visible": true
         },
         {
             "id": "custom",
+            "code": 2,
             "label": "Diseño a medida",
             "subtitle": "Trabajo de diseño personalizado.",
-            "customerVisible": false
+            "isCustomTime": true,
+            "visible": false
         }
     ]
 }

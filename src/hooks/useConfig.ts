@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
+import { validateAppData } from '../core/validation';
 
 export interface UseConfigResult {
   config: Config | null;
@@ -20,6 +21,8 @@ export interface UseConfigResult {
   setDesignOptions: React.Dispatch<React.SetStateAction<DesignOption[] | null>>;
   isLoaded: boolean;
   loadError: string | null;
+  saveError: string | null;
+  isSaving: boolean;
 }
 
 // Maneja la carga (pública) y el guardado (admin, debounced) de datos_config.json.
@@ -35,6 +38,8 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [designOptions, setDesignOptions] = useState<DesignOption[] | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // --- CARGA INICIAL DESDE EL SERVIDOR ---
   useEffect(() => {
@@ -46,18 +51,21 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       })
       .then((data) => {
         if (cancelled) return;
-        if (!data || !data.config || !Array.isArray(data.materials) || !data.shapesCatalog) {
-          throw new Error('El archivo de configuración no tiene la estructura esperada.');
+        // Validar datos con Zod
+        const validation = validateAppData(data);
+        if (!validation.success) {
+          throw new Error(validation.error);
         }
-        setConfig(data.config);
-        setMaterials(data.materials);
-        setShapesCatalog(data.shapesCatalog);
-        setShapesShowMoreIndex(data.shapesShowMoreIndex || {});
-        if (Array.isArray(data.gallery)) setGallery(data.gallery);
+        const validated = validation.data;
+        setConfig(validated.config);
+        setMaterials(validated.materials);
+        setShapesCatalog(validated.shapesCatalog);
+        setShapesShowMoreIndex(validated.shapesShowMoreIndex || {});
+        if (Array.isArray(validated.gallery)) setGallery(validated.gallery);
         // Presentación de entrega/diseño: si el archivo no la trae (deploys
         // viejos), se completa con los defaults para no romper la vista cliente.
-        setDeliveryOptions(resolveDeliveryOptions(data.deliveryOptions));
-        setDesignOptions(resolveDesignOptions(data.designOptions));
+        setDeliveryOptions(resolveDeliveryOptions(validated.deliveryOptions));
+        setDesignOptions(resolveDesignOptions(validated.designOptions));
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -81,6 +89,8 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     if (!config || !materials || !shapesCatalog) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      setIsSaving(true);
+      setSaveError(null);
       fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,7 +99,14 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
         })
-        .catch((err) => console.error('No se pudo guardar la config en el servidor', err));
+        .catch((err) => {
+          const msg = err instanceof Error ? err.message : 'Error desconocido';
+          console.error('No se pudo guardar la config en el servidor', err);
+          setSaveError(msg);
+        })
+        .finally(() => {
+          setIsSaving(false);
+        });
     }, 800);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -113,5 +130,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     setDesignOptions,
     isLoaded,
     loadError,
+    saveError,
+    isSaving,
   };
 }
