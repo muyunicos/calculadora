@@ -113,12 +113,14 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
               className="group relative flex-shrink-0 w-32 sm:w-36 rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
               title={label || 'Ver ejemplo'}
             >
-              <div className="relative w-full h-28 sm:h-32 bg-slate-50 overflow-hidden">
+              <div className="relative w-full h-28 sm:h-32 bg-slate-100 overflow-hidden">
                 <img
                   src={resolveImage(item.image)}
                   alt={label || 'Ejemplo de sticker'}
                   loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform opacity-0"
+                  onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
+                  style={{ transition: 'opacity 0.3s ease-in-out' }}
                 />
                 {label && (
                   <span className="absolute inset-x-0 bottom-0 bg-black/55 text-white text-[11px] font-semibold leading-tight px-1.5 py-1 line-clamp-2">
@@ -162,11 +164,14 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
               </div>
             )}
 
-            <div className="relative bg-slate-900 flex items-center justify-center">
+            <div className="relative bg-slate-900 flex items-center justify-center min-h-[300px]">
               <img
                 src={resolveImage(current.image)}
                 alt={current.title || current.caption || 'Ejemplo de sticker'}
-                className="max-h-[55vh] w-auto object-contain"
+                loading="lazy"
+                className="max-h-[55vh] w-auto object-contain opacity-0"
+                onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
+                style={{ transition: 'opacity 0.3s ease-in-out' }}
               />
               {items.length > 1 && (
                 <>

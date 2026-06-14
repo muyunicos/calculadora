@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
-import type { A4Layout, DeliveryFormat, DesignType, GalleryItem, Order } from './types';
+import type { A4Layout, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeOrder, decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
@@ -30,6 +30,9 @@ const App = () => {
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
+  const [adminActiveStep, setAdminActiveStep] = useState<1 | 2 | 3 | 4>(1);
+  const [adminTab, setAdminTab] = useState<'materiales' | 'formas' | 'entrega' | 'otros'>('materiales');
+  const [materialsShowMoreIndex, setMaterialsShowMoreIndex] = useState(2);
   // Motor de info: opción con el panel "MÁS INFO" desplegado en cada paso (null =
   // ninguno; al colapsar se cae al hint de la opción seleccionada, si tiene info).
   const [infoOpenSizeIndex, setInfoOpenSizeIndex] = useState<number | null>(null);
@@ -83,7 +86,7 @@ const App = () => {
     const urlOrder = new URLSearchParams(window.location.search).get('o');
     if (!urlOrder) return;
     urlOrderApplied.current = true;
-    const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog, deliveryOptions, designOptions);
+    const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
     if (decoded) setOrder(decoded);
   }, [materials, shapesCatalog, deliveryOptions, designOptions]);
 
@@ -161,8 +164,8 @@ const App = () => {
   };
 
   const removeMaterial = (id: string) => {
-    if (!materials || materials?.length <= 1) return;
-    const filtered = materials?.filter((m) => m.id !== id);
+    if (!materials || materials.length <= 1) return;
+    const filtered = materials.filter((m) => m.id !== id);
     setMaterials(filtered);
     if (order.materialId === id) setOrder({ ...order, materialId: filtered[0].id });
   };
@@ -408,7 +411,43 @@ const App = () => {
               >
                 <p className="text-sm text-slate-500 mb-4">Tocá la <Info className="inline w-3.5 h-3.5 -mt-0.5" /> para conocer más sobre cada material.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(showAllMaterials ? materials : materials?.slice(0, 2)).map((m) => {
+                  {materials && (showAllMaterials ? materials : materials.slice(0, 2)).map((m, idx) => {
+                    // Línea divisoria "Ver más" después del segundo material
+                    if (!showAllMaterials && idx === 1 && materials?.length > 2) {
+                      return (
+                        <React.Fragment key={`separator-${m.id}`}>
+                          {/* Material actual */}
+                          <div className="relative">
+                            <button onClick={() => selectMaterial(m.id)}
+                              className={`w-full h-full cl-option-card ${order.materialId === m.id ? 'cl-option-card-selected' : ''}`}>
+                              <div className="flex items-start gap-2 pr-8">
+                                {order.materialId === m.id && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}
+                                <span className="font-bold text-slate-800 leading-tight group-hover:text-blue-700 transition-colors">{m.name}</span>
+                              </div>
+                            </button>
+                            {(m.description || m.image) && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setExpandedMaterialId((prev) => (prev === m.id ? null : m.id)); }}
+                                className={infoBtnClass(expandedMaterialId === m.id)}
+                                title="Más info"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          {/* Línea "Ver más" */}
+                          <div className="col-span-1 sm:col-span-2 my-2">
+                            <button
+                              onClick={() => setShowAllMaterials(true)}
+                              className="w-full text-xs font-bold text-slate-500 text-center border-t-2 border-dashed border-slate-300 pt-2 pb-1 hover:text-blue-600 hover:border-blue-400 transition-colors"
+                            >
+                              ← Ver más ({materials.length - 2} materiales más) →
+                            </button>
+                          </div>
+                        </React.Fragment>
+                      );
+                    }
                     const selected = order.materialId === m.id;
                     return (
                     <div key={m.id} className="relative">
@@ -452,13 +491,13 @@ const App = () => {
                   );
                 })()}
 
-                {materials?.length > 2 && (
+                {showAllMaterials && materials?.length > 2 && (
                   <button
-                    onClick={() => setShowAllMaterials(!showAllMaterials)}
-                    className="mt-4 w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                    onClick={() => setShowAllMaterials(false)}
+                    className="mt-4 w-full py-2 text-slate-500 text-sm hover:text-blue-600 transition-colors flex items-center justify-center gap-1"
                   >
-                    {showAllMaterials ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${materials?.length - 2})`}
+                    <ChevronUp className="w-4 h-4" />
+                    Ocultar materiales extra
                   </button>
                 )}
               </StepSection>
@@ -640,7 +679,7 @@ const App = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tu Diseño</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {designOptions?.filter((opt) => opt.visible).map((opt) => {
+                    {designOptions && designOptions.filter((opt) => opt.visible).map((opt) => {
                       const selected = order.designType === opt.id;
                       const Icon = opt.id === 'basic' ? Palette : CheckCircle2;
                       const hasInfo = !!(opt.description || opt.image);
@@ -684,7 +723,7 @@ const App = () => {
                 <div className="mb-8">
                   <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Entrega</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {deliveryOptions?.map((opt) => {
+                    {deliveryOptions && deliveryOptions.map((opt) => {
                       const selected = order.deliveryFormat === opt.id;
                       const hasInfo = !!(opt.description || opt.image);
                       return (
@@ -1118,7 +1157,7 @@ const App = () => {
                 {/* Formato de entrega */}
                 <div className="space-y-4">
                   <h3 className="font-bold text-slate-700">Formato de entrega</h3>
-                  {deliveryOptions?.map((opt) => (
+                  {deliveryOptions && deliveryOptions.map((opt) => (
                     <div key={opt.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                       <div>
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Título</label>
@@ -1143,7 +1182,7 @@ const App = () => {
                 {/* Tipo de diseño */}
                 <div className="space-y-4">
                   <h3 className="font-bold text-slate-700">Tu diseño</h3>
-                  {designOptions?.map((opt) => (
+                  {designOptions && designOptions.map((opt) => (
                     <div key={opt.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-semibold text-slate-600">Título</label>
@@ -1221,7 +1260,7 @@ const App = () => {
               </div>
 
               <div className="space-y-6">
-                {materials?.map((m, index) => (
+                {materials && materials.map((m, index) => (
                   <div key={m.id} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
                       <div className="flex items-center gap-3 w-full">
