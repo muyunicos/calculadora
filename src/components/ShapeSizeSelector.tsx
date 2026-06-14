@@ -16,9 +16,11 @@ interface ShapeSizeSelectorProps {
   setExpandedShapesCategory: (category: string | null) => void;
   setInfoOpenSizeIndex: (index: number | null) => void;
   resolveImage: (src: string) => string;
-  activeStep: 1 | 2 | 3;
+  activeStep: 0 | 1 | 2 | 3;
   onStepOpen?: () => void;
   onNavigateToNext?: () => void;
+  rectCalcMode: 'preciso' | 'economico';
+  setRectCalcMode: (mode: 'preciso' | 'economico') => void;
 }
 
 export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
@@ -36,6 +38,8 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
   activeStep,
   onStepOpen,
   onNavigateToNext,
+  rectCalcMode,
+  setRectCalcMode,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
   const sizeText = order.shapeType === 'Rectangulares'
@@ -67,6 +71,10 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
   const handleSizeSelect = (idx: number) => {
     setOrder({ ...order, sizeIndex: idx });
+    // Si el panel de info está abierto, actualizarlo para mostrar la nueva selección
+    if (infoOpenSizeIndex !== null) {
+      setInfoOpenSizeIndex(idx);
+    }
   };
 
   const handleRectChange = (field: 'customRectW' | 'customRectH', value: string) => {
@@ -86,12 +94,16 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
     >
       {/* Selector de tipo de forma */}
       <div className="flex cl-gap-md cl-mb-lg cl-bg-slate-100 cl-p-sm cl-rounded-xl overflow-x-auto">
-        {['Circulares', 'Rectangulares', 'Formas'].map((shape) => (
-          <button key={shape} onClick={() => handleShapeTypeChange(shape)}
-            className={`flex-1 min-w-[100px] sm:min-w-[110px] py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all active:scale-95 whitespace-nowrap ${order.shapeType === shape ? 'bg-white cl-shadow-sm cl-border-sm text-blue-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'}`}>
-            {shape}
-          </button>
-        ))}
+        {['Circulares', 'Rectangulares', 'A Medida'].map((shape) => {
+          // Map "A Medida" to "Formas" for shapesCatalog lookup
+          const catalogKey = shape === 'A Medida' ? 'Formas' : shape;
+          return (
+            <button key={shape} onClick={() => handleShapeTypeChange(catalogKey)}
+              className={`flex-1 min-w-[100px] sm:min-w-[110px] py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all whitespace-nowrap ${order.shapeType === catalogKey ? 'cl-shape-selector-button-selected' : 'cl-shape-selector-button'}`}>
+              {shape}
+            </button>
+          );
+        })}
       </div>
 
       {/* Contenido condicional según la forma */}
@@ -114,9 +126,36 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
             <div className="cl-bg-blue-50 cl-p-md cl-rounded-xl cl-border-sm flex items-start cl-gap-md mt-4">
               <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <div className="text-sm font-bold text-blue-900">Calculador A4 Inteligente</div>
-                <div className="text-xs text-blue-700 mt-0.5">Entran <strong>{customRectMath.qty}</strong> unidades por cada plancha impresa.</div>
+                
+                {/* Toggle de modo */}
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    onClick={() => setRectCalcMode('preciso')}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${rectCalcMode === 'preciso' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  >
+                    Preciso
+                  </button>
+                  <button
+                    onClick={() => setRectCalcMode('economico')}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${rectCalcMode === 'economico' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  >
+                    Económico
+                  </button>
+                </div>
+
+                {/* Detalles según el modo */}
+                <div className="mt-2 text-xs text-blue-700">
+                  {rectCalcMode === 'preciso' ? (
+                    <div>Entran <strong>{customRectMath.qty}</strong> unidades de {String(order.customRectW).replace('.', ',')}x{String(order.customRectH).replace('.', ',')}cm por plancha.</div>
+                  ) : (
+                    <div>
+                      <div>Entran <strong>{customRectMath.qty}</strong> unidades de {customRectMath.adjustedW?.toFixed(1).replace('.', ',')}x{customRectMath.adjustedH?.toFixed(1).replace('.', ',')}cm por plancha.</div>
+                      <div className="mt-1 text-blue-600">Cada sticker tiene un margen blanco de 5mm.</div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -126,7 +165,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
             <div className="absolute top-1 left-2 text-[8px] text-slate-400 font-bold uppercase">Hoja A4</div>
 
             {customRectMath.qty > 0 && (
-              <div className="relative w-full h-full cl-border-sm border-dashed border-slate-200 mt-2 flex items-center justify-center overflow-hidden">
+              <div className={`relative w-full h-full mt-2 flex items-center justify-center overflow-hidden ${rectCalcMode === 'preciso' ? 'cl-border-sm border-dashed border-slate-200' : ''}`}>
                 <div className="bg-blue-500/20 cl-border-md border-blue-500 flex items-center justify-center cl-shadow-sm"
                   style={{
                     width: `${(customRectMath.renderW / 19) * 100}%`,
@@ -168,7 +207,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                         className="w-full h-full object-contain"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
-                      <div className="absolute -z-10 w-8 h-8 cl-rounded-full cl-border-md border-slate-200 border-dashed"></div>
+                      <div className={`absolute -z-10 w-8 h-8 cl-border-md border-slate-200 border-dashed ${order.shapeType === 'Circulares' ? 'cl-rounded-full' : order.shapeType === 'A Medida' ? 'cl-star-shape' : 'cl-rounded-full'}`}></div>
                     </div>
 
                     {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}

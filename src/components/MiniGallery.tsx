@@ -28,9 +28,9 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
   if (compact) {
     return (
       <span className="flex items-baseline gap-1 flex-wrap text-[11px]">
-        <span className="text-slate-600 font-extrabold">${fmt(pricing.perUnitBase)}</span>
+        <span className="text-slate-600 font-extrabold">${fmt0(pricing.perUnitBase)}</span>
         <span className="text-slate-500">~</span>
-        <span className="text-emerald-600 font-extrabold">${fmt(pricing.perUnit)}</span>
+        <span className="text-emerald-600 font-extrabold">${fmt0(pricing.perUnit)}</span>
         <span className="text-slate-500">c/u</span>
       </span>
     );
@@ -40,12 +40,12 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
       <div className="flex justify-between items-end gap-6">
         <div>
           <div className="text-xs font-bold text-slate-500 mb-2 uppercase">Precio Regular</div>
-          <div className="text-lg font-extrabold text-gray-600">${fmt(pricing.perUnitBase)} c/u</div>
+          <div className="text-lg font-extrabold text-gray-600">${fmt0(pricing.perUnitBase)} c/u</div>
         </div>
         <div className="flex items-end gap-1">
           <div>
             <div className="text-xs font-bold text-slate-500 mb-2 uppercase">Por Mayor*</div>
-            <div className="text-lg font-extrabold text-emerald-600">${fmt(pricing.perUnit)} c/u</div>
+            <div className="text-lg font-extrabold text-emerald-600">${fmt0(pricing.perUnit)} c/u</div>
           </div>
           {hasDeal && (
             <span className="text-xs font-bold text-white bg-red-500 px-1.5 py-0.5 rounded-full h-fit">
@@ -97,9 +97,9 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
 
   return (
     <div className="cl-card p-4">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2">
         <Images className="w-5 h-5 text-blue-600" />
-        <h3 className="font-bold text-slate-800">Ideas (opcional)</h3>
+        <h4 className="font-bold text-slate-800 m-0">Ideas (opcional)</h4>
       </div>
       <p className="text-sm text-slate-500 mb-4">Podés elegir una base para personalizar a tu gusto.</p>
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
@@ -111,7 +111,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
             <button
               key={item.id}
               onClick={() => setOpenIndex(idx)}
-              className="group relative flex-shrink-0 w-32 sm:w-36 rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
+              className="group relative flex-shrink-0 w-32 sm:w-36 rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 text-left p-0"
               title={label || 'Ver ejemplo'}
             >
               <div className="relative w-full h-28 sm:h-32 bg-slate-100 overflow-hidden">
@@ -143,6 +143,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
       {isOpen && current && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          style={{ zIndex: 2000 }}
           onClick={close}
           role="dialog"
           aria-modal="true"

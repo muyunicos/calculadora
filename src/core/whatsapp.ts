@@ -12,8 +12,10 @@ export function buildShareUrl(
   shapesCatalog: ShapesCatalog,
   deliveryOptions?: DeliveryOption[],
   designOptions?: DesignOption[],
+  adjustedW?: number,
+  adjustedH?: number,
 ): string {
-  const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+  const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || [], adjustedW, adjustedH);
   const code = shortCode ?? (typeof window !== 'undefined' ? encodeOrder(order) : '');
   return `${SHARE_BASE_URL}?o=${code}`;
 }

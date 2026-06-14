@@ -107,6 +107,7 @@ export interface Order {
   complexity: number;
   designType: DesignType | '';
   customDesignTime: number;
+  rectCalcMode?: 'preciso' | 'economico';
 }
 
 // Foto de ejemplo para la mini-galería. Al tocarla se carga `order` (código v1)
@@ -150,6 +151,8 @@ export interface A4Layout {
   fitType: A4FitType;
   renderW: number;
   renderH: number;
+  adjustedW?: number;
+  adjustedH?: number;
 }
 
 export interface PriceResult {

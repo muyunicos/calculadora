@@ -40,10 +40,12 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {Object.keys(shapesCatalog).map((category) => {
           const showMoreIdx = shapesShowMoreIndex?.[category] ?? shapesCatalog[category].length;
+          // Display name mapping
+          const displayName = category === 'Formas' ? 'A Medida' : category;
           return (
             <div key={category} className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
               <div className="bg-slate-100 p-3 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="font-bold text-slate-700">{category}</h3>
+                <h3 className="font-bold text-slate-700">{displayName}</h3>
                 <button onClick={() => addShapeItem(category)} className="text-xs bg-white border border-slate-300 text-slate-600 px-2 py-1 rounded hover:text-blue-600 hover:border-blue-400 transition-colors">+ Añadir Tamaño</button>
               </div>
               <div className="p-4 space-y-4 max-h-[600px] overflow-y-auto">

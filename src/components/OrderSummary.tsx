@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
-import type { Order, Config, Material, ShapesCatalog, PriceResult } from '../types';
+import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption } from '../types';
 import PriceTable from './PriceTable';
 
 interface OrderSummaryProps {
@@ -17,6 +17,8 @@ interface OrderSummaryProps {
   orderCode: string | null;
   consultLink: string;
   setOrder: (order: Order | ((prev: Order) => Order)) => void;
+  deliveryOptions?: DeliveryOption[];
+  designOptions?: DesignOption[];
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -33,6 +35,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   orderCode,
   consultLink,
   setOrder,
+  deliveryOptions = [],
+  designOptions = [],
 }) => {
   return (
     <div id="order-summary" className="lg:col-span-5 relative">
@@ -113,6 +117,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           config={config}
           materials={materials}
           shapesCatalog={shapesCatalog}
+          deliveryOptions={deliveryOptions}
+          designOptions={designOptions}
           onChangeQuantity={(qty) => setOrder({ ...order, sheetsQty: qty })}
         />
 

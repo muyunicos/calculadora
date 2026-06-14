@@ -46,7 +46,8 @@ const OptionInfoPanel: React.FC<OptionInfoPanelProps> = ({ option, isOpen, onTog
         <button
           type="button"
           onClick={onToggle}
-          className="flex-shrink-0 p-1 rounded-full text-amber-700 hover:bg-amber-200 transition-colors"
+          className="flex-shrink-0 p-1 rounded-full text-amber-700 transition-colors"
+          style={{ background: 'unset' }}
           aria-label="Cerrar info"
         >
           <X className="w-4 h-4" />

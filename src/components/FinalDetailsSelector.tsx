@@ -18,7 +18,7 @@ interface FinalDetailsSelectorProps {
   setInfoOpenDeliveryId: (id: DeliveryFormat | null) => void;
   setInfoOpenDesignId: (id: DesignType | null) => void;
   resolveImage: (src: string) => string;
-  activeStep: 1 | 2 | 3;
+  activeStep: 0 | 1 | 2 | 3;
   onStepOpen?: () => void;
   onNavigateToNext?: () => void;
 }
@@ -79,7 +79,13 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
               const hasInfo = !!(opt.description || opt.image);
               return (
                 <div key={opt.id} className="relative">
-                  <button onClick={() => setOrder({ ...order, designType: opt.id })}
+                  <button onClick={() => {
+                    setOrder({ ...order, designType: opt.id });
+                    // Si el panel de info está abierto, actualizarlo para mostrar la nueva selección
+                    if (infoOpenDesignId !== null) {
+                      setInfoOpenDesignId(opt.id);
+                    }
+                  }}
                     className={`w-full h-full cl-option-card flex items-center gap-3 p-4 sm:p-3 ${selected ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
                     <Icon className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-blue-600' : 'text-slate-300'}`} />
                     <div className="pr-8 text-left">
@@ -122,7 +128,13 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
               const hasInfo = !!(opt.description || opt.image);
               return (
                 <div key={opt.id} className="relative">
-                  <button onClick={() => setOrder({ ...order, deliveryFormat: opt.id })}
+                  <button onClick={() => {
+                    setOrder({ ...order, deliveryFormat: opt.id });
+                    // Si el panel de info está abierto, actualizarlo para mostrar la nueva selección
+                    if (infoOpenDeliveryId !== null) {
+                      setInfoOpenDeliveryId(opt.id);
+                    }
+                  }}
                     className={`w-full h-full cl-option-card p-4 sm:p-3 ${selected ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
                     <div className="flex items-start gap-2 pr-8">
                       {selected && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}

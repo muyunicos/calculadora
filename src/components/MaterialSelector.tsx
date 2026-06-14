@@ -14,7 +14,7 @@ interface MaterialSelectorProps {
   setShowAllMaterials: (show: boolean) => void;
   setExpandedMaterialId: (id: string | null) => void;
   resolveImage: (src: string) => string;
-  activeStep: 1 | 2 | 3;
+  activeStep: 0 | 1 | 2 | 3;
   onStepOpen?: () => void;
   onNavigateToNext?: () => void;
 }

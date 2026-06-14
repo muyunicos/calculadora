@@ -36,6 +36,13 @@ const RECT_CATEGORY = 'Rectangulares';
 const numToCode = (v: number | string): string => String(v).replace('.', ',');
 const codeToNum = (v: string): string => v.replace(',', '.');
 
+// Redondea a 5mm (0.5cm)
+const roundTo5mm = (cm: number): number => {
+  const mm = cm * 10;
+  const rounded = Math.round(mm / 5) * 5;
+  return rounded / 10;
+};
+
 // Devuelve null si el pedido no puede representarse (p.ej. material/tamaño sin code).
 export function encodeOrderCode(
   order: Order,
@@ -43,6 +50,8 @@ export function encodeOrderCode(
   shapesCatalog: ShapesCatalog,
   deliveryOptions: DeliveryOption[],
   designOptions: DesignOption[],
+  adjustedW?: number,
+  adjustedH?: number,
 ): string | null {
   const material = materials?.find((m) => m.id === order.materialId);
   if (!material || material.code == null) return null;
@@ -50,10 +59,18 @@ export function encodeOrderCode(
   const parts: string[] = [ORDER_CODE_VERSION, `m${material.code}`];
 
   if (order.shapeType === RECT_CATEGORY) {
-    const w = Number(order.customRectW);
-    const h = Number(order.customRectH);
+    // Usar dimensiones calculadas si están disponibles, si no usar las originales
+    const w = adjustedW && adjustedW > 0 ? adjustedW : Number(order.customRectW);
+    const h = adjustedH && adjustedH > 0 ? adjustedH : Number(order.customRectH);
     if (!w || !h || w <= 0 || h <= 0) return null;
-    parts.push(`r${numToCode(order.customRectW)}x${numToCode(order.customRectH)}`);
+    
+    // Convertir a milímetros para el código (sin redondeo adicional, ya están calculadas)
+    const mmW = Math.round(w * 10);
+    const mmH = Math.round(h * 10);
+    
+    // Usar prefijo diferente según modo
+    const prefix = order.rectCalcMode === 'economico' ? 'r' : 's';
+    parts.push(`${prefix}${mmW}x${mmH}`);
   } else {
     const item = shapesCatalog[order.shapeType]?.[order.sizeIndex];
     if (!item || item.code == null) return null;
@@ -109,25 +126,38 @@ export function decodeOrderCode(
         break;
       }
       case 's': {
-        let resolved = false;
-        for (const [category, items] of Object.entries(shapesCatalog)) {
-          const idx = items.findIndex((it) => String(it.code) === val);
-          if (idx >= 0) {
-            order.shapeType = category;
-            order.sizeIndex = idx;
-            resolved = true;
-            break;
+        // Check if it's a rectangular shape in 'preciso' mode (mm format)
+        const [w, h] = val.split('x');
+        if (w && h && !isNaN(Number(w)) && !isNaN(Number(h))) {
+          // It's a rectangular shape in mm (preciso mode)
+          order.shapeType = RECT_CATEGORY;
+          order.rectCalcMode = 'preciso';
+          order.customRectW = String(Number(w) / 10);
+          order.customRectH = String(Number(h) / 10);
+        } else {
+          // It's a shape from catalog
+          let resolved = false;
+          for (const [category, items] of Object.entries(shapesCatalog)) {
+            const idx = items.findIndex((it) => String(it.code) === val);
+            if (idx >= 0) {
+              order.shapeType = category;
+              order.sizeIndex = idx;
+              resolved = true;
+              break;
+            }
           }
+          if (!resolved) return null;
         }
-        if (!resolved) return null;
         break;
       }
       case 'r': {
         const [w, h] = val.split('x');
         if (!w || !h) return null;
         order.shapeType = RECT_CATEGORY;
-        order.customRectW = codeToNum(w);
-        order.customRectH = codeToNum(h);
+        // Always in mm (economico mode)
+        order.rectCalcMode = 'economico';
+        order.customRectW = String(Number(w) / 10);
+        order.customRectH = String(Number(h) / 10);
         break;
       }
       case 'q':

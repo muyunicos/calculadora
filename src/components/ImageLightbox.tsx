@@ -29,6 +29,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({ src, alt, title, caption,
   return (
     <div
       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200"
+      style={{ zIndex: 2000 }}
       onClick={onClose}
       role="dialog"
       aria-modal="true"

@@ -40,7 +40,7 @@ const App = () => {
   const [activeAdminTab, setActiveAdminTab] = useState<'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs'>('gallery');
   const [showMathDetail, setShowMathDetail] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
+  const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(1);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
   const [materialsShowMoreIndex, setMaterialsShowMoreIndex] = useState(2);
@@ -50,6 +50,8 @@ const App = () => {
   const [infoOpenSizeIndex, setInfoOpenSizeIndex] = useState<number | null>(null);
   const [infoOpenDeliveryId, setInfoOpenDeliveryId] = useState<DeliveryFormat | null>(null);
   const [infoOpenDesignId, setInfoOpenDesignId] = useState<DesignType | null>(null);
+  // Modo de cálculo para formas rectangulares: 'preciso' (203x271mm) o 'economico' (210x297mm)
+  const [rectCalcMode, setRectCalcMode] = useState<'preciso' | 'economico'>('preciso');
 
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
@@ -86,6 +88,7 @@ const App = () => {
       complexity: 3,
       designType: '',
       customDesignTime: 45,
+      rectCalcMode: 'preciso',
     };
   });
 
@@ -102,13 +105,30 @@ const App = () => {
     if (decoded) setOrder(decoded);
   }, [materials, shapesCatalog, deliveryOptions, designOptions]);
 
+  // Sincronizar rectCalcMode con order.rectCalcMode
+  useEffect(() => {
+    if (order.rectCalcMode && order.rectCalcMode !== rectCalcMode) {
+      setRectCalcMode(order.rectCalcMode);
+    }
+  }, [order.rectCalcMode]);
+
+  // Actualizar order.rectCalcMode cuando cambia el toggle
+  useEffect(() => {
+    setOrder((prev) => {
+      if (prev.rectCalcMode !== rectCalcMode) {
+        return { ...prev, rectCalcMode };
+      }
+      return prev;
+    });
+  }, [rectCalcMode]);
+
   // --- CALCULADORA DE HOJA A4 PARA RECTANGULARES ---
   const customRectMath: A4Layout = useMemo(() => {
     if (order.shapeType !== 'Rectangulares') {
       return { qty: 0, fitType: 'none', renderW: 0, renderH: 0 };
     }
-    return calcA4Layout(order.customRectW, order.customRectH);
-  }, [order.customRectW, order.customRectH, order.shapeType]);
+    return calcA4Layout(order.customRectW, order.customRectH, rectCalcMode);
+  }, [order.customRectW, order.customRectH, order.shapeType, rectCalcMode]);
 
   // --- AUTO-AJUSTAR COMPLEJIDAD DEL CORTE AL CAMBIAR TAMAÑO/FORMA ---
   useEffect(() => {
@@ -130,7 +150,7 @@ const App = () => {
   const handleNavigateToNext = () => {
     const step1Complete = !!order.materialId;
     const step2Complete = order.shapeType && (
-      order.shapeType === 'Rectangulares' 
+      order.shapeType === 'Rectangulares'
         ? (order.customRectW && order.customRectH)
         : order.sizeIndex >= 0
     );
@@ -143,7 +163,8 @@ const App = () => {
     } else if (!step3Complete) {
       setActiveStep(3);
     } else {
-      // Todos los pasos completos, scroll al resumen
+      // Todos los pasos completos, contraer el paso actual y scroll al resumen
+      setActiveStep(0);
       const summaryElement = document.getElementById('order-summary');
       if (summaryElement) {
         const offset = 80;
@@ -165,6 +186,10 @@ const App = () => {
   // Elegir material (sin auto-avance).
   const selectMaterial = (id: string) => {
     setOrder((prev) => ({ ...prev, materialId: id }));
+    // Si el panel de info está abierto, actualizarlo para mostrar la nueva selección
+    if (expandedMaterialId !== null) {
+      setExpandedMaterialId(id);
+    }
   };
 
   // --- HANDLERS (Admin) ---
@@ -378,7 +403,7 @@ const App = () => {
   // pedido esté completo.
   const captureCurrentOrder = (id: string): boolean => {
     if (!materials || !shapesCatalog) return false;
-    const code = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+    const code = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || [], customRectMath.adjustedW, customRectMath.adjustedH);
     if (!code) return false;
     updateGalleryItem(id, 'order', code);
     return true;
@@ -418,12 +443,12 @@ const App = () => {
   const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
   const missing = missingSelections(order, materials, shapesCatalog);
 
-  const shareUrl = materials && shapesCatalog && deliveryOptions && designOptions ? buildShareUrl(order, materials, shapesCatalog, deliveryOptions, designOptions) : '';
+  const shareUrl = materials && shapesCatalog && deliveryOptions && designOptions ? buildShareUrl(order, materials, shapesCatalog, deliveryOptions, designOptions, customRectMath.adjustedW, customRectMath.adjustedH) : '';
   const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl);
   const whatsappLink = buildWhatsappLink(wpMessage);
   const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl);
   const consultLink = buildWhatsappLink(consultMessage);
-  const orderCode = materials && shapesCatalog && deliveryOptions && designOptions ? encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions) : null;
+  const orderCode = materials && shapesCatalog && deliveryOptions && designOptions ? encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions, customRectMath.adjustedW, customRectMath.adjustedH) : null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-28 lg:pb-0">
@@ -483,6 +508,8 @@ const App = () => {
                 activeStep={activeStep}
                 onStepOpen={handleStep2Open}
                 onNavigateToNext={handleNavigateToNext}
+                rectCalcMode={rectCalcMode}
+                setRectCalcMode={setRectCalcMode}
               />
 
               {/* Paso 3: Diseño y Entrega */}
@@ -521,6 +548,8 @@ const App = () => {
               orderCode={orderCode}
               consultLink={consultLink}
               setOrder={setOrder}
+              deliveryOptions={deliveryOptions}
+              designOptions={designOptions}
             />
           </div>
 
@@ -537,6 +566,8 @@ const App = () => {
             materialName={materialName}
             formatoLabel={formatoLabel}
             designLabel={designLabel}
+            deliveryOptions={deliveryOptions}
+            designOptions={designOptions}
           />
           </>
         ) : (

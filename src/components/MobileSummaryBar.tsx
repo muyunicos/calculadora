@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Package, ChevronUp, X, Lightbulb } from 'lucide-react';
-import type { Config, Material, Order, PriceResult, ShapesCatalog } from '../types';
+import type { Config, Material, Order, PriceResult, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 import PriceTable from './PriceTable';
 
 interface MobileSummaryBarProps {
@@ -15,6 +15,8 @@ interface MobileSummaryBarProps {
   materialName: string;
   formatoLabel: string;
   designLabel: string;
+  deliveryOptions?: DeliveryOption[];
+  designOptions?: DesignOption[];
 }
 
 const money = (n?: number) => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -33,6 +35,8 @@ const Row: React.FC<{ label: string; value: string }> = ({ label, value }) => (
 const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
   order, results, missing, whatsappLink, config, materials, shapesCatalog,
   sizeText, materialName, formatoLabel, designLabel,
+  deliveryOptions = [],
+  designOptions = [],
 }) => {
   const [open, setOpen] = useState(false);
   const isComplete = !!results;
@@ -70,7 +74,7 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
                     <Row label="Total stickers" value={`~${results?.totalStickers ?? 0} u.`} />
                   </div>
 
-                  <PriceTable order={order} config={config} materials={materials} shapesCatalog={shapesCatalog} />
+                  <PriceTable order={order} config={config} materials={materials} shapesCatalog={shapesCatalog} deliveryOptions={deliveryOptions} designOptions={designOptions} />
 
                   {tips.length > 0 && (
                     <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
