@@ -58,12 +58,6 @@
                 "visible": true
             },
             {
-                "size": "3,5 cm",
-                "qty": 45,
-                "code": 202,
-                "visible": true
-            },
-            {
                 "size": "4,0 cm",
                 "qty": 36,
                 "code": 203,
@@ -82,15 +76,21 @@
                 "visible": true
             },
             {
-                "size": "4,5 cm",
-                "qty": 25,
-                "code": 206,
-                "visible": true
-            },
-            {
                 "size": "8 cm",
                 "qty": 8,
                 "code": 207,
+                "visible": true
+            },
+            {
+                "size": "3,5 cm",
+                "qty": 45,
+                "code": 202,
+                "visible": true
+            },
+            {
+                "size": "4,5 cm",
+                "qty": 25,
+                "code": 206,
                 "visible": true
             },
             {
@@ -108,9 +108,33 @@
         ],
         "Formas": [
             {
-                "size": "7,0 cm",
-                "qty": 10,
-                "code": 300,
+                "size": "2,5 cm",
+                "qty": 92,
+                "code": 309,
+                "visible": true
+            },
+            {
+                "size": "3,0 cm",
+                "qty": 60,
+                "code": 308,
+                "visible": true
+            },
+            {
+                "size": "4,0 cm",
+                "qty": 36,
+                "code": 306,
+                "visible": true
+            },
+            {
+                "size": "5,0 cm",
+                "qty": 22,
+                "code": 304,
+                "visible": true
+            },
+            {
+                "size": "5,5 cm",
+                "qty": 14,
+                "code": 303,
                 "visible": true
             },
             {
@@ -123,18 +147,12 @@
                 "size": "6,0 cm",
                 "qty": 12,
                 "code": 302,
-                "visible": true
+                "visible": false
             },
             {
-                "size": "5,5 cm",
-                "qty": 14,
-                "code": 303,
-                "visible": true
-            },
-            {
-                "size": "5,0 cm",
-                "qty": 22,
-                "code": 304,
+                "size": "3,5 cm",
+                "qty": 46,
+                "code": 307,
                 "visible": true
             },
             {
@@ -144,27 +162,9 @@
                 "visible": true
             },
             {
-                "size": "4,0 cm",
-                "qty": 36,
-                "code": 306,
-                "visible": true
-            },
-            {
-                "size": "3,5 cm",
-                "qty": 46,
-                "code": 307,
-                "visible": true
-            },
-            {
-                "size": "3,0 cm",
-                "qty": 60,
-                "code": 308,
-                "visible": true
-            },
-            {
-                "size": "2,5 cm",
-                "qty": 92,
-                "code": 309,
+                "size": "7,0 cm",
+                "qty": 10,
+                "code": 300,
                 "visible": true
             },
             {
@@ -177,7 +177,7 @@
                 "size": "8,0 cm",
                 "qty": 6,
                 "code": 311,
-                "visible": true
+                "visible": false
             },
             {
                 "size": "8,5 cm",
@@ -189,7 +189,7 @@
                 "size": "9,0 cm",
                 "qty": 4,
                 "code": 313,
-                "visible": true
+                "visible": false
             },
             {
                 "size": "10,0 cm",
@@ -201,31 +201,31 @@
     },
     "shapesShowMoreIndex": {
         "Circulares": 6,
-        "Formas": 10
+        "Formas": 6
     },
     "gallery": [
         {
             "id": "g1",
-            "image": "galeria/ejemplo1.svg",
-            "title": "Circulares para logos",
-            "caption": "Circular en vinilo 3,0 cm. Resistente al agua, ideal para botellas y termos.",
-            "order": "v1.m11.s201.q25.f2.d0",
+            "image": "https://muyunicos.com/wp-content/uploads/2026/06/Stickers-formas-4cm-doblecorte.webp",
+            "title": "Formas en Vinilo",
+            "caption": "Formas personalizadas de 4cm en vinilo impermeable con doble corte. Ideal para termos, celulares, notebook, etc.",
+            "order": "v1.m11.s306.q10.f2.d0",
             "visible": true
         },
         {
             "id": "g2",
-            "image": "galeria/ejemplo2.svg",
-            "title": "Formas troqueladas",
-            "caption": "Forma en papel 5,0 cm, troquel individual. Listos para repartir uno por uno.",
-            "order": "v1.m10.s304.q10.f1.d1",
+            "image": "https://muyunicos.com/wp-content/uploads/2026/06/rectangulos5cm.webp",
+            "title": "Adhesivos Rectangulares",
+            "caption": "Stickers rectangulares de 5cm en papel adhesivo troquelados (medio corte). Listos para despegar de la plancha y usar.",
+            "order": "v1.m10.r5x5.q5.f1.d0",
             "visible": true
         },
         {
             "id": "g3",
-            "image": "galeria/ejemplo3.svg",
-            "title": "Etiquetas rectangulares",
-            "caption": "Rectangular 5x3 cm en vinilo. Perfecto para packaging y etiquetas de producto.",
-            "order": "v1.m11.r5x3.q50.f0.d0",
+            "image": "https://muyunicos.com/wp-content/uploads/2026/06/circulo3cm.webp",
+            "title": "Etiquetas Circulares",
+            "caption": "Círculos adhesivos de 3cm. Perfecto para packaging y etiquetas de emprendimientos con logo.",
+            "order": "v1.m10.s201.q10.f1.d0",
             "visible": true
         }
     ],
@@ -235,41 +235,42 @@
             "code": 0,
             "label": "Sin Cortar",
             "subtitle": "Solo Impresión",
+            "description": "Impresión con tintas UV, vos lo cortas a mano.",
             "cutFactor": 0,
             "cutWearFactor": 0,
-            "visible": true,
-            "description": "Impresión con tintas UV, vos lo cortas a mano."
+            "visible": true
         },
         {
             "id": "individual",
             "code": 2,
             "label": "Cortados Sueltos",
             "subtitle": "",
+            "description": "Stickers cortados uno por uno, listos para repartir.",
             "cutFactor": 2,
             "cutWearFactor": 2,
-            "visible": true,
-            "description": "Stickers cortados uno por uno, listos para repartir."
+            "visible": true
         },
         {
             "id": "plancha",
             "code": 1,
-            "label": "Plancha con Medio Corte",
+            "label": "Plancha Medio Corte",
             "subtitle": "",
+            "description": "Prácticos para despegar de la plancha y usar.",
             "cutFactor": 1,
             "cutWearFactor": 1,
-            "visible": true,
-            "description": "Prácticos para despegar de la plancha y usar."
+            "visible": true
         }
     ],
     "designOptions": [
         {
             "id": "none",
             "code": 0,
-            "label": "Ya lo tengo listo",
-            "subtitle": "Archivo preparado para impresión.",
+            "label": "Ya tengo diseño",
+            "subtitle": "",
             "designMinutes": 0,
             "isCustomTime": false,
-            "visible": true
+            "visible": true,
+            "description": "Elegí esta opción si ya tenés la imagen lista para imprimir y no requiere modificaciones."
         },
         {
             "id": "basic",
@@ -278,7 +279,8 @@
             "subtitle": "Acomodamos tu logo/imagen.",
             "designMinutes": 10,
             "isCustomTime": false,
-            "visible": true
+            "visible": true,
+            "description": "Elegí esta opción si necesitás que te ayudemos agregando datos, o editando un diseño básico."
         },
         {
             "id": "custom",
