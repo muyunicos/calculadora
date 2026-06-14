@@ -1,7 +1,7 @@
 import React from 'react';
 import { Info, CheckCircle2, Palette, ShieldCheck } from 'lucide-react';
 import type { Order, DeliveryOption, DesignOption, Config, PriceResult, DeliveryFormat, DesignType } from '../types';
-import StepSection from './StepSection';
+import StepSection, { StepSectionRef } from './StepSection';
 import OptionInfoPanel from './OptionInfoPanel';
 
 interface FinalDetailsSelectorProps {
@@ -19,7 +19,7 @@ interface FinalDetailsSelectorProps {
   setInfoOpenDesignId: (id: DesignType | null) => void;
   resolveImage: (src: string) => string;
   activeStep: 1 | 2 | 3;
-  setActiveStep: (step: 1 | 2 | 3) => void;
+  onStepComplete?: () => void;
 }
 
 export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
@@ -37,20 +37,35 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
   setInfoOpenDesignId,
   resolveImage,
   activeStep,
-  setActiveStep,
+  onStepComplete,
 }) => {
+  const stepRef = React.useRef<StepSectionRef>(null);
   const formatoLabel = deliveryOptions?.find((o) => o.id === order.deliveryFormat)?.label ?? '';
   const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
+
+  // Determinar si el paso está completado
+  const isStepComplete = order.designType && order.deliveryFormat && order.sheetsQty > 0;
+
+  const isOpen = activeStep === 3;
+  const isDone = isStepComplete; // Paso 3 no tiene siguiente, pero muestra completado cuando está listo
+
+  // Scroll automático cuando se abre este paso
+  React.useEffect(() => {
+    if (isOpen && stepRef.current) {
+      stepRef.current.scrollTo();
+    }
+  }, [isOpen]);
 
   return (
     <>
       <StepSection
+        ref={stepRef}
         index={3}
         title="Detalles Finales"
         summary={`${formatoLabel} · ${designLabel} · ${order.sheetsQty} planchas`}
-        isOpen={true}
-        isDone={false}
-        onOpen={() => {}}
+        isOpen={isOpen}
+        isDone={isDone}
+        onOpen={() => onStepComplete?.()}
       >
         {/* 3.1 Diseño */}
         <div className="mb-6">
@@ -63,7 +78,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
               return (
                 <div key={opt.id} className="relative">
                   <button onClick={() => setOrder({ ...order, designType: opt.id })}
-                    className={`w-full h-full cl-option-card flex items-center gap-3 ${selected ? 'cl-option-card-selected' : ''}`}>
+                    className={`w-full h-full cl-option-card flex items-center gap-3 p-4 sm:p-3 ${selected ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
                     <Icon className={`w-5 h-5 flex-shrink-0 ${selected ? 'text-blue-600' : 'text-slate-300'}`} />
                     <div className="pr-8 text-left">
                       <div className="font-bold text-sm text-slate-800">{opt.label}</div>
@@ -106,7 +121,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
               return (
                 <div key={opt.id} className="relative">
                   <button onClick={() => setOrder({ ...order, deliveryFormat: opt.id })}
-                    className={`w-full h-full cl-option-card ${selected ? 'cl-option-card-selected' : ''}`}>
+                    className={`w-full h-full cl-option-card p-4 sm:p-3 ${selected ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
                     <div className="flex items-start gap-2 pr-8">
                       {selected && <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />}
                       <div>
@@ -148,7 +163,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
           <div className="grid grid-cols-3 sm:grid-cols-6 cl-gap-md cl-mb-md">
             {[1, 5, 10, 25, 50, 100].map((q) => (
               <button key={q} type="button" onClick={() => setOrder({ ...order, sheetsQty: q })}
-                className={`py-2.5 cl-rounded-xl cl-border-md font-bold text-sm cl-transition-all ${order.sheetsQty === q ? 'border-blue-600 cl-bg-blue-50 text-blue-700 cl-shadow-sm' : 'cl-border-sm bg-white text-slate-700 hover:border-blue-300'}`}>
+                className={`py-3 sm:py-2.5 cl-rounded-xl cl-border-md font-bold text-sm cl-transition-all active:scale-95 ${order.sheetsQty === q ? 'border-blue-600 cl-bg-blue-50 text-blue-700 cl-shadow-sm' : 'cl-border-sm bg-white text-slate-700 hover:border-blue-300'}`}>
                 {q}
               </button>
             ))}
@@ -157,7 +172,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Otra:</label>
             <input type="number" min="1" value={order.sheetsQty || ''} placeholder="Ej: 12"
               onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) || 0 })}
-              className="w-28 text-center font-bold text-lg bg-white cl-border-md text-slate-800 py-2 cl-rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
+              className="w-28 text-center font-bold text-lg bg-white cl-border-md text-slate-800 py-3 sm:py-2 cl-rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
             <span className="text-xs text-slate-400 font-medium">planchas</span>
           </div>
         </div>

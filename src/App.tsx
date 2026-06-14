@@ -126,10 +126,41 @@ const App = () => {
     return calcularPrecio(order, config, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
   }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
+  // Manejadores para completar pasos y avanzar en el flujo guiado
+  const handleStep1Complete = () => {
+    if (activeStep === 1 && order.materialId) {
+      setActiveStep(2);
+    } else if (activeStep > 1) {
+      setActiveStep(1);
+    }
+  };
+
+  const handleStep2Complete = () => {
+    if (activeStep === 2) {
+      const isComplete = order.shapeType && (
+        order.shapeType === 'Rectangulares' 
+          ? (order.customRectW && order.customRectH)
+          : order.sizeIndex >= 0
+      );
+      if (isComplete) {
+        setActiveStep(3);
+      }
+    } else if (activeStep > 2) {
+      setActiveStep(2);
+    }
+  };
+
+  const handleStep3Complete = () => {
+    if (activeStep > 3) {
+      setActiveStep(3);
+    }
+  };
+
   // Elegir material y avanzar al paso siguiente (flujo guiado).
   const selectMaterial = (id: string) => {
     setOrder((prev) => ({ ...prev, materialId: id }));
-    setActiveStep(2);
+    // Avanzar al paso 2 después de seleccionar material
+    setTimeout(() => setActiveStep(2), 100);
   };
 
   // --- HANDLERS (Admin) ---
@@ -317,8 +348,8 @@ const App = () => {
     }
     setOrder(decoded);
     setActiveTab('calculator');
+    // Cambiar al paso 3 y dejar que el scroll automático del componente funcione
     setActiveStep(3);
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const updateGalleryItem = (id: string, field: keyof GalleryItem, value: string | boolean) =>
@@ -412,6 +443,22 @@ const App = () => {
           {/* Mini-galería de ejemplos (arriba): cargar un pedido al tocar una foto. */}
           <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} />
 
+          {/* Indicador de progreso de pasos */}
+          <div className="mb-6 px-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Progreso</span>
+              <span className="text-xs font-bold text-blue-600">
+                {Math.min(activeStep, 3)}/3 pasos
+              </span>
+            </div>
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-600 transition-all duration-500 ease-out rounded-full"
+                style={{ width: `${(Math.min(activeStep, 3) / 3) * 100}%` }}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
             {/* COLUMNA IZQUIERDA: CONFIGURADOR UI */}
@@ -428,6 +475,8 @@ const App = () => {
                 setExpandedMaterialId={setExpandedMaterialId}
                 infoBtnClass={infoBtnClass}
                 resolveImage={resolveImage}
+                activeStep={activeStep}
+                onStepComplete={handleStep1Complete}
               />
 
               {/* Paso 2: Forma y Tamaño */}
@@ -443,7 +492,8 @@ const App = () => {
                 setInfoOpenSizeIndex={setInfoOpenSizeIndex}
                 infoBtnClass={infoBtnClass}
                 resolveImage={resolveImage}
-                setActiveStep={setActiveStep}
+                activeStep={activeStep}
+                onStepComplete={handleStep2Complete}
               />
 
               {/* Paso 3: Diseño y Entrega */}
@@ -462,7 +512,7 @@ const App = () => {
                 setInfoOpenDesignId={setInfoOpenDesignId}
                 resolveImage={resolveImage}
                 activeStep={activeStep}
-                setActiveStep={setActiveStep}
+                onStepComplete={handleStep3Complete}
               />
             </div>
 

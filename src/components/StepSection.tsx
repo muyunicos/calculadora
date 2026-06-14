@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { CheckCircle2, ChevronDown } from 'lucide-react';
+
+export interface StepSectionRef {
+  scrollTo: () => void;
+}
 
 interface StepSectionProps {
   index: number;
@@ -13,26 +17,46 @@ interface StepSectionProps {
 
 // Paso de un acordeón guiado: solo uno abierto a la vez. Los completados se
 // colapsan mostrando un resumen + "Editar"; los futuros quedan atenuados.
-const StepSection: React.FC<StepSectionProps> = ({ index, title, summary, isOpen, isDone, onOpen, children }) => {
+const StepSection = forwardRef<StepSectionRef, StepSectionProps>(({ index, title, summary, isOpen, isDone, onOpen, children }, ref) => {
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollTo: () => {
+      if (sectionRef.current) {
+        const offset = 80; // Offset para header móvil
+        const elementPosition = sectionRef.current.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }));
+
   const badge = isDone && !isOpen
     ? 'bg-emerald-100 text-emerald-700'
     : isOpen
-      ? 'bg-blue-600 text-white'
+      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
       : 'bg-slate-100 text-slate-400';
 
   return (
-    <div className={`cl-section ${isOpen ? 'cl-section-active' : ''}`}>
+    <div 
+      ref={sectionRef}
+      className={`cl-section ${isOpen ? 'cl-section-active' : ''} ${!isOpen && !isDone ? 'opacity-50' : ''} transition-all duration-300 mb-4`}
+    >
       <button
         type="button"
         onClick={onOpen}
-        className="w-full flex items-center gap-3 p-5 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-2xl"
+        className={`w-full flex items-center gap-3 p-4 sm:p-5 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all duration-300 ${isOpen ? 'bg-white shadow-md' : 'bg-white hover:shadow-sm'}`}
         aria-expanded={isOpen}
       >
-        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0 ${badge}`}>
+        <span className={`w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0 ${badge} transition-all duration-300`}>
           {isDone && !isOpen ? <CheckCircle2 className="w-4 h-4" /> : index}
         </span>
         <span className="flex-1 min-w-0">
-          <span className={`block font-bold ${isOpen || isDone ? 'text-slate-800' : 'text-slate-400'}`}>{title}</span>
+          <span className={`block font-bold text-sm sm:text-base ${isOpen || isDone ? 'text-slate-800' : 'text-slate-400'}`}>{title}</span>
           {!isOpen && isDone && summary && (
             <span className="block text-xs text-slate-500 mt-0.5 truncate">{summary}</span>
           )}
@@ -45,9 +69,15 @@ const StepSection: React.FC<StepSectionProps> = ({ index, title, summary, isOpen
         )}
       </button>
 
-      {isOpen && <div className="px-6 pb-6 pt-1">{children}</div>}
+      {isOpen && (
+        <div className="px-4 sm:px-6 pb-6 pt-1 animate-in slide-in-from-top-2 duration-300">
+          {children}
+        </div>
+      )}
     </div>
   );
-};
+});
+
+StepSection.displayName = 'StepSection';
 
 export default StepSection;

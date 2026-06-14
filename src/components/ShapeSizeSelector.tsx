@@ -1,7 +1,7 @@
 import React from 'react';
 import { Info, ChevronUp, ChevronDown, ImageIcon } from 'lucide-react';
 import type { ShapesCatalog, A4Layout, Order } from '../types';
-import StepSection from './StepSection';
+import StepSection, { StepSectionRef } from './StepSection';
 import OptionInfoPanel from './OptionInfoPanel';
 
 interface ShapeSizeSelectorProps {
@@ -16,7 +16,8 @@ interface ShapeSizeSelectorProps {
   setExpandedShapesCategory: (category: string | null) => void;
   setInfoOpenSizeIndex: (index: number | null) => void;
   resolveImage: (src: string) => string;
-  setActiveStep: (step: 1 | 2 | 3) => void;
+  activeStep: 1 | 2 | 3;
+  onStepComplete?: () => void;
 }
 
 export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
@@ -31,26 +32,75 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
   setExpandedShapesCategory,
   setInfoOpenSizeIndex,
   resolveImage,
-  setActiveStep,
+  activeStep,
+  onStepComplete,
 }) => {
+  const stepRef = React.useRef<StepSectionRef>(null);
   const sizeText = order.shapeType === 'Rectangulares'
     ? `${order.customRectW}x${order.customRectH}cm`
     : shapesCatalog?.[order.shapeType]?.[order.sizeIndex]?.size || '';
 
+  // Determinar si el paso está completado
+  const isStepComplete = order.shapeType && (
+    order.shapeType === 'Rectangulares' 
+      ? (order.customRectW && order.customRectH)
+      : order.sizeIndex >= 0
+  );
+
+  const isOpen = activeStep === 2;
+  const isDone = isStepComplete && activeStep > 2;
+
+  // Scroll automático cuando se abre este paso
+  React.useEffect(() => {
+    if (isOpen && stepRef.current) {
+      stepRef.current.scrollTo();
+    }
+  }, [isOpen]);
+
+  // Manejador para seleccionar forma/tamaño y avanzar al paso 3
+  const handleShapeTypeChange = (shape: string) => {
+    setOrder({ ...order, shapeType: shape, sizeIndex: -1 });
+    setInfoOpenSizeIndex(null);
+  };
+
+  const handleSizeSelect = (idx: number) => {
+    setOrder({ ...order, sizeIndex: idx });
+    // Avanzar al paso 3 después de seleccionar tamaño
+    setTimeout(() => onStepComplete?.(), 100);
+  };
+
+  const handleRectChange = (field: 'customRectW' | 'customRectH', value: string) => {
+    setOrder({ ...order, [field]: value });
+  };
+
+  // Avanzar al paso 3 cuando se completen ambos campos de rectángulo
+  React.useEffect(() => {
+    if (order.shapeType === 'Rectangulares' && order.customRectW && order.customRectH && isOpen) {
+      // Esperar un poco para asegurar que el usuario terminó de ingresar
+      const timer = setTimeout(() => {
+        if (order.customRectW && order.customRectH) {
+          onStepComplete?.();
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [order.customRectW, order.customRectH, order.shapeType, isOpen, onStepComplete]);
+
   return (
     <StepSection
+      ref={stepRef}
       index={2}
       title="Forma y Tamaño"
       summary={`${order.shapeType} · ${sizeText}`}
-      isOpen={true}
-      isDone={false}
-      onOpen={() => {}}
+      isOpen={isOpen}
+      isDone={isDone}
+      onOpen={() => onStepComplete?.()}
     >
       {/* Selector de tipo de forma */}
       <div className="flex cl-gap-md cl-mb-lg cl-bg-slate-100 cl-p-sm cl-rounded-xl overflow-x-auto">
         {['Circulares', 'Rectangulares', 'Formas'].map((shape) => (
-          <button key={shape} onClick={() => { setOrder({ ...order, shapeType: shape, sizeIndex: -1 }); setInfoOpenSizeIndex(null); }}
-            className={`flex-1 min-w-[110px] py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all ${order.shapeType === shape ? 'bg-white cl-shadow-sm cl-border-sm text-blue-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'}`}>
+          <button key={shape} onClick={() => handleShapeTypeChange(shape)}
+            className={`flex-1 min-w-[100px] sm:min-w-[110px] py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all active:scale-95 ${order.shapeType === shape ? 'bg-white cl-shadow-sm cl-border-sm text-blue-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'}`}>
             {shape}
           </button>
         ))}
@@ -66,11 +116,11 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
             <div className="grid grid-cols-2 cl-gap-md">
               <div>
                 <label className="block text-xs font-bold text-slate-500 cl-mb-sm uppercase">Ancho (cm)</label>
-                <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => setOrder({ ...order, customRectW: e.target.value })} className="cl-input-number" />
+                <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => handleRectChange('customRectW', e.target.value)} className="cl-input-number py-3 sm:py-2" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 cl-mb-sm uppercase">Alto (cm)</label>
-                <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => setOrder({ ...order, customRectH: e.target.value })} className="cl-input-number" />
+                <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => handleRectChange('customRectH', e.target.value)} className="cl-input-number py-3 sm:py-2" />
               </div>
             </div>
 
@@ -120,8 +170,8 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
               const hasInfo = !!(s.description || s.image);
               return (
                 <div key={idx} className="relative">
-                  <button onClick={() => setOrder({ ...order, sizeIndex: idx })}
-                    className={`w-full h-full cl-option-card flex flex-col items-center justify-center min-h-[100px] text-center ${order.sizeIndex === idx ? 'cl-option-card-selected' : ''}`}>
+                  <button onClick={() => handleSizeSelect(idx)}
+                    className={`w-full h-full cl-option-card flex flex-col items-center justify-center min-h-[110px] sm:min-h-[100px] text-center p-3 sm:p-4 ${order.sizeIndex === idx ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
 
                     <div className="w-12 h-12 cl-mb-sm flex items-center justify-center opacity-80">
                       <img
@@ -162,7 +212,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
               hasHidden && (
                 <button
                   onClick={() => setExpandedShapesCategory(expandedShapesCategory === order.shapeType ? null : order.shapeType)}
-                  className="w-full py-2.5 cl-rounded-xl cl-border-sm text-slate-600 font-semibold text-sm hover:bg-slate-50 cl-transition-colors flex items-center justify-center cl-gap-md"
+                  className="w-full py-3 sm:py-2.5 cl-rounded-xl cl-border-sm text-slate-600 font-semibold text-sm hover:bg-slate-50 cl-transition-colors flex items-center justify-center cl-gap-md active:bg-slate-100"
                 >
                   {expandedShapesCategory === order.shapeType ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   {expandedShapesCategory === order.shapeType ? 'Ocultar tamaños' : `Ver más (${(catalog?.length ?? 0) - showMoreIdx})`}
