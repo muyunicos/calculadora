@@ -48,61 +48,61 @@
             {
                 "size": "2,5 cm",
                 "qty": 90,
-                "code": 200,
+                "code": 25,
                 "visible": true
             },
             {
                 "size": "3,0 cm",
                 "qty": 60,
-                "code": 201,
+                "code": 30,
                 "visible": true
             },
             {
                 "size": "4,0 cm",
                 "qty": 36,
-                "code": 203,
+                "code": 39,
                 "visible": true
             },
             {
                 "size": "5,0 cm",
                 "qty": 21,
-                "code": 204,
+                "code": 50,
                 "visible": true
             },
             {
                 "size": "6,0 cm",
                 "qty": 15,
-                "code": 205,
+                "code": 60,
                 "visible": true
             },
             {
                 "size": "8 cm",
                 "qty": 8,
-                "code": 207,
+                "code": 80,
                 "visible": true
             },
             {
                 "size": "3,5 cm",
                 "qty": 45,
-                "code": 202,
+                "code": 35,
                 "visible": true
             },
             {
                 "size": "4,5 cm",
                 "qty": 25,
-                "code": 206,
+                "code": 45,
                 "visible": true
             },
             {
                 "size": "9 cm",
                 "qty": 6,
-                "code": 208,
+                "code": 90,
                 "visible": true
             },
             {
                 "size": "10 cm",
                 "qty": 3,
-                "code": 209,
+                "code": 100,
                 "visible": true
             }
         ],
@@ -110,91 +110,91 @@
             {
                 "size": "2,5 cm",
                 "qty": 92,
-                "code": 309,
+                "code": 125,
                 "visible": true
             },
             {
                 "size": "3,0 cm",
                 "qty": 60,
-                "code": 308,
+                "code": 130,
                 "visible": true
             },
             {
                 "size": "4,0 cm",
                 "qty": 36,
-                "code": 306,
+                "code": 140,
                 "visible": true
             },
             {
                 "size": "5,0 cm",
                 "qty": 22,
-                "code": 304,
+                "code": 150,
                 "visible": true
             },
             {
                 "size": "5,5 cm",
                 "qty": 14,
-                "code": 303,
+                "code": 155,
                 "visible": true
             },
             {
                 "size": "6,5 cm",
                 "qty": 12,
-                "code": 301,
+                "code": 165,
                 "visible": true
             },
             {
                 "size": "6,0 cm",
                 "qty": 12,
-                "code": 302,
+                "code": 160,
                 "visible": false
             },
             {
                 "size": "3,5 cm",
                 "qty": 46,
-                "code": 307,
+                "code": 135,
                 "visible": true
             },
             {
                 "size": "4,5 cm",
                 "qty": 28,
-                "code": 305,
+                "code": 144,
                 "visible": true
             },
             {
                 "size": "7,0 cm",
                 "qty": 10,
-                "code": 300,
+                "code": 170,
                 "visible": true
             },
             {
                 "size": "7,5 cm",
                 "qty": 8,
-                "code": 310,
+                "code": 175,
                 "visible": true
             },
             {
                 "size": "8,0 cm",
                 "qty": 6,
-                "code": 311,
+                "code": 180,
                 "visible": false
             },
             {
                 "size": "8,5 cm",
                 "qty": 6,
-                "code": 312,
+                "code": 185,
                 "visible": true
             },
             {
                 "size": "9,0 cm",
                 "qty": 4,
-                "code": 313,
+                "code": 190,
                 "visible": false
             },
             {
                 "size": "10,0 cm",
                 "qty": 4,
-                "code": 314,
+                "code": 110,
                 "visible": true
             }
         ]
@@ -209,7 +209,7 @@
             "image": "https://muyunicos.com/wp-content/uploads/2026/06/Stickers-formas-4cm-doblecorte.webp",
             "title": "Formas en Vinilo",
             "caption": "Formas personalizadas de 4cm en vinilo impermeable con doble corte. Ideal para termos, celulares, notebook, etc.",
-            "order": "v1.m11.s306.q10.f2.d0",
+            "order": "v1.m10.s39.q100.f1.d0",
             "visible": true
         },
         {
@@ -225,7 +225,7 @@
             "image": "https://muyunicos.com/wp-content/uploads/2026/06/circulo3cm.webp",
             "title": "Etiquetas Circulares",
             "caption": "Círculos adhesivos de 3cm. Perfecto para packaging y etiquetas de emprendimientos con logo.",
-            "order": "v1.m10.s201.q10.f1.d0",
+            "order": "v1.m10.s30.q5.f1.d0",
             "visible": true
         }
     ],
@@ -267,20 +267,20 @@
             "code": 0,
             "label": "Ya tengo diseño",
             "subtitle": "",
+            "description": "Elegí esta opción si ya tenés la imagen lista para imprimir y no requiere modificaciones.",
             "designMinutes": 0,
             "isCustomTime": false,
-            "visible": true,
-            "description": "Elegí esta opción si ya tenés la imagen lista para imprimir y no requiere modificaciones."
+            "visible": true
         },
         {
             "id": "basic",
             "code": 1,
             "label": "Incluir armado básico",
             "subtitle": "Acomodamos tu logo/imagen.",
+            "description": "Elegí esta opción si necesitás que te ayudemos agregando datos, o editando un diseño básico.",
             "designMinutes": 10,
             "isCustomTime": false,
-            "visible": true,
-            "description": "Elegí esta opción si necesitás que te ayudemos agregando datos, o editando un diseño básico."
+            "visible": true
         },
         {
             "id": "custom",
