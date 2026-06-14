@@ -31,6 +31,7 @@ const MaterialSchema = z.object({
   minCutTime: z.number().min(0),
   maxCutTime: z.number().min(0),
   cutWear: z.number().min(0),
+  visible: z.boolean().optional(),
 });
 
 // Schema de validación para ShapeItem
@@ -40,6 +41,7 @@ const ShapeItemSchema = z.object({
   code: z.number().int().min(0).optional(),
   description: z.string().optional(),
   image: z.string().optional(),
+  visible: z.boolean().optional(),
 });
 
 // Schema de validación para DeliveryOption
@@ -75,6 +77,7 @@ const GalleryItemSchema = z.object({
   title: z.string().optional(),
   caption: z.string().optional(),
   order: z.string().min(1),
+  visible: z.boolean().optional(),
 });
 
 // Schema de validación para ShapesShowMoreIndex

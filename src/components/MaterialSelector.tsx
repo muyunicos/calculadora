@@ -40,7 +40,7 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
     >
       <p className="text-sm text-slate-500 mb-4">Tocá la <Info className="inline w-3.5 h-3.5 -mt-0.5" /> para conocer más sobre cada material.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {(showAllMaterials ? materials : materials.slice(0, 2)).map((m) => {
+        {(showAllMaterials ? materials : materials.slice(0, 2)).filter((m) => m.visible !== false).map((m) => {
           const selected = materialId === m.id;
           return (
             <div key={m.id} className="relative">

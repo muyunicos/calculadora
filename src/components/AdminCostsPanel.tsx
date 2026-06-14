@@ -22,33 +22,33 @@ export const AdminCostsPanel: React.FC<AdminCostsPanelProps> = ({
       </h2>
 
       {/* Sub-pestañas */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap cl-gap-md cl-mb-lg">
         <button
           onClick={() => setActiveSubTab('salary')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+          className={`flex items-center cl-gap-md px-4 py-2 cl-rounded-md font-medium text-sm cl-transition-all ${
             activeSubTab === 'salary'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'cl-tab-active'
+              : 'cl-bg-slate-100 cl-text-texto cl-tab-inactive'
           }`}
         >
           <Clock className="w-4 h-4" /> Sueldo
         </button>
         <button
           onClick={() => setActiveSubTab('costs')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+          className={`flex items-center cl-gap-md px-4 py-2 cl-rounded-md font-medium text-sm cl-transition-all ${
             activeSubTab === 'costs'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'cl-tab-active'
+              : 'cl-bg-slate-100 cl-text-texto cl-tab-inactive'
           }`}
         >
           <TrendingUp className="w-4 h-4" /> Fijos y Ganancias
         </button>
         <button
           onClick={() => setActiveSubTab('times')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+          className={`flex items-center cl-gap-md px-4 py-2 cl-rounded-md font-medium text-sm cl-transition-all ${
             activeSubTab === 'times'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'cl-tab-active'
+              : 'cl-bg-slate-100 cl-text-texto cl-tab-inactive'
           }`}
         >
           <Clock className="w-4 h-4" /> Tiempos Fijos

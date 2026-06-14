@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer, Plus, Trash2, ArrowUp, ArrowDown, Scissors } from 'lucide-react';
+import { Printer, Plus, Trash2, ArrowUp, ArrowDown, Scissors, Eye, EyeOff } from 'lucide-react';
 import type { Material, Order } from '../types';
 import InfoExtraEditor from './InfoExtraEditor';
 
@@ -32,13 +32,13 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
 }) => {
   return (
     <div className="cl-card bg-white p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row cl-flex-between items-start sm:items-center cl-mb-lg cl-gap-md">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Printer className="w-6 h-6 text-blue-600" /> Base de Materiales
+          <h2 className="text-xl font-bold text-slate-800 flex items-center cl-gap-md">
+            <Printer className="w-6 h-6 cl-text-primario" /> Base de Materiales
           </h2>
         </div>
-        <button onClick={() => addMaterial(setOrder)} className="flex items-center gap-2 cl-button-primary-small">
+        <button onClick={() => addMaterial(setOrder)} className="flex items-center cl-gap-md cl-button-primary-small">
           <Plus className="w-4 h-4" /> Añadir Material
         </button>
       </div>
@@ -61,21 +61,30 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
                 <input type="number" value={m.code ?? ''} onChange={(e) => updateMaterial(m.id, 'code', e.target.value)} className="w-16 p-1.5 text-sm border border-slate-300 rounded-lg text-center font-mono focus:ring-2 focus:ring-blue-500 outline-none flex-shrink-0" title="Código estable y único del material" placeholder="cód." />
                 <input type="text" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} className="font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:outline-none px-2 py-1 w-full max-w-sm transition-all text-lg" placeholder="Nombre del Material" />
               </div>
-              <button 
-                onClick={() => removeMaterial(m.id, order, setOrder)} 
-                className={`
-                  p-2 rounded-lg transition-colors flex-shrink-0
-                  ${isDeleteMode 
-                    ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md' 
-                    : 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                  }
-                  ${!isDeleteMode ? 'opacity-40' : ''}
-                `}
-                title={isDeleteMode ? 'Borrar Material (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
-                disabled={!isDeleteMode}
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => updateMaterial(m.id, 'visible', !(m.visible ?? true))}
+                  className={`p-2 rounded-lg transition-colors ${m.visible ?? true ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                  title={m.visible ?? true ? 'Ocultar material' : 'Mostrar material'}
+                >
+                  {m.visible ?? true ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => removeMaterial(m.id, order, setOrder)} 
+                  className={`
+                    p-2 rounded-lg transition-colors
+                    ${isDeleteMode 
+                      ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md' 
+                      : 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                    }
+                    ${!isDeleteMode ? 'opacity-40' : ''}
+                  `}
+                  title={isDeleteMode ? 'Borrar Material (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
+                  disabled={!isDeleteMode}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-6 bg-white">

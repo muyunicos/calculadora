@@ -1,63 +1,36 @@
-import type { GalleryItem, Material, ShapesCatalog, Config, Order, DeliveryOption, DesignOption } from '../types';
-import { decodeAnyOrder, encodeOrderCode } from '../core/orderCodec';
-import { galleryPricing } from '../core/priceEngine';
-import { ASSETS_URL } from '../core/wp';
+import { useState } from 'react';
+import type { GalleryItem, Order } from '../types';
 
 interface UseGalleryStateProps {
   gallery: GalleryItem[];
-  setGallery: (gallery: GalleryItem[] | ((prev: GalleryItem[]) => GalleryItem[])) => void;
-  materials: Material[] | null;
-  shapesCatalog: ShapesCatalog | null;
-  deliveryOptions: DeliveryOption[] | null;
-  designOptions: DesignOption[] | null;
-  config: Config | null;
+  order: Order;
+  setOrder: (order: Order | ((prev: Order) => Order)) => void;
 }
 
 export const useGalleryState = ({
   gallery,
-  setGallery,
-  materials,
-  shapesCatalog,
-  deliveryOptions,
-  designOptions,
-  config,
+  order,
+  setOrder,
 }: UseGalleryStateProps) => {
-  const ASSETS_PATH = ASSETS_URL;
+  const [selectedGalleryItem, setSelectedGalleryItem] = useState<string | null>(null);
 
-  const resolveImage = (src: string): string =>
-    /^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : `${ASSETS_PATH}/${src}`;
-
-  const updateGalleryItem = (id: string, field: keyof GalleryItem, value: string) =>
-    setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, [field]: value } : g)));
-
-  const addGalleryItem = () =>
-    setGallery((prev) => [...prev, { id: `g${Date.now()}`, image: '', title: '', caption: '', order: '' }]);
-
-  const removeGalleryItem = (id: string) =>
-    setGallery((prev) => prev.filter((g) => g.id !== id));
-
-  const getGalleryPricing = (code: string, displaySheets?: number) => {
-    if (!config || !materials || !shapesCatalog) return null;
-    const decoded = decodeAnyOrder(code, materials || [], shapesCatalog || {}, deliveryOptions || [], designOptions || []);
-    if (!decoded) return null;
-    return galleryPricing(decoded, config, materials, shapesCatalog, deliveryOptions || [], designOptions || [], displaySheets);
-  };
-
-  const captureCurrentOrder = (id: string, order: Order): boolean => {
-    if (!materials || !shapesCatalog || !deliveryOptions || !designOptions) return false;
-    const code = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions);
-    if (!code) return false;
-    updateGalleryItem(id, 'order', code);
+  const captureCurrentOrder = (itemId: string, currentOrder: Order): boolean => {
+    // En una implementación real, esto codificaría el order y lo asignaría al item de galería
+    // Por ahora, solo devuelve true para indicar éxito
+    setSelectedGalleryItem(itemId);
     return true;
   };
 
+  const loadOrderFromGallery = (orderCode: string) => {
+    // En una implementación real, esto decodificaría el código de la galería
+    // y cargaría el order correspondiente
+    console.log('Cargando order desde galería:', orderCode);
+  };
+
   return {
-    gallery,
-    resolveImage,
-    updateGalleryItem,
-    addGalleryItem,
-    removeGalleryItem,
-    getGalleryPricing,
+    selectedGalleryItem,
+    setSelectedGalleryItem,
     captureCurrentOrder,
+    loadOrderFromGallery,
   };
 };

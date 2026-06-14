@@ -1,11 +1,11 @@
 import React from 'react';
-import { Plus, Trash2, ImageIcon } from 'lucide-react';
+import { Plus, Trash2, ImageIcon, Eye, EyeOff } from 'lucide-react';
 import type { GalleryItem, Order } from '../types';
 
 interface AdminGalleryPanelProps {
   gallery: GalleryItem[];
   resolveImage: (src: string) => string;
-  updateGalleryItem: (id: string, field: keyof GalleryItem, value: string) => void;
+  updateGalleryItem: (id: string, field: keyof GalleryItem, value: string | boolean) => void;
   addGalleryItem: () => void;
   removeGalleryItem: (id: string) => void;
   captureCurrentOrder: (id: string, order: Order) => boolean;
@@ -25,11 +25,11 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
 }) => {
   return (
     <div className="cl-card bg-white p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4 mb-6">
-        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <ImageIcon className="w-6 h-6 text-blue-600" /> Galería de ejemplos
+      <div className="flex flex-col md:flex-row cl-flex-between items-start md:items-center cl-gap-md border-b border-slate-100 pb-4 cl-mb-lg">
+        <h2 className="text-xl font-bold text-slate-800 flex items-center cl-gap-md">
+          <ImageIcon className="w-6 h-6 cl-text-primario" /> Galería de ejemplos
         </h2>
-        <button onClick={addGalleryItem} className="flex items-center gap-2 cl-button-primary-small">
+        <button onClick={addGalleryItem} className="flex items-center cl-gap-md cl-button-primary-small">
           <Plus className="w-4 h-4" /> Añadir foto
         </button>
       </div>
@@ -69,21 +69,30 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => removeGalleryItem(g.id)} 
-                className={`
-                  self-start p-2 rounded-lg transition-colors flex-shrink-0
-                  ${isDeleteMode 
-                    ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md' 
-                    : 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                  }
-                  ${!isDeleteMode ? 'opacity-40' : ''}
-                `}
-                title={isDeleteMode ? 'Borrar foto (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
-                disabled={!isDeleteMode}
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => updateGalleryItem(g.id, 'visible', !(g.visible ?? true))}
+                  className={`p-2 rounded-lg transition-colors ${g.visible ?? true ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                  title={g.visible ?? true ? 'Ocultar foto' : 'Mostrar foto'}
+                >
+                  {g.visible ?? true ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+                <button 
+                  onClick={() => removeGalleryItem(g.id)} 
+                  className={`
+                    self-start p-2 rounded-lg transition-colors flex-shrink-0
+                    ${isDeleteMode 
+                      ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md' 
+                      : 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                    }
+                    ${!isDeleteMode ? 'opacity-40' : ''}
+                  `}
+                  title={isDeleteMode ? 'Borrar foto (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
+                  disabled={!isDeleteMode}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

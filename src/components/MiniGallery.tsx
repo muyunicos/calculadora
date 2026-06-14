@@ -102,7 +102,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         <h3 className="font-bold text-slate-800">¿No sabés qué elegir? Inspirate</h3>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
-        {items.map((item, idx) => {
+        {items.filter((item) => item.visible !== false).map((item, idx) => {
           const label = item.title || item.caption;
           const displaySheets = extractSheetsFromCode(item.order);
           const pricing = getPricing(item.order, displaySheets);

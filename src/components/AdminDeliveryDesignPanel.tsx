@@ -46,23 +46,23 @@ export const AdminDeliveryDesignPanel: React.FC<AdminDeliveryDesignPanelProps> =
       </h2>
 
       {/* Sub-pestañas */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex cl-gap-md cl-mb-lg">
         <button
           onClick={() => setActiveSubTab('delivery')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+          className={`flex items-center cl-gap-md px-4 py-2 cl-rounded-md font-medium text-sm cl-transition-all ${
             activeSubTab === 'delivery'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'cl-tab-active'
+              : 'cl-bg-slate-100 cl-text-texto cl-tab-inactive'
           }`}
         >
           <Package className="w-4 h-4" /> Formato
         </button>
         <button
           onClick={() => setActiveSubTab('design')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+          className={`flex items-center cl-gap-md px-4 py-2 cl-rounded-md font-medium text-sm cl-transition-all ${
             activeSubTab === 'design'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'cl-tab-active'
+              : 'cl-bg-slate-100 cl-text-texto cl-tab-inactive'
           }`}
         >
           <Brush className="w-4 h-4" /> Tu Diseño

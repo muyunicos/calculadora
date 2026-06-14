@@ -25,7 +25,8 @@
             "printWear": 30,
             "minCutTime": 2,
             "maxCutTime": 5,
-            "cutWear": 30
+            "cutWear": 30,
+            "visible": true
         },
         {
             "id": "m1",
@@ -38,7 +39,8 @@
             "printWear": 30,
             "minCutTime": 2,
             "maxCutTime": 5,
-            "cutWear": 20
+            "cutWear": 20,
+            "visible": true
         }
     ],
     "shapesCatalog": {
@@ -46,129 +48,154 @@
             {
                 "size": "2,5 cm",
                 "qty": 90,
-                "code": 200
+                "code": 200,
+                "visible": true
             },
             {
                 "size": "3,0 cm",
                 "qty": 60,
-                "code": 201
+                "code": 201,
+                "visible": true
             },
             {
                 "size": "3,5 cm",
                 "qty": 45,
-                "code": 202
+                "code": 202,
+                "visible": true
             },
             {
                 "size": "4,0 cm",
                 "qty": 36,
-                "code": 203
+                "code": 203,
+                "visible": true
             },
             {
                 "size": "5,0 cm",
                 "qty": 21,
-                "code": 204
+                "code": 204,
+                "visible": true
             },
             {
                 "size": "6,0 cm",
                 "qty": 15,
-                "code": 205
+                "code": 205,
+                "visible": true
             },
             {
                 "size": "4,5 cm",
                 "qty": 25,
-                "code": 206
+                "code": 206,
+                "visible": true
             },
             {
                 "size": "8 cm",
                 "qty": 8,
-                "code": 207
+                "code": 207,
+                "visible": true
             },
             {
                 "size": "9 cm",
                 "qty": 6,
-                "code": 208
+                "code": 208,
+                "visible": true
             },
             {
                 "size": "10 cm",
                 "qty": 3,
-                "code": 209
+                "code": 209,
+                "visible": true
             }
         ],
         "Formas": [
             {
                 "size": "7,0 cm",
                 "qty": 10,
-                "code": 300
+                "code": 300,
+                "visible": true
             },
             {
                 "size": "6,5 cm",
                 "qty": 12,
-                "code": 301
+                "code": 301,
+                "visible": true
             },
             {
                 "size": "6,0 cm",
                 "qty": 12,
-                "code": 302
+                "code": 302,
+                "visible": true
             },
             {
                 "size": "5,5 cm",
                 "qty": 14,
-                "code": 303
+                "code": 303,
+                "visible": true
             },
             {
                 "size": "5,0 cm",
                 "qty": 22,
-                "code": 304
+                "code": 304,
+                "visible": true
             },
             {
                 "size": "4,5 cm",
                 "qty": 28,
-                "code": 305
+                "code": 305,
+                "visible": true
             },
             {
                 "size": "4,0 cm",
                 "qty": 36,
-                "code": 306
+                "code": 306,
+                "visible": true
             },
             {
                 "size": "3,5 cm",
                 "qty": 46,
-                "code": 307
+                "code": 307,
+                "visible": true
             },
             {
                 "size": "3,0 cm",
                 "qty": 60,
-                "code": 308
+                "code": 308,
+                "visible": true
             },
             {
                 "size": "2,5 cm",
                 "qty": 92,
-                "code": 309
+                "code": 309,
+                "visible": true
             },
             {
                 "size": "7,5 cm",
                 "qty": 8,
-                "code": 310
+                "code": 310,
+                "visible": true
             },
             {
                 "size": "8,0 cm",
                 "qty": 6,
-                "code": 311
+                "code": 311,
+                "visible": true
             },
             {
                 "size": "8,5 cm",
                 "qty": 6,
-                "code": 312
+                "code": 312,
+                "visible": true
             },
             {
                 "size": "9,0 cm",
                 "qty": 4,
-                "code": 313
+                "code": 313,
+                "visible": true
             },
             {
                 "size": "10,0 cm",
                 "qty": 4,
-                "code": 314
+                "code": 314,
+                "visible": true
             }
         ]
     },
@@ -182,21 +209,24 @@
             "image": "galeria/ejemplo1.svg",
             "title": "Circulares para logos",
             "caption": "Circular en vinilo 3,0 cm. Resistente al agua, ideal para botellas y termos.",
-            "order": "v1.m11.s201.q25.f2.d0"
+            "order": "v1.m11.s201.q25.f2.d0",
+            "visible": true
         },
         {
             "id": "g2",
             "image": "galeria/ejemplo2.svg",
             "title": "Formas troqueladas",
             "caption": "Forma en papel 5,0 cm, troquel individual. Listos para repartir uno por uno.",
-            "order": "v1.m10.s304.q10.f1.d1"
+            "order": "v1.m10.s304.q10.f1.d1",
+            "visible": true
         },
         {
             "id": "g3",
             "image": "galeria/ejemplo3.svg",
             "title": "Etiquetas rectangulares",
             "caption": "Rectangular 5x3 cm en vinilo. Perfecto para packaging y etiquetas de producto.",
-            "order": "v1.m11.r5x3.q50.f0.d0"
+            "order": "v1.m11.r5x3.q50.f0.d0",
+            "visible": true
         }
     ],
     "deliveryOptions": [

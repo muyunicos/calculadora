@@ -4,9 +4,40 @@
  * y evitar conflictos con el tema WordPress/WooCommerce.
  */
 
+/* Variables CSS de la tienda */
+:root {
+  --primario: #2B9FCF;
+  --secundario: #FFD77A;
+  --texto: #277292;
+  --texto-light: #6C6F7A;
+  --fondo: #fbf7f5;
+  --blanco: #FFFFFF;
+  --exito: #a3ffbc;
+  --resaltado: #237FA9;
+  --mu-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --mu-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --mu-shadow-md: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --mu-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+  --mu-radius-sm: 6px;
+  --mu-radius: 12px;
+  --mu-radius-md: 16px;
+  --mu-radius-lg: 20px;
+  --mu-radius-xl: 32px;
+  --mu-radius-full: 9999px;
+  --mu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --mu-transition-fast: all 0.2s ease;
+  --mu-font-display: 'Fredoka One', display, sans-serif;
+  --mu-font-base: Inter, sans-serif;
+  --mu-space-xs: 5px;
+  --mu-space-sm: 10px;
+  --mu-space-md: 20px;
+  --mu-space-lg: 40px;
+  --mu-space-xl: 40px;
+}
+
 #mu-sticker-calculator-root {
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--mu-font-base);
 }
 
 #mu-sticker-calculator-root *,
@@ -25,25 +56,27 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background-color: #2563eb;
+  background-color: var(--primario);
   color: white;
   font-weight: 700;
   font-size: 0.875rem;
   padding: 0.75rem 1rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s, box-shadow 0.2s;
+  border-radius: var(--mu-radius);
+  box-shadow: var(--mu-shadow);
+  transition: var(--mu-transition);
   cursor: pointer;
   border: none;
 }
 
 .cl-button-primary-large:hover {
-  background-color: #3b82f6;
+  background-color: var(--resaltado);
+  transform: translateY(-2px);
+  box-shadow: var(--mu-shadow-lg);
 }
 
 .cl-button-primary-large:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #2563eb, 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 2px var(--primario), var(--mu-shadow);
 }
 
 .cl-button-primary-large:disabled {
@@ -51,6 +84,7 @@
   color: #94a3b8;
   cursor: not-allowed;
   box-shadow: none;
+  transform: none;
 }
 
 /* Botón primario pequeño */
@@ -59,25 +93,27 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background-color: #2563eb;
+  background-color: var(--primario);
   color: white;
   font-weight: 700;
   font-size: 0.875rem;
   padding: 0.625rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
-  transition: background-color 0.2s;
+  border-radius: var(--mu-radius);
+  box-shadow: var(--mu-shadow);
+  transition: var(--mu-transition);
   cursor: pointer;
   border: none;
 }
 
 .cl-button-primary-small:hover {
-  background-color: #1d4ed8;
+  background-color: var(--resaltado);
+  transform: translateY(-1px);
+  box-shadow: var(--mu-shadow-md);
 }
 
 .cl-button-primary-small:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #2563eb;
+  box-shadow: 0 0 0 2px var(--primario);
 }
 
 /* Botón secundario */
@@ -157,19 +193,19 @@
   width: 100%;
   padding: 0.75rem;
   border: 2px solid #cbd5e1;
-  border-radius: 0.75rem;
-  background-color: white;
+  border-radius: var(--mu-radius);
+  background-color: var(--blanco);
   font-weight: 700;
   font-size: 1.125rem;
   text-align: center;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: var(--mu-transition);
+  box-shadow: var(--mu-shadow-sm);
 }
 
 .cl-input-number:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  border-color: var(--primario);
+  box-shadow: 0 0 0 3px rgba(43, 159, 207, 0.2);
 }
 
 /* Input de texto */
@@ -177,16 +213,16 @@
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 2px solid #cbd5e1;
-  border-radius: 0.75rem;
-  background-color: white;
+  border-radius: var(--mu-radius);
+  background-color: var(--blanco);
   font-size: 0.875rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: var(--mu-transition);
 }
 
 .cl-input-text:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  border-color: var(--primario);
+  box-shadow: 0 0 0 3px rgba(43, 159, 207, 0.2);
 }
 
 /* Input range/slider */
@@ -194,7 +230,7 @@
   width: 100%;
   height: 0.5rem;
   background-color: #e2e8f0;
-  border-radius: 9999px;
+  border-radius: var(--mu-radius-full);
   appearance: none;
   cursor: pointer;
 }
@@ -204,7 +240,7 @@
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  background-color: #f59e0b;
+  background-color: var(--secundario);
   cursor: pointer;
 }
 
@@ -212,7 +248,7 @@
   width: 1.25rem;
   height: 1.25rem;
   border-radius: 50%;
-  background-color: #f59e0b;
+  background-color: var(--secundario);
   cursor: pointer;
   border: none;
 }
@@ -222,7 +258,7 @@
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #cbd5e1;
-  border-radius: 0.75rem;
+  border-radius: var(--mu-radius);
   background-color: #f8fafc;
   font-weight: 500;
   font-size: 0.875rem;
@@ -232,8 +268,8 @@
 
 .cl-select:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(43, 159, 207, 0.2);
+  border-color: var(--primario);
 }
 
 /* ============================================
@@ -246,23 +282,23 @@
   flex-direction: column;
   padding: 1rem;
   border: 2px solid #e2e8f0;
-  border-radius: 0.75rem;
-  background-color: white;
-  transition: all 0.2s;
+  border-radius: var(--mu-radius);
+  background-color: var(--blanco);
+  transition: var(--mu-transition);
   cursor: pointer;
   position: relative;
   overflow: hidden;
 }
 
 .cl-option-card:hover {
-  border-color: #93c5fd;
-  background-color: #f8fafc;
+  border-color: var(--primario);
+  background-color: var(--fondo);
 }
 
 .cl-option-card-selected {
-  border-color: #2563eb;
-  background-color: #eff6ff;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-color: var(--primario);
+  background-color: rgba(43, 159, 207, 0.1);
+  box-shadow: var(--mu-shadow);
 }
 
 .cl-option-card-selected::before {
@@ -272,31 +308,31 @@
   left: 0;
   width: 0.25rem;
   height: 100%;
-  background-color: #2563eb;
+  background-color: var(--primario);
 }
 
 /* Botón de opción (tabs, switches) */
 .cl-option-button {
   padding: 0.625rem 1rem;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--mu-radius-sm);
   background-color: transparent;
-  color: #64748b;
+  color: var(--texto-light);
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--mu-transition);
 }
 
 .cl-option-button:hover {
-  color: #334155;
+  color: var(--texto);
   background-color: rgba(0, 0, 0, 0.05);
 }
 
 .cl-option-button-selected {
-  background-color: white;
-  color: #1d4ed8;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background-color: var(--blanco);
+  color: var(--resaltado);
+  box-shadow: var(--mu-shadow-sm);
 }
 
 /* ============================================
@@ -305,32 +341,258 @@
 
 /* Card base */
 .cl-card {
-  background-color: white;
-  border-radius: 1rem;
+  background-color: var(--blanco);
+  border-radius: var(--mu-radius-lg);
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: var(--mu-shadow-sm);
 }
 
 .cl-card-active {
-  border-color: #93c5fd;
+  border-color: var(--primario);
 }
 
 /* Sección/step container */
 .cl-section {
-  background-color: white;
-  border-radius: 1rem;
+  background-color: var(--blanco);
+  border-radius: var(--mu-radius-lg);
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  transition: border-color 0.2s;
+  box-shadow: var(--mu-shadow-sm);
+  transition: var(--mu-transition);
 }
 
 .cl-section-active {
-  border-color: #93c5fd;
+  border-color: var(--primario);
 }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================
+   CLASES DE COLORES DE TIENDA
+   ============================================ */
+
+.cl-text-primario {
+  color: var(--primario);
+}
+
+.cl-bg-primario {
+  background-color: var(--primario);
+}
+
+.cl-text-secundario {
+  color: var(--secundario);
+}
+
+.cl-bg-secundario {
+  background-color: var(--secundario);
+}
+
+.cl-text-texto {
+  color: var(--texto);
+}
+
+.cl-bg-texto {
+  background-color: var(--texto);
+}
+
+.cl-text-resaltado {
+  color: var(--resaltado);
+}
+
+.cl-bg-resaltado {
+  background-color: var(--resaltado);
+}
+
+.cl-text-fondo {
+  color: var(--fondo);
+}
+
+.cl-bg-fondo {
+  background-color: var(--fondo);
+}
+
+/* ============================================
+   CLASES DE LAYOUT
+   ============================================ */
+
+.cl-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cl-flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cl-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.cl-gap-sm {
+  gap: var(--mu-space-sm);
+}
+
+.cl-gap-md {
+  gap: var(--mu-space-md);
+}
+
+.cl-gap-lg {
+  gap: var(--mu-space-lg);
+}
+
+/* ============================================
+   CLASES DE ESPACIADO
+   ============================================ */
+
+.cl-p-sm {
+  padding: var(--mu-space-sm);
+}
+
+.cl-p-md {
+  padding: var(--mu-space-md);
+}
+
+.cl-p-lg {
+  padding: var(--mu-space-lg);
+}
+
+.cl-p-xl {
+  padding: var(--mu-space-xl);
+}
+
+.cl-mb-sm {
+  margin-bottom: var(--mu-space-sm);
+}
+
+.cl-mb-md {
+  margin-bottom: var(--mu-space-md);
+}
+
+.cl-mb-lg {
+  margin-bottom: var(--mu-space-lg);
+}
+
+/* ============================================
+   CLASES DE BORDES
+   ============================================ */
+
+.cl-border-sm {
+  border: 1px solid #e2e8f0;
+}
+
+.cl-border-md {
+  border: 2px solid #cbd5e1;
+}
+
+.cl-rounded-sm {
+  border-radius: var(--mu-radius-sm);
+}
+
+.cl-rounded-md {
+  border-radius: var(--mu-radius);
+}
+
+.cl-rounded-lg {
+  border-radius: var(--mu-radius-lg);
+}
+
+.cl-rounded-xl {
+  border-radius: var(--mu-radius-xl);
+}
+
+/* ============================================
+   CLASES DE FONDOS
+   ============================================ */
+
+.cl-bg-slate-100 {
+  background-color: #f1f5f9;
+}
+
+.cl-bg-blue-50 {
+  background-color: #eff6ff;
+}
+
+.cl-bg-emerald-50 {
+  background-color: #ecfdf5;
+}
+
+.cl-bg-amber-50 {
+  background-color: #fffbeb;
+}
+
+/* ============================================
+   CLASES DE SOMBRAS
+   ============================================ */
+
+.cl-shadow-sm {
+  box-shadow: var(--mu-shadow-sm);
+}
+
+.cl-shadow-md {
+  box-shadow: var(--mu-shadow);
+}
+
+.cl-shadow-lg {
+  box-shadow: var(--mu-shadow-lg);
+}
+
+/* ============================================
+   CLASES DE TRANSICIONES
+   ============================================ */
+
+.cl-transition-all {
+  transition: var(--mu-transition);
+}
+
+.cl-transition-colors {
+  transition: color 0.2s, background-color 0.2s;
+}
+
+/* ============================================
+   CLASES ESPECÍFICAS PARA COMPONENTES
+   ============================================ */
+
+.cl-tab-active {
+  background-color: var(--primario);
+  color: white;
+  box-shadow: var(--mu-shadow);
+}
+
+.cl-tab-inactive {
+  color: var(--texto);
+}
+
+.cl-tab-inactive:hover {
+  background-color: var(--fondo);
+  color: var(--resaltado);
+}
+
+.cl-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--mu-space-md);
+}
+
+.cl-info-box {
+  padding: var(--mu-space-md);
+  border-radius: var(--mu-radius);
+  border: 1px solid #e2e8f0;
+}
+
+.cl-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--mu-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
 
 /* ============================================
    MODO ELIMINACIÓN (DELETE MODE)

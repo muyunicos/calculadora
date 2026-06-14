@@ -18,8 +18,8 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType }[] = [
 
 export const AdminTabs: React.FC<AdminTabsProps> = ({ activeTab, setActiveTab }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-6">
-      <div className="flex flex-wrap gap-2">
+    <div className="bg-white rounded-xl cl-shadow-sm border border-slate-200 cl-p-sm cl-mb-lg">
+      <div className="flex flex-wrap cl-gap-md">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -28,10 +28,10 @@ export const AdminTabs: React.FC<AdminTabsProps> = ({ activeTab, setActiveTab })
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-                ${isActive 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                flex items-center cl-gap-md px-4 py-2.5 cl-rounded-md font-medium text-sm cl-transition-all
+                ${isActive
+                  ? 'cl-tab-active'
+                  : 'cl-tab-inactive'
                 }
               `}
             >

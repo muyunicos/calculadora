@@ -56,7 +56,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
         <div className="mb-6">
           <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Tu Diseño</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {designOptions.filter((opt) => opt.customerVisible !== false).map((opt) => {
+            {designOptions.filter((opt) => opt.visible !== false).map((opt) => {
               const selected = order.designType === opt.id;
               const Icon = opt.id === 'basic' ? Palette : CheckCircle2;
               const hasInfo = !!(opt.description || opt.image);
@@ -100,7 +100,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
         <div className="mb-8">
           <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Entrega</label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {deliveryOptions.map((opt) => {
+            {deliveryOptions.filter((opt) => opt.visible !== false).map((opt) => {
               const selected = order.deliveryFormat === opt.id;
               const hasInfo = !!(opt.description || opt.image);
               return (
@@ -142,22 +142,22 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
         </div>
 
         {/* 3.3 Cantidad (sin default: hay que elegir para ver el precio) */}
-        <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
-          <label className="block text-sm font-bold text-slate-800 mb-1">¿Cuántas planchas necesitás?</label>
-          <p className="text-xs text-slate-500 mb-4">Elegí una cantidad para ver el precio. A más planchas, más barato sale.</p>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+        <div className="cl-bg-slate-50 cl-p-lg cl-rounded-xl cl-border-sm">
+          <label className="block text-sm font-bold text-slate-800 cl-mb-sm">¿Cuántas planchas necesitás?</label>
+          <p className="text-xs text-slate-500 cl-mb-lg">Elegí una cantidad para ver el precio. A más planchas, más barato sale.</p>
+          <div className="grid grid-cols-3 sm:grid-cols-6 cl-gap-md cl-mb-md">
             {[1, 5, 10, 25, 50, 100].map((q) => (
               <button key={q} type="button" onClick={() => setOrder({ ...order, sheetsQty: q })}
-                className={`py-2.5 rounded-xl border-2 font-bold text-sm transition-all ${order.sheetsQty === q ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}>
+                className={`py-2.5 cl-rounded-xl cl-border-md font-bold text-sm cl-transition-all ${order.sheetsQty === q ? 'border-blue-600 cl-bg-blue-50 text-blue-700 cl-shadow-sm' : 'cl-border-sm bg-white text-slate-700 hover:border-blue-300'}`}>
                 {q}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center cl-gap-md">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Otra:</label>
             <input type="number" min="1" value={order.sheetsQty || ''} placeholder="Ej: 12"
               onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) || 0 })}
-              className="w-28 text-center font-bold text-lg bg-white border-2 border-slate-200 text-slate-800 py-2 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
+              className="w-28 text-center font-bold text-lg bg-white cl-border-md text-slate-800 py-2 cl-rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
             <span className="text-xs text-slate-400 font-medium">planchas</span>
           </div>
         </div>
@@ -165,20 +165,20 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
 
       {/* Ajustes Manuales ADMIN */}
       {isAdmin && (
-        <div className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-200 shadow-sm">
-          <h3 className="text-sm font-black text-amber-800 mb-4 flex items-center gap-2 uppercase tracking-wide">
+        <div className="cl-bg-amber-50 cl-p-lg cl-rounded-xl cl-border-md border-amber-200 cl-shadow-sm">
+          <h3 className="text-sm font-black text-amber-800 cl-mb-lg flex items-center cl-gap-md uppercase tracking-wide">
             <ShieldCheck className="w-5 h-5" /> Ajustes Manuales (Solo Admin)
           </h3>
 
           <div className="space-y-5">
-            <div className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm">
-              <div className="flex justify-between mb-2 items-center">
+            <div className="bg-white cl-p-lg cl-rounded-xl cl-border-sm border-amber-100 cl-shadow-sm">
+              <div className="cl-flex-between cl-mb-md items-center">
                 <label className="text-sm font-bold text-slate-700">Complejidad Forzada del Corte</label>
-                <span className="text-xs font-black text-white bg-amber-500 px-2 py-1 rounded-md">
+                <span className="text-xs font-black text-white bg-amber-500 cl-p-sm cl-rounded-md">
                   Nivel {order.complexity} / 10
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mb-3">Afecta el tiempo de corte estimado: ~{results?.baseCutTime?.toFixed(1)} min/plancha.</p>
+              <p className="text-xs text-slate-500 cl-mb-md">Afecta el tiempo de corte estimado: ~{results?.baseCutTime?.toFixed(1)} min/plancha.</p>
               <input type="range" min="1" max="10" value={order.complexity} onChange={(e) => setOrder({ ...order, complexity: parseInt(e.target.value) })} className="cl-input-range" />
             </div>
 

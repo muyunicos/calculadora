@@ -39,39 +39,39 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       <div className="sticky top-6 space-y-6">
 
         {/* Tarjeta Cliente Resumen (Hero Card) */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-8 rounded-3xl shadow-xl border border-slate-700 relative overflow-hidden">
-          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
-          <div className="absolute left-10 -bottom-10 w-32 h-32 bg-blue-400/10 rounded-full blur-xl"></div>
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white cl-p-xl cl-rounded-xl cl-shadow-lg cl-border-sm border-slate-700 relative overflow-hidden">
+          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 cl-rounded-full blur-2xl"></div>
+          <div className="absolute left-10 -bottom-10 w-32 h-32 bg-blue-400/10 cl-rounded-full blur-xl"></div>
 
-          <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6 flex items-center gap-2 relative z-10">
+          <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest cl-mb-lg flex items-center cl-gap-md relative z-10">
             <Calculator className="w-4 h-4" /> Resumen de tu pedido
           </h3>
 
           {!results ? (
             <div className="relative z-10 text-center py-6">
-              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+              <div className="w-14 h-14 mx-auto cl-mb-md cl-rounded-full bg-slate-800 cl-border-sm border-slate-700 cl-flex-center">
                 <Calculator className="w-6 h-6 text-slate-500" />
               </div>
-              <p className="text-slate-100 font-semibold mb-1">Completá los pasos para ver el precio</p>
+              <p className="text-slate-100 font-semibold cl-mb-sm">Completá los pasos para ver el precio</p>
               {missing.length > 0 && (
                 <p className="text-slate-400 text-sm">Te falta elegir: {missing.join(' · ')}.</p>
               )}
             </div>
           ) : (
           <>
-          <div className="space-y-4 mb-8 relative z-10">
-            <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
+          <div className="space-y-4 cl-mb-lg relative z-10">
+            <div className="cl-flex-between cl-border-sm border-slate-700/50 pb-3">
               <span className="text-slate-300 font-medium">Material:</span>
               <span className="text-white text-sm font-semibold text-right max-w-[60%]">{results?.activeMaterial?.name}</span>
             </div>
-            <div className="flex justify-between items-center border-b border-slate-700/50 pb-3">
+            <div className="cl-flex-between cl-border-sm border-slate-700/50 pb-3">
               <span className="text-slate-300 font-medium">Formato:</span>
               <span className="text-white text-sm font-semibold">{order.deliveryFormat === 'sincorte' ? 'Sin Cortar' : (order.deliveryFormat === 'individual' ? 'Troquel Individual' : 'Planchas (Medio corte)')}</span>
             </div>
-            <div className="flex flex-col border-b border-slate-700/50 pb-3">
-              <div className="flex justify-between items-center">
+            <div className="cl-flex-col cl-border-sm border-slate-700/50 pb-3">
+              <div className="cl-flex-between">
                 <span className="text-slate-300 font-medium">Total Stickers:</span>
-                <span className="text-xl font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-slate-600">~{results?.totalStickers ?? 0} unid.</span>
+                <span className="text-xl font-bold text-white bg-slate-800 cl-p-sm cl-rounded-md cl-border-sm border-slate-600">~{results?.totalStickers ?? 0} unid.</span>
               </div>
               {(results?.totalStickers ?? 0) > 0 && (
                 <div className="text-xs text-slate-400 mt-1.5 text-right font-medium">
@@ -80,25 +80,25 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               )}
             </div>
             {(results?.totalStickers ?? 0) > 0 && (
-              <div className="flex justify-between items-center pb-2">
+              <div className="cl-flex-between pb-2">
                 <span className="text-slate-300 font-medium">Valor por unidad:</span>
                 <span className="font-medium text-slate-300">${results?.pricePerSticker?.toLocaleString('es-AR', { maximumFractionDigits: 2 })}</span>
               </div>
             )}
           </div>
 
-          <div className="relative z-10 bg-slate-800/50 p-5 rounded-2xl border border-slate-700 backdrop-blur-sm">
-            <span className="text-slate-400 text-sm font-medium block mb-1">Total Estimado</span>
+          <div className="relative z-10 bg-slate-800/50 cl-p-lg cl-rounded-xl cl-border-sm border-slate-700 backdrop-blur-sm">
+            <span className="text-slate-400 text-sm font-medium block cl-mb-sm">Total Estimado</span>
             <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md">
               ${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
             </div>
           </div>
 
-          <div className="relative z-10 flex gap-3 mt-6">
-            <a href={`?add-to-cart=123&p=${orderCode || ''}`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
+          <div className="relative z-10 flex cl-gap-md mt-6">
+            <a href={`?add-to-cart=123&p=${orderCode || ''}`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md">
               COMPRAR
             </a>
-            <a href={consultLink} target="_blank" rel="noopener noreferrer" className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-4 rounded-xl transition-colors shadow-lg shadow-green-900/50 flex items-center justify-center gap-2">
+            <a href={consultLink} target="_blank" rel="noopener noreferrer" className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-4 cl-rounded-md cl-transition-colors cl-shadow-lg shadow-green-900/50 cl-flex-center cl-gap-md">
               <MessageCircle className="w-5 h-5" />
               <span className="text-sm">CONSULTAR</span>
             </a>

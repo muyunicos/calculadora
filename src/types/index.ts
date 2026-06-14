@@ -32,6 +32,7 @@ export interface Material {
   minCutTime: number;
   maxCutTime: number;
   cutWear: number;
+  visible?: boolean; // Si se muestra al cliente.
 }
 
 export interface ShapeItem {
@@ -44,6 +45,7 @@ export interface ShapeItem {
   description?: string;
   // URL de imagen de ejemplo opcional
   image?: string;
+  visible?: boolean; // Si se muestra al cliente.
 }
 
 // Catálogo de formas: cada categoría (ej. "Circulares", "Formas") -> lista de tamaños.
@@ -115,6 +117,7 @@ export interface GalleryItem {
   title?: string; // Título corto que se ve en la miniatura y arriba en el lightbox.
   caption?: string; // Descripción que se muestra debajo de la foto en el lightbox.
   order: string; // Código de pedido v1 (ej. "v1.m11.s201.q25.f2.d0").
+  visible?: boolean; // Si se muestra al cliente.
 }
 
 // Precios calculados para mostrar en la galería de forma "marketinera": el precio

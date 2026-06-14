@@ -146,7 +146,7 @@ const App = () => {
     });
   };
 
-  const updateMaterial = (id: string, field: string, value: string) =>
+  const updateMaterial = (id: string, field: string, value: string | boolean) =>
     setMaterials((prev) =>
       prev
         ? prev.map((m) =>
@@ -157,8 +157,12 @@ const App = () => {
                     field === 'name' || field === 'description' || field === 'image'
                       ? value
                       : field === 'code'
-                        ? parseInt(value, 10) || 0
-                        : parseFloat(value) || 0,
+                        ? typeof value === 'string' ? parseInt(value, 10) || 0 : value
+                        : field === 'visible'
+                          ? value
+                          : typeof value === 'string'
+                            ? parseFloat(value) || 0
+                            : value,
                 }
               : m,
           )
@@ -194,13 +198,13 @@ const App = () => {
     }
   };
 
-  const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image', value: string) => {
+  const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image' | 'visible', value: string | boolean) => {
     setShapesCatalog((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         [category]: prev[category].map((it, i) =>
-          i === index ? { ...it, [field]: field === 'size' ? value : field === 'description' || field === 'image' ? value : parseInt(value, 10) || 0 } : it,
+          i === index ? { ...it, [field]: field === 'size' || field === 'description' || field === 'image' ? value : field === 'visible' ? value : typeof value === 'string' ? parseInt(value, 10) || 0 : value } : it,
         ),
       };
     });
@@ -317,7 +321,7 @@ const App = () => {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const updateGalleryItem = (id: string, field: keyof GalleryItem, value: string) =>
+  const updateGalleryItem = (id: string, field: keyof GalleryItem, value: string | boolean) =>
     setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, [field]: value } : g)));
 
   const addGalleryItem = () =>

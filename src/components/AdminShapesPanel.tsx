@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
+import { LayoutDashboard, ArrowUp, ArrowDown, Trash2, Eye, EyeOff } from 'lucide-react';
 import type { ShapesCatalog, ShapesShowMoreIndex, Order } from '../types';
 import InfoExtraEditor from './InfoExtraEditor';
 
@@ -7,7 +7,7 @@ interface AdminShapesPanelProps {
   shapesCatalog: ShapesCatalog;
   shapesShowMoreIndex: ShapesShowMoreIndex | null;
   resolveImage: (src: string) => string;
-  updateShapeCatalog: (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image', value: string) => void;
+  updateShapeCatalog: (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image' | 'visible', value: string | boolean) => void;
   addShapeItem: (category: string) => void;
   removeShapeItem: (category: string, index: number, order: Order, orderSetter: (order: Order) => void) => void;
   moveShapeItem: (category: string, index: number, direction: -1 | 1) => void;
@@ -32,8 +32,8 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
 }) => {
   return (
     <div className="cl-card bg-white p-6">
-      <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
-        <LayoutDashboard className="w-6 h-6 text-blue-600" /> Configuración de Formas y Tamaños
+      <h2 className="text-xl font-bold text-slate-800 flex items-center cl-gap-md border-b border-slate-100 pb-4 cl-mb-lg">
+        <LayoutDashboard className="w-6 h-6 cl-text-primario" /> Configuración de Formas y Tamaños
       </h2>
       <p className="text-sm text-slate-500 mb-6">Administra las opciones predefinidas y la cantidad de stickers que entran por hoja A4. Rectangulares se calcula automáticamente. El <strong>código</strong> es un número estable y único que identifica el tamaño en los links compartibles y la galería (no lo reutilices). Cada tamaño puede tener una descripción e imagen opcional.</p>
 
@@ -65,21 +65,30 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
                       <input type="number" value={item.code ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'code', e.target.value)} className="w-16 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center font-mono transition-all" title="Código estable (único)" placeholder="cód." />
                       <input type="text" value={item.size} onChange={(e) => updateShapeCatalog(category, idx, 'size', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Ej: 4,0 cm" />
                       <input type="number" value={item.qty} onChange={(e) => updateShapeCatalog(category, idx, 'qty', e.target.value)} className="w-20 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center transition-all" title="Stickers por hoja" />
-                      <button 
-                        onClick={() => removeShapeItem(category, idx, order, setOrder)} 
-                        className={`
-                          p-2 transition-colors
-                          ${isDeleteMode 
-                            ? 'bg-red-500 text-white hover:bg-red-600 rounded-lg hover:shadow-md' 
-                            : 'text-slate-400 hover:text-red-500'
-                          }
-                          ${!isDeleteMode ? 'opacity-40' : ''}
-                        `}
-                        title={isDeleteMode ? 'Borrar tamaño (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
-                        disabled={!isDeleteMode}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => updateShapeCatalog(category, idx, 'visible', !(item.visible ?? true))}
+                          className={`p-2 rounded-lg transition-colors ${item.visible ?? true ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
+                          title={item.visible ?? true ? 'Ocultar tamaño' : 'Mostrar tamaño'}
+                        >
+                          {item.visible ?? true ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        </button>
+                        <button 
+                          onClick={() => removeShapeItem(category, idx, order, setOrder)} 
+                          className={`
+                            p-2 transition-colors
+                            ${isDeleteMode 
+                              ? 'bg-red-500 text-white hover:bg-red-600 rounded-lg hover:shadow-md' 
+                              : 'text-slate-400 hover:text-red-500'
+                            }
+                            ${!isDeleteMode ? 'opacity-40' : ''}
+                          `}
+                          title={isDeleteMode ? 'Borrar tamaño (modo eliminación activo)' : 'Activa el modo eliminación para borrar'}
+                          disabled={!isDeleteMode}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Info extra unificada (descripción + imagen) */}
