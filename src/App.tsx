@@ -325,12 +325,12 @@ const App = () => {
   const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
   const missing = missingSelections(order, materials, shapesCatalog);
 
-  const shareUrl = buildShareUrl(order, materials, shapesCatalog);
+  const shareUrl = materials && shapesCatalog && deliveryOptions && designOptions ? buildShareUrl(order, materials, shapesCatalog, deliveryOptions, designOptions) : '';
   const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl);
   const whatsappLink = buildWhatsappLink(wpMessage);
   const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl);
   const consultLink = buildWhatsappLink(consultMessage);
-  const orderCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions);
+  const orderCode = materials && shapesCatalog && deliveryOptions && designOptions ? encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions) : null;
 
   // Clase del botón (i) del motor de info (activo = panel desplegado).
   const infoBtnClass = (active: boolean) =>
@@ -907,6 +907,8 @@ const App = () => {
                   config={config}
                   materials={materials}
                   shapesCatalog={shapesCatalog}
+                  deliveryOptions={deliveryOptions}
+                  designOptions={designOptions}
                   onChangeQuantity={(qty) => setOrder({ ...order, sheetsQty: qty })}
                 />
 

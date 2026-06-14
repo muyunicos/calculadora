@@ -1,4 +1,4 @@
-import type { Material, Order, PriceResult, ShapesCatalog } from '../types';
+import type { Material, Order, PriceResult, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 import { encodeOrder, encodeOrderCode } from './orderCodec';
 import { WHATSAPP_PHONE } from './wp';
 
@@ -10,8 +10,10 @@ export function buildShareUrl(
   order: Order,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
+  deliveryOptions?: DeliveryOption[],
+  designOptions?: DesignOption[],
 ): string {
-  const shortCode = encodeOrderCode(order, materials, shapesCatalog);
+  const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
   const code = shortCode ?? (typeof window !== 'undefined' ? encodeOrder(order) : '');
   return `${SHARE_BASE_URL}?o=${code}`;
 }

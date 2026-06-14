@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { TrendingDown } from 'lucide-react';
-import type { Config, Material, Order, ShapesCatalog } from '../types';
+import type { Config, Material, Order, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 import { calcularPrecio } from '../core/priceEngine';
 
 interface PriceTableProps {
@@ -8,6 +8,8 @@ interface PriceTableProps {
   config: Config;
   materials: Material[];
   shapesCatalog: ShapesCatalog;
+  deliveryOptions?: DeliveryOption[];
+  designOptions?: DesignOption[];
   onChangeQuantity?: (qty: number) => void;
 }
 
@@ -18,18 +20,18 @@ const fmt = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 2 
 
 // Tabla de precio por cantidad: muestra cómo baja el precio por unidad al pedir
 // más planchas (los costos fijos se amortizan). Reutiliza el motor puro.
-const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shapesCatalog, onChangeQuantity }) => {
+const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shapesCatalog, deliveryOptions = [], designOptions = [], onChangeQuantity }) => {
   const rows = useMemo(() => {
     // Incluir la cantidad actual del cliente si no está en los escalones.
     const steps = Array.from(new Set([...QTY_STEPS, order.sheetsQty]))
       .filter((n) => n >= 1)
       .sort((a, b) => a - b);
 
-    const base = calcularPrecio({ ...order, sheetsQty: 1 }, config, materials, shapesCatalog);
+    const base = calcularPrecio({ ...order, sheetsQty: 1 }, config, materials, shapesCatalog, deliveryOptions, designOptions);
     const basePerSticker = base?.pricePerSticker || 0;
 
     return steps.map((n) => {
-      const r = calcularPrecio({ ...order, sheetsQty: n }, config, materials, shapesCatalog);
+      const r = calcularPrecio({ ...order, sheetsQty: n }, config, materials, shapesCatalog, deliveryOptions, designOptions);
       const perSticker = r?.pricePerSticker || 0;
       const savingsPct = basePerSticker > 0 ? ((basePerSticker - perSticker) / basePerSticker) * 100 : 0;
       return {

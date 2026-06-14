@@ -18,11 +18,11 @@ export function calcularPrecio(
   // Sin precio hasta que el cliente haya elegido TODAS las opciones (sin defaults).
   if (!isOrderComplete(order, materials, shapesCatalog)) return null;
 
-  const activeMaterial = materials.find((m) => m.id === order.materialId);
+  const activeMaterial = materials?.find((m) => m.id === order.materialId);
   if (!activeMaterial) return null;
 
-  const activeDeliveryOption = deliveryOptions.find((o) => o.id === order.deliveryFormat);
-  const activeDesignOption = designOptions.find((o) => o.id === order.designType);
+  const activeDeliveryOption = deliveryOptions?.find((o) => o.id === order.deliveryFormat);
+  const activeDesignOption = designOptions?.find((o) => o.id === order.designType);
   if (!activeDeliveryOption || !activeDesignOption) return null;
 
   // 1. Cantidades
@@ -152,7 +152,7 @@ export function missingSelections(
 ): string[] {
   const missing: string[] = [];
 
-  if (!order.materialId || !materials.find((m) => m.id === order.materialId)) {
+  if (!order.materialId || !materials?.find((m) => m.id === order.materialId)) {
     missing.push('material');
   }
 

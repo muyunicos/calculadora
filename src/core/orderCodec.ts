@@ -44,7 +44,7 @@ export function encodeOrderCode(
   deliveryOptions: DeliveryOption[],
   designOptions: DesignOption[],
 ): string | null {
-  const material = materials.find((m) => m.id === order.materialId);
+  const material = materials?.find((m) => m.id === order.materialId);
   if (!material || material.code == null) return null;
 
   const parts: string[] = [ORDER_CODE_VERSION, `m${material.code}`];
@@ -60,8 +60,8 @@ export function encodeOrderCode(
     parts.push(`s${item.code}`);
   }
 
-  const deliveryOption = deliveryOptions.find((o) => o.id === order.deliveryFormat);
-  const designOption = designOptions.find((o) => o.id === order.designType);
+  const deliveryOption = deliveryOptions?.find((o) => o.id === order.deliveryFormat);
+  const designOption = designOptions?.find((o) => o.id === order.designType);
   if (!order.sheetsQty || order.sheetsQty < 1 || !deliveryOption || !designOption) return null;
 
   parts.push(`q${order.sheetsQty}`, `f${deliveryOption.code}`, `d${designOption.code}`);
@@ -103,7 +103,7 @@ export function decodeOrderCode(
     const val = token.slice(1);
     switch (key) {
       case 'm': {
-        const material = materials.find((m) => String(m.code) === val);
+        const material = materials?.find((m) => String(m.code) === val);
         if (!material) return null;
         order.materialId = material.id;
         break;
@@ -134,13 +134,13 @@ export function decodeOrderCode(
         order.sheetsQty = parseInt(val, 10) || 0;
         break;
       case 'f': {
-        const deliveryOption = deliveryOptions.find((o) => o.code === parseInt(val, 10));
+        const deliveryOption = deliveryOptions?.find((o) => o.code === parseInt(val, 10));
         if (!deliveryOption) return null;
         order.deliveryFormat = deliveryOption.id;
         break;
       }
       case 'd': {
-        const designOption = designOptions.find((o) => o.code === parseInt(val, 10));
+        const designOption = designOptions?.find((o) => o.code === parseInt(val, 10));
         if (!designOption) return null;
         order.designType = designOption.id;
         break;
