@@ -19,7 +19,8 @@ interface FinalDetailsSelectorProps {
   setInfoOpenDesignId: (id: DesignType | null) => void;
   resolveImage: (src: string) => string;
   activeStep: 1 | 2 | 3;
-  onStepComplete?: () => void;
+  onStepOpen?: () => void;
+  onNavigateToNext?: () => void;
 }
 
 export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
@@ -37,14 +38,15 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
   setInfoOpenDesignId,
   resolveImage,
   activeStep,
-  onStepComplete,
+  onStepOpen,
+  onNavigateToNext,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
   const formatoLabel = deliveryOptions?.find((o) => o.id === order.deliveryFormat)?.label ?? '';
   const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
 
   // Determinar si el paso está completado
-  const isStepComplete = order.designType && order.deliveryFormat && order.sheetsQty > 0;
+  const isStepComplete = !!order.designType && !!order.deliveryFormat && order.sheetsQty > 0;
 
   const isOpen = activeStep === 3;
   const isDone = isStepComplete; // Paso 3 no tiene siguiente, pero muestra completado cuando está listo
@@ -65,7 +67,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
         summary={`${formatoLabel} · ${designLabel} · ${order.sheetsQty} planchas`}
         isOpen={isOpen}
         isDone={isDone}
-        onOpen={() => onStepComplete?.()}
+        onOpen={() => onStepOpen?.()}
       >
         {/* 3.1 Diseño */}
         <div className="mb-6">
@@ -163,7 +165,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
           <div className="grid grid-cols-3 sm:grid-cols-6 cl-gap-md cl-mb-md">
             {[1, 5, 10, 25, 50, 100].map((q) => (
               <button key={q} type="button" onClick={() => setOrder({ ...order, sheetsQty: q })}
-                className={`py-3 sm:py-2.5 cl-rounded-xl cl-border-md font-bold text-sm cl-transition-all active:scale-95 ${order.sheetsQty === q ? 'border-blue-600 cl-bg-blue-50 text-blue-700 cl-shadow-sm' : 'cl-border-sm bg-white text-slate-700 hover:border-blue-300'}`}>
+                className={`py-3 sm:py-2.5 cl-rounded-xl cl-border-md font-bold text-sm cl-transition-all active:scale-95 whitespace-nowrap ${order.sheetsQty === q ? 'border-blue-600 cl-bg-blue-50 text-blue-700 cl-shadow-sm' : 'cl-border-sm bg-white text-slate-700 hover:border-blue-300'}`}>
                 {q}
               </button>
             ))}
@@ -175,6 +177,17 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
               className="w-28 text-center font-bold text-lg bg-white cl-border-md text-slate-800 py-3 sm:py-2 cl-rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
             <span className="text-xs text-slate-400 font-medium">planchas</span>
           </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onNavigateToNext}
+            disabled={!isStepComplete}
+            className="cl-button-primary-small disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Continuar
+          </button>
         </div>
       </StepSection>
 

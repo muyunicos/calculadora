@@ -99,8 +99,9 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
     <div className="cl-card p-4">
       <div className="flex items-center gap-2 mb-3">
         <Images className="w-5 h-5 text-blue-600" />
-        <h3 className="font-bold text-slate-800">¿No sabés qué elegir? Inspirate</h3>
+        <h3 className="font-bold text-slate-800">Ideas (opcional)</h3>
       </div>
+      <p className="text-sm text-slate-500 mb-4">Podés elegir una base para personalizar a tu gusto.</p>
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
         {items.filter((item) => item.visible !== false).map((item, idx) => {
           const label = item.title || item.caption;

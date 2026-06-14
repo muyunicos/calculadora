@@ -15,7 +15,8 @@ interface MaterialSelectorProps {
   setExpandedMaterialId: (id: string | null) => void;
   resolveImage: (src: string) => string;
   activeStep: 1 | 2 | 3;
-  onStepComplete?: () => void;
+  onStepOpen?: () => void;
+  onNavigateToNext?: () => void;
 }
 
 export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
@@ -29,12 +30,13 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
   setExpandedMaterialId,
   resolveImage,
   activeStep,
-  onStepComplete,
+  onStepOpen,
+  onNavigateToNext,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
   const materialName = materials?.find((m) => m.id === materialId)?.name ?? '';
   const isOpen = activeStep === 1;
-  const isDone = !!materialId && activeStep > 1;
+  const isDone = !!materialId;
 
   // Scroll automático cuando se abre este paso
   React.useEffect(() => {
@@ -51,7 +53,7 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
       summary={materialName}
       isOpen={isOpen}
       isDone={isDone}
-      onOpen={() => onStepComplete?.()}
+      onOpen={() => onStepOpen?.()}
     >
       <p className="text-sm text-slate-500 mb-4">Tocá la <Info className="inline w-3.5 h-3.5 -mt-0.5" /> para conocer más sobre cada material.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -108,6 +110,17 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
           {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${materials.length - 2})`}
         </button>
       )}
+
+      <div className="mt-6 flex justify-end">
+        <button 
+          type="button" 
+          onClick={onNavigateToNext}
+          disabled={!materialId}
+          className="cl-button-primary-small disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Continuar
+        </button>
+      </div>
     </StepSection>
   );
 };

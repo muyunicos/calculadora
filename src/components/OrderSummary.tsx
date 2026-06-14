@@ -35,7 +35,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   setOrder,
 }) => {
   return (
-    <div className="lg:col-span-5 relative">
+    <div id="order-summary" className="lg:col-span-5 relative">
       <div className="sticky top-6 space-y-6">
 
         {/* Tarjeta Cliente Resumen (Hero Card) */}

@@ -126,41 +126,45 @@ const App = () => {
     return calcularPrecio(order, config, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
   }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
-  // Manejadores para completar pasos y avanzar en el flujo guiado
-  const handleStep1Complete = () => {
-    if (activeStep === 1 && order.materialId) {
-      setActiveStep(2);
-    } else if (activeStep > 1) {
+  // Detectar el primer paso incompleto y navegar a él
+  const handleNavigateToNext = () => {
+    const step1Complete = !!order.materialId;
+    const step2Complete = order.shapeType && (
+      order.shapeType === 'Rectangulares' 
+        ? (order.customRectW && order.customRectH)
+        : order.sizeIndex >= 0
+    );
+    const step3Complete = order.designType && order.deliveryFormat && order.sheetsQty > 0;
+
+    if (!step1Complete) {
       setActiveStep(1);
-    }
-  };
-
-  const handleStep2Complete = () => {
-    if (activeStep === 2) {
-      const isComplete = order.shapeType && (
-        order.shapeType === 'Rectangulares' 
-          ? (order.customRectW && order.customRectH)
-          : order.sizeIndex >= 0
-      );
-      if (isComplete) {
-        setActiveStep(3);
-      }
-    } else if (activeStep > 2) {
+    } else if (!step2Complete) {
       setActiveStep(2);
-    }
-  };
-
-  const handleStep3Complete = () => {
-    if (activeStep > 3) {
+    } else if (!step3Complete) {
       setActiveStep(3);
+    } else {
+      // Todos los pasos completos, scroll al resumen
+      const summaryElement = document.getElementById('order-summary');
+      if (summaryElement) {
+        const offset = 80;
+        const elementPosition = summaryElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
     }
   };
 
-  // Elegir material y avanzar al paso siguiente (flujo guiado).
+  // Manejadores para abrir pasos específicos
+  const handleStep1Open = () => setActiveStep(1);
+  const handleStep2Open = () => setActiveStep(2);
+  const handleStep3Open = () => setActiveStep(3);
+
+  // Elegir material (sin auto-avance).
   const selectMaterial = (id: string) => {
     setOrder((prev) => ({ ...prev, materialId: id }));
-    // Avanzar al paso 2 después de seleccionar material
-    setTimeout(() => setActiveStep(2), 100);
   };
 
   // --- HANDLERS (Admin) ---
@@ -422,8 +426,7 @@ const App = () => {
   const orderCode = materials && shapesCatalog && deliveryOptions && designOptions ? encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions) : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
-        <div className="max-w-6xl mx-auto space-y-6 pb-28 lg:pb-0">
+    <div className="max-w-6xl mx-auto space-y-6 pb-28 lg:pb-0">
 
           {/* Header Superior Dinámico */}
           <CalculatorHeader
@@ -443,22 +446,6 @@ const App = () => {
           {/* Mini-galería de ejemplos (arriba): cargar un pedido al tocar una foto. */}
           <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} />
 
-          {/* Indicador de progreso de pasos */}
-          <div className="mb-6 px-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Progreso</span>
-              <span className="text-xs font-bold text-blue-600">
-                {Math.min(activeStep, 3)}/3 pasos
-              </span>
-            </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-600 transition-all duration-500 ease-out rounded-full"
-                style={{ width: `${(Math.min(activeStep, 3) / 3) * 100}%` }}
-              />
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
             {/* COLUMNA IZQUIERDA: CONFIGURADOR UI */}
@@ -476,7 +463,8 @@ const App = () => {
                 infoBtnClass={infoBtnClass}
                 resolveImage={resolveImage}
                 activeStep={activeStep}
-                onStepComplete={handleStep1Complete}
+                onStepOpen={handleStep1Open}
+                onNavigateToNext={handleNavigateToNext}
               />
 
               {/* Paso 2: Forma y Tamaño */}
@@ -493,7 +481,8 @@ const App = () => {
                 infoBtnClass={infoBtnClass}
                 resolveImage={resolveImage}
                 activeStep={activeStep}
-                onStepComplete={handleStep2Complete}
+                onStepOpen={handleStep2Open}
+                onNavigateToNext={handleNavigateToNext}
               />
 
               {/* Paso 3: Diseño y Entrega */}
@@ -512,7 +501,8 @@ const App = () => {
                 setInfoOpenDesignId={setInfoOpenDesignId}
                 resolveImage={resolveImage}
                 activeStep={activeStep}
-                onStepComplete={handleStep3Complete}
+                onStepOpen={handleStep3Open}
+                onNavigateToNext={handleNavigateToNext}
               />
             </div>
 
@@ -623,7 +613,6 @@ const App = () => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 

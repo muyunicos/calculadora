@@ -17,9 +17,9 @@ export const infoBtnClass = (active: boolean): string =>
 /**
  * Resolves an image path to a full URL
  * - Leaves absolute URLs and root-relative paths unchanged
- * - Prepends the assets path to relative paths
+ * - Uses relative paths as-is (no longer prepends assets path by default)
+ * - Allows admin to load full URLs directly
  * @param src - The image source path
  * @returns The resolved image URL
  */
-export const resolveImage = (src: string): string =>
-  /^(https?:)?\/\//.test(src) || src.startsWith('/') ? src : `${ASSETS_PATH}/${src}`;
+export const resolveImage = (src: string): string => src;

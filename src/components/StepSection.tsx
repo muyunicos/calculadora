@@ -44,7 +44,7 @@ const StepSection = forwardRef<StepSectionRef, StepSectionProps>(({ index, title
   return (
     <div 
       ref={sectionRef}
-      className={`cl-section ${isOpen ? 'cl-section-active' : ''} ${!isOpen && !isDone ? 'opacity-50' : ''} transition-all duration-300 mb-4`}
+      className={`cl-section ${isOpen ? 'cl-section-active' : ''} transition-all duration-300 mb-4`}
     >
       <button
         type="button"
