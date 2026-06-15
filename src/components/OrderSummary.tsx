@@ -44,8 +44,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
         {/* Tarjeta Cliente Resumen (Hero Card) */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white cl-p-xl cl-rounded-xl cl-shadow-lg cl-border-sm border-slate-700 relative overflow-hidden">
-          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 cl-rounded-full blur-2xl"></div>
-          <div className="absolute left-10 -bottom-10 w-32 h-32 bg-blue-400/10 cl-rounded-full blur-xl"></div>
+          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+          <div className="absolute left-10 -bottom-10 w-32 h-32 bg-blue-400/10 rounded-full blur-xl"></div>
 
           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest cl-mb-lg flex items-center cl-gap-md relative z-10">
             <Calculator className="w-4 h-4" /> Resumen de tu pedido
@@ -53,7 +53,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
           {!results ? (
             <div className="relative z-10 text-center py-6">
-              <div className="w-14 h-14 mx-auto cl-mb-md cl-rounded-full bg-slate-800 cl-border-sm border-slate-700 cl-flex-center">
+              <div className="w-14 h-14 mx-auto cl-mb-md rounded-full bg-slate-800 cl-border-sm border-slate-700 cl-flex-center">
                 <Calculator className="w-6 h-6 text-slate-500" />
               </div>
               <p className="text-slate-100 font-semibold cl-mb-sm">Completá los pasos para ver el precio</p>

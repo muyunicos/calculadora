@@ -26,11 +26,10 @@ export const CalculatorHeader: React.FC<CalculatorHeaderProps> = ({
   saveError = null,
 }) => {
   return (
-    <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6">
+    <div className="flex flex-col md:flex-row justify-between items-center bg-white p-0">
       <div className="flex-1 w-full flex justify-between md:justify-start items-center">
         <div>
-          <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
-            <Package className="w-7 h-7 text-blue-600" />
+          <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2 m-0">
             Cotizá tu pedido
           </h1>
           {isAdmin && <p className="text-emerald-600 text-sm mt-1 flex items-center gap-1"><ShieldCheck className="w-4 h-4" /> Modo Administrador Activo</p>}
