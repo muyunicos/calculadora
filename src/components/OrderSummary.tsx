@@ -64,15 +64,15 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           ) : (
           <>
           <div className="space-y-4 cl-mb-lg relative z-10">
-            <div className="cl-flex-between cl-border-sm border-slate-700/50 pb-3">
+            <div className="cl-flex-between pb-3">
               <span className="text-slate-300 font-medium">Material:</span>
               <span className="text-white text-sm font-semibold text-right max-w-[60%]">{results?.activeMaterial?.name}</span>
             </div>
-            <div className="cl-flex-between cl-border-sm border-slate-700/50 pb-3">
+            <div className="cl-flex-between  pb-3">
               <span className="text-slate-300 font-medium">Formato:</span>
               <span className="text-white text-sm font-semibold">{order.deliveryFormat === 'sincorte' ? 'Sin Cortar' : (order.deliveryFormat === 'individual' ? 'Troquel Individual' : 'Planchas (Medio corte)')}</span>
             </div>
-            <div className="cl-flex-col cl-border-sm border-slate-700/50 pb-3">
+            <div className="cl-flex-col  pb-3">
               <div className="cl-flex-between">
                 <span className="text-slate-300 font-medium">Total Stickers:</span>
                 <span className="text-xl font-bold text-white bg-slate-800 cl-p-sm cl-rounded-md cl-border-sm border-slate-600">~{results?.totalStickers ?? 0} unid.</span>
@@ -85,7 +85,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
             {(results?.totalStickers ?? 0) > 0 && (
               <div className="cl-flex-between pb-2">
-                <span className="text-slate-300 font-medium">Valor por unidad:</span>
+                <span className="text-slate-300 font-medium">Precio por unidad:</span>
                 <span className="font-medium text-slate-300">${results?.pricePerSticker?.toLocaleString('es-AR', { maximumFractionDigits: 2 })}</span>
               </div>
             )}

@@ -38,7 +38,7 @@ const StepSection = forwardRef<StepSectionRef, StepSectionProps>(({ index, title
   const badge = isDone && !isOpen
     ? 'bg-emerald-100 text-emerald-700'
     : isOpen
-      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+      ? 'bg-white shadow-lg shadow-blue-600/30'
       : 'bg-slate-100 text-slate-400';
 
   return (
@@ -49,14 +49,15 @@ const StepSection = forwardRef<StepSectionRef, StepSectionProps>(({ index, title
       <button
         type="button"
         onClick={onOpen}
-        className={`w-full flex items-center gap-3 p-4 sm:p-5 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all duration-300 ${isOpen ? 'bg-white shadow-md' : 'bg-white hover:shadow-sm'}`}
+        className={`w-full flex items-center gap-3 p-4 sm:p-5 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-2xl transition-all duration-300 ${isOpen ? 'shadow-md' : 'bg-white hover:shadow-sm'}`}
+        style={isOpen ? { backgroundColor: 'var(--primario)' } : {}}
         aria-expanded={isOpen}
       >
-        <span className={`w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0 ${badge} transition-all duration-300`}>
+        <span className={`w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0 ${badge} transition-all duration-300`} style={isOpen ? { color: 'var(--resaltado)' } : {}}>
           {isDone && !isOpen ? <CheckCircle2 className="w-4 h-4" /> : index}
         </span>
         <span className="flex-1 min-w-0">
-          <span className={`block font-bold text-sm sm:text-base ${isOpen || isDone ? 'text-slate-800' : 'text-slate-400'}`}>{title}</span>
+          <span className={`block font-bold text-sm sm:text-base ${isOpen ? 'text-white' : isDone ? 'text-slate-800' : 'text-slate-400'}`} style={isOpen ? { color: 'var(--blanco)' } : {}}>{title}</span>
           {!isOpen && isDone && summary && (
             <span className="block text-xs text-slate-500 mt-0.5 truncate">{summary}</span>
           )}

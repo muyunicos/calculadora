@@ -146,6 +146,23 @@ const App = () => {
     return calcularPrecio(order, config, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
   }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
+  // Función reutilizable para hacer scroll al resumen del pedido
+  const scrollToOrderSummary = () => {
+    // Pequeño delay para asegurar que el DOM esté completamente renderizado
+    setTimeout(() => {
+      const summaryElement = document.getElementById('order-summary');
+      if (summaryElement) {
+        const offset = 80;
+        const elementPosition = summaryElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+  };
+
   // Detectar el primer paso incompleto y navegar a él
   const handleNavigateToNext = () => {
     const step1Complete = !!order.materialId;
@@ -165,16 +182,7 @@ const App = () => {
     } else {
       // Todos los pasos completos, contraer el paso actual y scroll al resumen
       setActiveStep(0);
-      const summaryElement = document.getElementById('order-summary');
-      if (summaryElement) {
-        const offset = 80;
-        const elementPosition = summaryElement.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - offset;
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-      }
+      scrollToOrderSummary();
     }
   };
 
@@ -553,21 +561,15 @@ const App = () => {
             />
           </div>
 
-          {/* Barra fija móvil + bottom sheet (solo cliente, < lg) */}
+          {/* Barra fija móvil (solo cliente, < lg) */}
           <MobileSummaryBar
             order={order}
             results={results}
             missing={missing}
-            whatsappLink={whatsappLink}
-            config={config}
-            materials={materials}
-            shapesCatalog={shapesCatalog}
             sizeText={sizeText}
             materialName={materialName}
             formatoLabel={formatoLabel}
             designLabel={designLabel}
-            deliveryOptions={deliveryOptions}
-            designOptions={designOptions}
           />
           </>
         ) : (
