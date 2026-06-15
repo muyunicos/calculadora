@@ -377,6 +377,7 @@
 
 .cl-section-active {
   border-color: var(--primario);
+  border: 2px solid var(--primario);
 }
 
 @tailwind base;
@@ -678,6 +679,7 @@
 
 .cl-shape-selector-button {
   color: #64748b !important;
+  border: 2px solid var(--mu-builder-border-dark);
   background-color: transparent !important;
   transition: var(--mu-transition);
 }
@@ -694,8 +696,8 @@
 
 
 .cl-shape-selector-button-selected {
-  color: #2563eb !important;
-  background-color: white !important;
-  border: 2px solid var(--resaltado);
-  box-shadow: var(--mu-shadow-sm);
+  background-color: var(--primario);
+    border: 2px solid var(--resaltado);
+    box-shadow: var(--mu-shadow-sm);
+    color: var(--blanco);
 }
