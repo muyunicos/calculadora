@@ -172,7 +172,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
         </div>
 
         {/* 3.3 Cantidad (sin default: hay que elegir para ver el precio) */}
-        <div className="cl-bg-slate-50 cl-p-lg cl-rounded-xl cl-border-sm">
+        <div className="cl-bg-slate-50 cl-p-lg  p-0">
           <label className="block text-sm font-bold text-slate-800 cl-mb-sm">¿Cuántas planchas necesitás?</label>
           <p className="text-xs text-slate-500 cl-mb-lg">Elegí una cantidad para ver el precio. A más planchas, más barato sale.</p>
           <div className="grid grid-cols-3 sm:grid-cols-6 cl-gap-md cl-mb-md">

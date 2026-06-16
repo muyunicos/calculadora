@@ -93,7 +93,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             )}
           </div>
 
-          <div className="relative z-10 bg-slate-800/50 cl-p-lg cl-rounded-xl cl-border-sm border-slate-700 backdrop-blur-sm">
+          <div className="relative z-10 bg-slate-800/50 cl-p-sm cl-rounded-xl cl-border-sm border-slate-700 backdrop-blur-sm">
             <span className="text-slate-400 text-sm font-medium block cl-mb-sm">Total Estimado</span>
             <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md">
               ${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
