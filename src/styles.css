@@ -209,6 +209,60 @@
   box-shadow: 0 0 0 3px rgba(43, 159, 207, 0.2);
 }
 
+/* NumberInput increment/decrement buttons */
+.cl-number-input-btn {
+  align-items: center;
+  background-color: var(--blanco);
+  border: unset;
+  border-radius: var(--mu-radius);
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 2.5rem;
+  justify-content: center;
+  transition: var(--mu-transition);
+  width: 2.5rem;
+  padding: 0;
+}
+
+.cl-number-input-btn:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+  color: var(--texto);
+}
+
+.cl-number-input-btn:active:not(:disabled) {
+  background-color: #e2e8f0;
+  transform: scale(0.95);
+}
+
+.cl-number-input-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Mobile-specific styling for better touch targets */
+@media (max-width: 640px) {
+  .cl-number-input-btn {
+    width: 3rem;
+    height: 3rem;
+  }
+}
+
+/* Responsive flex layout for rectangle inputs and A4 visual */
+@media (min-width: 480px) {
+  .cl-flex-row-from-480 {
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 479px) {
+  .cl-flex-row-from-480 {
+    flex-direction: column;
+  }
+}
+
 /* Input de texto */
 .cl-input-text {
   width: 100%;
@@ -519,6 +573,10 @@
 
 .cl-rounded-xl {
   border-radius: var(--mu-radius-xl);
+}
+
+.cl-rounded-full {
+  border-radius: var(--mu-radius-full);
 }
 
 /* ============================================

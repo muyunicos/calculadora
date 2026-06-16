@@ -1,0 +1,68 @@
+/**
+ * CSS para ocultar elementos de WooCommerce en la página del producto Cotizador (ID 27859)
+ * Este CSS debe añadirse en el tema o en un plugin CSS específico para este producto
+ */
+
+/* Solo aplicar al producto específico (Cotizador) */
+body.postid-27859 {
+    /* Ocultar galería de imágenes */
+    .woocommerce-product-gallery {
+        display: none !important;
+    }
+    
+    /* Ocultar resumen del producto (precio, botón agregar al carrito, etc.) */
+    .woocommerce-product-summary {
+        display: none !important;
+    }
+    
+    /* Ocultar summary principal */
+    .summary.entry-summary {
+        display: none !important;
+    }
+    
+    /* Ocultar pestañas de WooCommerce */
+    .woocommerce-tabs .wc-tabs {
+        display: none !important;
+    }
+    
+    /* Ocultar título "Descripción" en el panel de descripción */
+    .woocommerce-Tabs-panel--description h2 {
+        display: none !important;
+    }
+    
+    /* Asegurar que la calculadora ocupe todo el ancho */
+    .woocommerce-Tabs-panel--description {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    #mu-sticker-calculator-root {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Alternativa: aplicar por clase si el producto tiene clase específica */
+.product-cotizador .woocommerce-product-gallery,
+.product-cotizador .summary.entry-summary,
+.product-cotizador .woocommerce-tabs .wc-tabs,
+.product-cotizador .woocommerce-Tabs-panel--description h2 {
+    display: none !important;
+}
+
+/* Ajustes específicos para GeneratePress */
+body.postid-27859 .inside-article {
+    padding: 0;
+}
+
+body.postid-27859 .entry-content {
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    body.postid-27859 .woocommerce-Tabs-panel--description {
+        padding: 0 !important;
+    }
+}

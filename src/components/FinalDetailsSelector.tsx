@@ -3,6 +3,7 @@ import { Info, CheckCircle2, Palette, ShieldCheck } from 'lucide-react';
 import type { Order, DeliveryOption, DesignOption, Config, PriceResult, DeliveryFormat, DesignType } from '../types';
 import StepSection, { StepSectionRef } from './StepSection';
 import OptionInfoPanel from './OptionInfoPanel';
+import { NumberInput } from './NumberInput';
 
 interface FinalDetailsSelectorProps {
   order: Order;
@@ -184,10 +185,13 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
           </div>
           <div className="flex items-center cl-gap-md">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Otra:</label>
-            <input type="number" min="1" value={order.sheetsQty || ''} placeholder="Ej: 12"
-              onChange={(e) => setOrder({ ...order, sheetsQty: parseInt(e.target.value) || 0 })}
-              className="w-28 text-center font-bold text-lg bg-white cl-border-md text-slate-800 py-3 sm:py-2 cl-rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none" />
-            <span className="text-xs text-slate-400 font-medium">planchas</span>
+            <NumberInput
+              value={order.sheetsQty || ''}
+              onChange={(value) => setOrder({ ...order, sheetsQty: parseInt(value) || 0 })}
+              step={1}
+              min={1}
+              className="font-bold text-lg"
+            />
           </div>
         </div>
 

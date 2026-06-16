@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown, MessageCircle } from 'lucide-react';
+import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption } from '../types';
 import PriceTable from './PriceTable';
 
@@ -14,6 +14,7 @@ interface OrderSummaryProps {
   setShowMathDetail: (show: boolean) => void;
   missing: string[];
   sizeText: string;
+  formatoLabel: string;
   orderCode: string | null;
   consultLink: string;
   setOrder: (order: Order | ((prev: Order) => Order)) => void;
@@ -32,6 +33,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   setShowMathDetail,
   missing,
   sizeText,
+  formatoLabel,
   orderCode,
   consultLink,
   setOrder,
@@ -99,11 +101,26 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
 
           <div className="relative z-10 flex cl-gap-md mt-6">
-            <a href={`?add-to-cart=123&p=${orderCode || ''}`} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md">
-              COMPRAR
-            </a>
+            <button
+              onClick={() => {
+                if (results?.finalPrice && typeof window !== 'undefined' && (window as any).addToCartFromCalculator) {
+                  (window as any).addToCartFromCalculator({
+                    price: results.finalPrice,
+                    orderCode: orderCode,
+                    material: results?.activeMaterial?.name,
+                    formato: formatoLabel,
+                    medida: `${order.shapeType} ${sizeText}`,
+                    quantity: results?.totalStickers,
+                    sheets: order.sheetsQty
+                  });
+                }
+              }}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md"
+            >
+              <Package className="w-5 h-5" /> COMPRAR
+            </button>
             <a href={consultLink} target="_blank" rel="noopener noreferrer" className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-4 cl-rounded-md cl-transition-colors cl-shadow-lg shadow-green-900/50 cl-flex-center cl-gap-md">
-              <MessageCircle className="w-5 h-5" />
+              <img src="https://muyunicos.com/wp-content/uploads/2025/10/whatsapp.webp" alt="Contacto por WhatsApp" className="w-5 h-5" />
               <span className="text-sm">CONSULTAR</span>
             </a>
           </div>

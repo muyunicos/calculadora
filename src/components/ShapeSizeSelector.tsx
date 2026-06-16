@@ -3,6 +3,7 @@ import { Info, ChevronUp, ChevronDown, ImageIcon } from 'lucide-react';
 import type { ShapesCatalog, A4Layout, Order } from '../types';
 import StepSection, { StepSectionRef } from './StepSection';
 import OptionInfoPanel from './OptionInfoPanel';
+import { NumberInput } from './NumberInput';
 
 interface ShapeSizeSelectorProps {
   order: Order;
@@ -93,13 +94,13 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
       onOpen={() => onStepOpen?.()}
     >
       {/* Selector de tipo de forma */}
-      <div className="flex cl-gap-md cl-mb-lg cl-p-sm overflow-x-auto">
+      <div className="flex cl-gap-sm cl-mb-lg cl-p-sm overflow-x-auto">
         {['Circulares', 'Rectangulares', 'A Medida'].map((shape) => {
           // Map "A Medida" to "Formas" for shapesCatalog lookup
           const catalogKey = shape === 'A Medida' ? 'Formas' : shape;
           return (
             <button key={shape} onClick={() => handleShapeTypeChange(catalogKey)}
-              className={`flex-1 min-w-[100px] py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all whitespace-nowrap ${order.shapeType === catalogKey ? 'cl-shape-selector-button-selected' : 'cl-shape-selector-button'}`}>
+              className={`flex-1 py-3 sm:py-2.5 px-3 text-sm font-semibold cl-rounded-md cl-transition-all whitespace-nowrap ${order.shapeType === catalogKey ? 'cl-shape-selector-button-selected' : 'cl-shape-selector-button'}`}>
               {shape}
             </button>
           );
@@ -110,22 +111,33 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
       {order.shapeType === 'Rectangulares' ? (
 
         // VISTA PARA RECTANGULARES (Personalizado y Canvas A4)
-        <div className="flex flex-col sm:flex-row cl-gap-lg items-center sm:items-start cl-bg-slate-50 cl-p-lg cl-rounded-xl cl-border-sm">
+        <div className="flex flex-col cl-flex-row-from-480 cl-gap-lg items-center sm:items-start cl-p-lg   p-0">
           <div className="flex-1 space-y-4 w-full">
             <p className="text-sm text-slate-600 font-medium">Ingresá la medida exacta de tu diseño:</p>
             <div className="grid grid-cols-2 cl-gap-md">
               <div>
                 <label className="block text-xs font-bold text-slate-500 cl-mb-sm uppercase">Ancho (cm)</label>
-                <input type="number" min="2" step="0.5" value={order.customRectW} onChange={(e) => handleRectChange('customRectW', e.target.value)} className="cl-input-number py-3 sm:py-2" />
+                <NumberInput
+                  value={order.customRectW}
+                  onChange={(value) => handleRectChange('customRectW', value)}
+                  step={0.5}
+                  min={2}
+                  className="py-3 sm:py-2"
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 cl-mb-sm uppercase">Alto (cm)</label>
-                <input type="number" min="2" step="0.5" value={order.customRectH} onChange={(e) => handleRectChange('customRectH', e.target.value)} className="cl-input-number py-3 sm:py-2" />
+                <NumberInput
+                  value={order.customRectH}
+                  onChange={(value) => handleRectChange('customRectH', value)}
+                  step={0.5}
+                  min={2}
+                  className="py-3 sm:py-2"
+                />
               </div>
             </div>
 
             <div className="cl-bg-blue-50 cl-p-md cl-rounded-xl cl-border-sm flex items-start cl-gap-md mt-4">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div className="text-sm font-bold text-blue-900">Calculador A4 Inteligente</div>
                 

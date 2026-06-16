@@ -10,7 +10,11 @@ module.exports = {
     preflight: false,
   },
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        'xs': '480px',
+      },
+    },
   },
   plugins: [require('tailwindcss-animate')],
 };

@@ -40,7 +40,7 @@ const App = () => {
   const [activeAdminTab, setActiveAdminTab] = useState<'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs'>('gallery');
   const [showMathDetail, setShowMathDetail] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
-  const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(1);
+  const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(0);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
   const [materialsShowMoreIndex, setMaterialsShowMoreIndex] = useState(2);
@@ -102,7 +102,16 @@ const App = () => {
     if (!urlOrder) return;
     urlOrderApplied.current = true;
     const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
-    if (decoded) setOrder(decoded);
+    if (decoded) {
+      setOrder(decoded);
+      // Si el pedido está completo, hacer scroll al resumen
+      const missing = missingSelections(decoded, materials, shapesCatalog);
+      if (missing.length === 0) {
+        setTimeout(() => {
+          scrollToOrderSummary();
+        }, 200);
+      }
+    }
   }, [materials, shapesCatalog, deliveryOptions, designOptions]);
 
   // Sincronizar rectCalcMode con order.rectCalcMode
@@ -542,6 +551,7 @@ const App = () => {
             </div>
 
             {/* COLUMNA DERECHA: RESULTADOS (Ticket) */}
+            <div className="lg:col-span-5">
             <OrderSummary
               order={order}
               config={config}
@@ -553,13 +563,14 @@ const App = () => {
               setShowMathDetail={setShowMathDetail}
               missing={missing}
               sizeText={sizeText}
+              formatoLabel={formatoLabel}
               orderCode={orderCode}
               consultLink={consultLink}
               setOrder={setOrder}
               deliveryOptions={deliveryOptions}
               designOptions={designOptions}
             />
-          </div>
+            </div>
 
           {/* Barra fija móvil (solo cliente, < lg) */}
           <MobileSummaryBar
@@ -570,7 +581,9 @@ const App = () => {
             materialName={materialName}
             formatoLabel={formatoLabel}
             designLabel={designLabel}
+            orderCode={orderCode}
           />
+          </div>
           </>
         ) : (
 

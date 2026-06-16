@@ -1,6 +1,5 @@
 import type { Material, Order, PriceResult, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 import { encodeOrder, encodeOrderCode } from './orderCodec';
-import { WHATSAPP_PHONE } from './wp';
 
 const SHARE_BASE_URL = 'https://muyunicos.com/calculadora';
 
@@ -64,5 +63,5 @@ ${shareUrl}`;
 }
 
 export function buildWhatsappLink(message: string): string {
-  return `https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(message)}`;
+  return `https://api.whatsapp.com/send?phone=542235331311&text=${encodeURIComponent(message)}`;
 }

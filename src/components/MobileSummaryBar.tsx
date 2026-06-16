@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Package, ChevronUp } from 'lucide-react';
+import { Package, ChevronUp, MessageCircle } from 'lucide-react';
 import type { Order, PriceResult } from '../types';
 
 interface MobileSummaryBarProps {
@@ -10,6 +10,7 @@ interface MobileSummaryBarProps {
   materialName: string;
   formatoLabel: string;
   designLabel: string;
+  orderCode?: string | null;
 }
 
 const money = (n?: number) => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -39,6 +40,7 @@ const scrollToSummary = () => {
 const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
   order, results, missing,
   sizeText, materialName, formatoLabel, designLabel,
+  orderCode = null,
 }) => {
   const isComplete = !!results;
   const [isVisible, setIsVisible] = useState(true);
@@ -99,13 +101,28 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
             </div>
 
             {isComplete ? (
+              <button
+                onClick={() => {
+                  if (results?.finalPrice && typeof window !== 'undefined' && (window as any).addToCartFromCalculator) {
+                    (window as any).addToCartFromCalculator({
+                      price: results.finalPrice,
+                      orderCode: orderCode,
+                      material: materialName,
+                      formato: formatoLabel,
+                      medida: `${order.shapeType} ${sizeText}`,
+                      quantity: results?.totalStickers,
+                      sheets: order.sheetsQty
+                    });
+                  }
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                <Package className="w-4 h-4" /> COMPRAR
+              </button>
+            ) : (
               <button onClick={scrollToSummary} className="cl-button-primary-large">
                 <Package className="w-4 h-4" /> Detalle
               </button>
-            ) : (
-              <span className="cl-button-disabled">
-                <Package className="w-4 h-4" /> Detalle
-              </span>
             )}
           </div>
         </div>
