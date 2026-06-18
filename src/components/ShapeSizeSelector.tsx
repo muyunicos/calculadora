@@ -223,7 +223,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                     </div>
 
                     {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
-                    <div className="font-bold">{s.size}</div>
+                    <div className="font-bold text-slate-500">{s.size}</div>
                     <div className="text-xs mt-0.5 font-medium text-slate-500">{s.qty} uni/plancha</div>
                   </button>
                   {hasInfo && (

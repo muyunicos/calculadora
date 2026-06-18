@@ -4,14 +4,14 @@
         "monthlySalary": 1500000,
         "weeklyHours": 38,
         "hourlyRate": 9000,
-        "packagingCost": 30,
+        "packagingCost": 20,
         "wasteMargin": 5,
-        "profitMargin": 100,
-        "timeCustomerService": 15,
+        "profitMargin": 40,
+        "timeCustomerService": 5,
         "timeDelivery": 5,
         "timeDesignBasic": 10,
-        "timeDesignCustom": 45,
-        "galleryRefSheets": 10
+        "timeDesignCustom": 30,
+        "galleryRefSheets": 11
     },
     "materials": [
         {
@@ -19,13 +19,13 @@
             "code": 10,
             "name": "Papel Adhesivo Fotográfico",
             "description": "Acabado brillante y colores vivos. Ideal para uso en interior (agendas, cuadernos, packaging). Editá este texto desde el panel Admin.",
-            "sheetCost": 200,
-            "printTime": 2,
+            "sheetCost": 350,
+            "printTime": 1,
             "inkCost": 70,
             "printWear": 30,
             "minCutTime": 2,
-            "maxCutTime": 5,
-            "cutWear": 30,
+            "maxCutTime": 6,
+            "cutWear": 50,
             "visible": true
         },
         {
@@ -33,13 +33,13 @@
             "code": 11,
             "name": "Vinilo Adhesivo Blanco",
             "description": "Resistente al agua y a roces, adhesivo fuerte. Ideal para exterior, botellas, autos y termos. Editá este texto desde el panel Admin.",
-            "sheetCost": 600,
-            "printTime": 3,
+            "sheetCost": 850,
+            "printTime": 2,
             "inkCost": 70,
             "printWear": 30,
             "minCutTime": 2,
-            "maxCutTime": 5,
-            "cutWear": 20,
+            "maxCutTime": 6,
+            "cutWear": 50,
             "visible": true
         }
     ],
@@ -227,6 +227,13 @@
             "caption": "Círculos adhesivos de 3cm. Perfecto para packaging y etiquetas de emprendimientos con logo.",
             "order": "v1.m10.s30.q5.f1.d0",
             "visible": true
+        },
+        {
+            "id": "g1781795842620",
+            "image": "",
+            "title": "Etiquetas de condimentos",
+            "caption": "Etiquetas circulares de 6cm para frascos en vinilo.",
+            "order": "v1.m11.s60.q2.f1.d0"
         }
     ],
     "deliveryOptions": [
