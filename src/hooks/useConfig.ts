@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
-import { validateAppData } from '../core/validation';
+import { validateAppData, normalizeAppData } from '../core/validation';
 import { useToast } from '../components/ToastProvider';
 
 export interface UseConfigResult {
@@ -59,15 +59,17 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
           throw new Error(validation.error);
         }
         const validated = validation.data;
-        setConfig(validated.config);
-        setMaterials(validated.materials);
-        setShapesCatalog(validated.shapesCatalog);
-        setShapesShowMoreIndex(validated.shapesShowMoreIndex || {});
-        if (Array.isArray(validated.gallery)) setGallery(validated.gallery);
+        // Normalizar datos: asignar valores por defecto para campos vacíos
+        const normalized = normalizeAppData(validated);
+        setConfig(normalized.config);
+        setMaterials(normalized.materials);
+        setShapesCatalog(normalized.shapesCatalog);
+        setShapesShowMoreIndex(normalized.shapesShowMoreIndex || {});
+        if (Array.isArray(normalized.gallery)) setGallery(normalized.gallery);
         // Presentación de entrega/diseño: si el archivo no la trae (deploys
         // viejos), se completa con los defaults para no romper la vista cliente.
-        setDeliveryOptions(resolveDeliveryOptions(validated.deliveryOptions));
-        setDesignOptions(resolveDesignOptions(validated.designOptions));
+        setDeliveryOptions(resolveDeliveryOptions(normalized.deliveryOptions));
+        setDesignOptions(resolveDesignOptions(normalized.designOptions));
       })
       .catch((err: unknown) => {
         if (cancelled) return;

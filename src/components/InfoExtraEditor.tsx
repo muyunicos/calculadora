@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ImagePlus, Plus } from 'lucide-react';
+import { ImagePlus, Plus, Upload } from 'lucide-react';
 
 interface InfoExtraEditorProps {
   description?: string;
@@ -28,6 +28,38 @@ const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
 }) => {
   const hasContent = !!description || !!image;
   const [open, setOpen] = useState(hasContent);
+
+  // Función para abrir la galería de WordPress
+  const openWordPressMediaLibrary = () => {
+    // Verificar si estamos en el entorno de WordPress y si wp.media está disponible
+    if (typeof window !== 'undefined' && (window as any).wp && (window as any).wp.media) {
+      const mediaUploader = (window as any).wp.media({
+        title: 'Seleccionar imagen',
+        button: { text: 'Usar esta imagen' },
+        multiple: false,
+        library: {
+          type: 'image'
+        }
+      });
+
+      mediaUploader.on('select', () => {
+        const attachment = mediaUploader.state().get('selection').first().toJSON();
+        if (attachment && attachment.url) {
+          // Usar la URL de tamaño completo o la URL del tamaño seleccionado
+          const imageUrl = attachment.sizes && attachment.sizes.full ? attachment.sizes.full.url : attachment.url;
+          onChange('image', imageUrl);
+        }
+      });
+
+      mediaUploader.open();
+    } else {
+      // Fallback: abrir el media uploader de WordPress en una nueva ventana
+      const mediaUrl = '/wp-admin/media-upload.php?post_id=' + (typeof window !== 'undefined' ? (window as any).WP_STICKER_DATA?.productId || 0 : 0);
+      if (typeof window !== 'undefined') {
+        window.open(mediaUrl, '_blank', 'width=800,height=600');
+      }
+    }
+  };
 
   if (!open && !hasContent) {
     return (
@@ -58,28 +90,40 @@ const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
       </div>
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">URL imagen (opcional)</label>
-        <div className="flex items-start gap-3">
-          <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
-            {preview ? (
-              <img
-                src={preview}
-                alt="Vista previa"
-                className="w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget.style.display = 'none'); }}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-3">
+            <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+              {preview ? (
+                <img
+                  src={preview}
+                  alt="Vista previa"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget.style.display = 'none'); }}
+                />
+              ) : (
+                <ImagePlus className="w-5 h-5 text-slate-400" />
+              )}
+            </div>
+            <div className="flex-1 flex gap-2">
+              <input
+                type="text"
+                value={image ?? ''}
+                onChange={(e) => onChange('image', e.target.value)}
+                placeholder={imagePlaceholder}
+                className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all"
               />
-            ) : (
-              <ImagePlus className="w-5 h-5 text-slate-400" />
-            )}
+              <button
+                type="button"
+                onClick={openWordPressMediaLibrary}
+                className="px-3 py-2 bg-blue-50 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition-colors flex items-center gap-2 flex-shrink-0"
+                title="Abrir galería de WordPress"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <input
-            type="text"
-            value={image ?? ''}
-            onChange={(e) => onChange('image', e.target.value)}
-            placeholder={imagePlaceholder}
-            className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all"
-          />
+          <p className="text-[11px] text-slate-400 mt-1">La foto se amplía al tocarla en la vista cliente.</p>
         </div>
-        <p className="text-[11px] text-slate-400 mt-1">La foto se amplía al tocarla en la vista cliente.</p>
       </div>
     </div>
   );

@@ -73,7 +73,7 @@ const DesignOptionSchema = z.object({
 // Schema de validación para GalleryItem
 const GalleryItemSchema = z.object({
   id: z.string().min(1),
-  image: z.string().min(1),
+  image: z.string().optional(),
   title: z.string().optional(),
   caption: z.string().optional(),
   order: z.string().min(1),
@@ -111,4 +111,51 @@ export function validateAppData(data: unknown): { success: true; data: Validated
     return `${path}: ${issue.message}`;
   }).join(', ');
   return { success: false, error: `Validación fallida: ${errorMessages}` };
+}
+
+// Función para normalizar datos de configuración y asignar valores por defecto
+export function normalizeAppData(data: ValidatedAppData): ValidatedAppData {
+  const DEFAULT_IMAGE = 'assets/images/default.webp';
+  
+  // Normalizar galería: asignar imagen por defecto si está vacía
+  const normalizedGallery = data.gallery?.map(item => ({
+    ...item,
+    image: item.image && item.image.trim() !== '' ? item.image : DEFAULT_IMAGE
+  })) || [];
+
+  // Normalizar materiales: asignar imagen por defecto si está vacía
+  const normalizedMaterials = data.materials.map(material => ({
+    ...material,
+    image: material.image && material.image.trim() !== '' ? material.image : DEFAULT_IMAGE
+  }));
+
+  // Normalizar shapes: asignar imagen por defecto si está vacía
+  const normalizedShapesCatalog: Record<string, typeof data.shapesCatalog[keyof typeof data.shapesCatalog]> = {};
+  for (const [key, shapes] of Object.entries(data.shapesCatalog)) {
+    normalizedShapesCatalog[key] = shapes.map(shape => ({
+      ...shape,
+      image: shape.image && shape.image.trim() !== '' ? shape.image : DEFAULT_IMAGE
+    }));
+  }
+
+  // Normalizar deliveryOptions: asignar imagen por defecto si está vacía
+  const normalizedDeliveryOptions = data.deliveryOptions?.map(option => ({
+    ...option,
+    image: option.image && option.image.trim() !== '' ? option.image : DEFAULT_IMAGE
+  }));
+
+  // Normalizar designOptions: asignar imagen por defecto si está vacía
+  const normalizedDesignOptions = data.designOptions?.map(option => ({
+    ...option,
+    image: option.image && option.image.trim() !== '' ? option.image : DEFAULT_IMAGE
+  }));
+
+  return {
+    ...data,
+    materials: normalizedMaterials,
+    shapesCatalog: normalizedShapesCatalog,
+    gallery: normalizedGallery,
+    deliveryOptions: normalizedDeliveryOptions,
+    designOptions: normalizedDesignOptions,
+  };
 }

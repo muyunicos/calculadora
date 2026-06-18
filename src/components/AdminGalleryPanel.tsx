@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Trash2, ImageIcon, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, ImageIcon, Eye, EyeOff, Upload } from 'lucide-react';
 import type { GalleryItem, Order } from '../types';
 
 interface AdminGalleryPanelProps {
@@ -23,6 +23,37 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
   order,
   isDeleteMode = false,
 }) => {
+  // Función para abrir la galería de WordPress
+  const openWordPressMediaLibrary = (galleryItemId: string) => {
+    // Verificar si estamos en el entorno de WordPress y si wp.media está disponible
+    if (typeof window !== 'undefined' && (window as any).wp && (window as any).wp.media) {
+      const mediaUploader = (window as any).wp.media({
+        title: 'Seleccionar imagen para la galería',
+        button: { text: 'Usar esta imagen' },
+        multiple: false,
+        library: {
+          type: 'image'
+        }
+      });
+
+      mediaUploader.on('select', () => {
+        const attachment = mediaUploader.state().get('selection').first().toJSON();
+        if (attachment && attachment.url) {
+          // Usar la URL de tamaño completo o la URL del tamaño seleccionado
+          const imageUrl = attachment.sizes && attachment.sizes.full ? attachment.sizes.full.url : attachment.url;
+          updateGalleryItem(galleryItemId, 'image', imageUrl);
+        }
+      });
+
+      mediaUploader.open();
+    } else {
+      // Fallback: abrir el media uploader de WordPress en una nueva ventana
+      const mediaUrl = '/wp-admin/media-upload.php?post_id=' + (typeof window !== 'undefined' ? (window as any).WP_STICKER_DATA?.productId || 0 : 0);
+      if (typeof window !== 'undefined') {
+        window.open(mediaUrl, '_blank', 'width=800,height=600');
+      }
+    }
+  };
   return (
     <div className="cl-card bg-white p-6">
       <div className="flex flex-col md:flex-row cl-flex-between items-start md:items-center cl-gap-md border-b border-slate-100 pb-4 cl-mb-lg">
@@ -51,7 +82,17 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
               <div className="flex-1 space-y-2">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">URL de la imagen</label>
-                  <input type="text" value={g.image} onChange={(e) => updateGalleryItem(g.id, 'image', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="https://… o galeria/foto1.webp" />
+                  <div className="flex gap-2">
+                    <input type="text" value={g.image} onChange={(e) => updateGalleryItem(g.id, 'image', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" placeholder="https://… o galeria/foto1.webp" />
+                    <button 
+                      onClick={() => openWordPressMediaLibrary(g.id)} 
+                      className="px-3 py-2 bg-blue-50 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition-colors flex items-center gap-2"
+                      title="Abrir galería de WordPress"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span className="text-xs font-medium">Galería</span>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Título (se ve en la miniatura)</label>
