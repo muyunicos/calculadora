@@ -153,6 +153,7 @@ export interface A4Layout {
   renderH: number;
   adjustedW?: number;
   adjustedH?: number;
+  sheetRotated?: boolean; // Indica si la hoja A4 está rotada 90°
 }
 
 export interface PriceResult {

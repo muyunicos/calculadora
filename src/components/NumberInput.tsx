@@ -22,20 +22,40 @@ export const NumberInput: React.FC<NumberInputProps> = ({
 }) => {
   const handleIncrement = () => {
     const currentValue = parseFloat(String(value)) || 0;
-    const newValue = currentValue + step;
-    if (max !== undefined && newValue > max) return;
+    const newValue = parseFloat((currentValue + step).toFixed(1));
+    if (max !== undefined && newValue > max) {
+      // Si el nuevo valor excede el máximo, usar el máximo
+      onChange(String(max));
+      return;
+    }
     onChange(String(newValue));
   };
 
   const handleDecrement = () => {
     const currentValue = parseFloat(String(value)) || 0;
-    const newValue = currentValue - step;
-    if (newValue < min) return;
+    const newValue = parseFloat((currentValue - step).toFixed(1));
+    if (newValue < min) {
+      // Si el nuevo valor es menor al mínimo, usar el mínimo
+      onChange(String(min));
+      return;
+    }
     onChange(String(newValue));
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+    const inputValue = e.target.value;
+    // Permitir el valor tal cual viene, no validar aquí
+    onChange(inputValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      handleIncrement();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      handleDecrement();
+    }
   };
 
   return (
@@ -56,6 +76,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         step={step}
         value={value}
         onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
         disabled={disabled}
         className={`cl-input-number text-center p-0 ${className}`}
       />

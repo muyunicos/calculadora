@@ -12,7 +12,7 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: 'gallery', label: 'Galería', icon: ImageIcon },
   { id: 'materials', label: 'Materiales', icon: Printer },
   { id: 'shapes', label: 'Formas y Tamaños', icon: LayoutDashboard },
-  { id: 'delivery', label: 'Formato y Diseño', icon: Palette },
+  { id: 'delivery', label: 'Formato de Corte y Diseño', icon: Palette },
   { id: 'costs', label: 'Costos y Tiempos', icon: TrendingUp },
 ];
 

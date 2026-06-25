@@ -47,6 +47,46 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
     ? `${order.customRectW}x${order.customRectH}cm`
     : shapesCatalog?.[order.shapeType]?.[order.sizeIndex]?.size || '';
 
+  // Función centralizada para obtener límites según modo
+  const getSheetLimits = () => {
+    return {
+      sheetW: rectCalcMode === 'preciso' ? 20.3 : 21,
+      sheetH: rectCalcMode === 'preciso' ? 27.1 : 29.7,
+    };
+  };
+
+  // Función centralizada para validar y ajustar un valor
+  const validateAndAdjustValue = (value: string, field: 'customRectW' | 'customRectH'): string => {
+    const numValue = parseFloat(value);
+    const { sheetW, sheetH } = getSheetLimits();
+    
+    // Validar mínimo
+    if (numValue < 2 || isNaN(numValue)) {
+      return '2';
+    }
+    
+    // Validar máximo según el otro campo
+    const otherField = field === 'customRectW' ? 'customRectH' : 'customRectW';
+    const otherValue = order[otherField];
+    const otherNum = otherValue ? parseFloat(String(otherValue)) : 0;
+    
+    let maxForField = sheetH;
+    if (otherNum > sheetW) {
+      maxForField = sheetW;
+    }
+    
+    if (numValue > maxForField && Math.abs(numValue - maxForField) > 0.01) {
+      return String(maxForField);
+    }
+    
+    return value;
+  };
+
+  const handleRectChange = (field: 'customRectW' | 'customRectH', value: string) => {
+    const adjustedValue = validateAndAdjustValue(value, field);
+    setOrder({ ...order, [field]: adjustedValue });
+  };
+
   // Determinar si el paso está completado
   const isStepComplete = !!order.shapeType && (
     order.shapeType === 'Rectangulares' 
@@ -78,9 +118,31 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
     }
   };
 
-  const handleRectChange = (field: 'customRectW' | 'customRectH', value: string) => {
-    setOrder({ ...order, [field]: value });
-  };
+  // Ajustar valores automáticamente al cambiar entre modos
+  React.useEffect(() => {
+    const w = parseFloat(String(order.customRectW));
+    const h = parseFloat(String(order.customRectH));
+
+    if (w > 0 || h > 0) {
+      const { sheetW, sheetH } = getSheetLimits();
+      
+      // Ajustar valores si exceden los límites del nuevo modo
+      let newW = order.customRectW;
+      let newH = order.customRectH;
+
+      // Ajustar si excede el ALTO de la hoja (límite máximo)
+      if (w > sheetH) {
+        newW = String(sheetH);
+      }
+      if (h > sheetH) {
+        newH = String(sheetH);
+      }
+
+      if (newW !== order.customRectW || newH !== order.customRectH) {
+        setOrder({ ...order, customRectW: newW, customRectH: newH });
+      }
+    }
+  }, [rectCalcMode, order.customRectW, order.customRectH, setOrder]);
 
 
   return (
@@ -113,8 +175,8 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
         // VISTA PARA RECTANGULARES (Personalizado y Canvas A4)
         <div className="flex flex-col cl-flex-row-from-480 cl-gap-lg items-center sm:items-start cl-p-lg   p-0">
           <div className="flex-1 space-y-4 w-full">
-            <p className="text-sm text-slate-600 font-medium">Ingresá la medida exacta de tu diseño:</p>
-            <div className="grid grid-cols-2 cl-gap-md">
+            <p className="text-sm text-slate-600 font-medium">Ingresá las medidas del sticker:</p>
+            <div className="flex flex-col sm:grid sm:grid-cols-2 cl-gap-md">
               <div>
                 <label className="block text-xs font-bold text-slate-500 cl-mb-sm uppercase">Ancho (cm)</label>
                 <NumberInput
@@ -122,6 +184,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                   onChange={(value) => handleRectChange('customRectW', value)}
                   step={0.5}
                   min={2}
+                  max={rectCalcMode === 'preciso' ? 27.1 : 29.7}
                   className="py-3 sm:py-2"
                 />
               </div>
@@ -132,12 +195,13 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                   onChange={(value) => handleRectChange('customRectH', value)}
                   step={0.5}
                   min={2}
+                  max={rectCalcMode === 'preciso' ? 27.1 : 29.7}
                   className="py-3 sm:py-2"
                 />
               </div>
             </div>
 
-            <div className="cl-bg-blue-50 cl-p-md cl-rounded-xl cl-border-sm flex items-start cl-gap-md mt-4">
+            <div className="cl-bg-blue-50 cl-p-md cl-rounded-xl cl-border-sm flex flex-col sm:flex-row items-start cl-gap-md mt-4">
               <div className="flex-1">
                 <div className="text-sm font-bold text-blue-900">Calculador A4 Inteligente</div>
                 
@@ -159,35 +223,76 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
                 {/* Detalles según el modo */}
                 <div className="mt-2 text-xs text-blue-700">
-                  {rectCalcMode === 'preciso' ? (
-                    <div>Entran <strong>{customRectMath.qty}</strong> unidades de {String(order.customRectW).replace('.', ',')}x{String(order.customRectH).replace('.', ',')}cm por plancha.</div>
+                  {!order.customRectW || !order.customRectH ? (
+                    <div>Ingresá ANCHO y ALTO para calcular.</div>
+                  ) : customRectMath.qty === 0 ? (
+                    <div>Ingresá ANCHO y ALTO válidos para calcular.</div>
                   ) : (
-                    <div>
-                      <div>Entran <strong>{customRectMath.qty}</strong> unidades de {customRectMath.adjustedW?.toFixed(1).replace('.', ',')}x{customRectMath.adjustedH?.toFixed(1).replace('.', ',')}cm por plancha.</div>
-                      <div className="mt-1 text-blue-600">Cada sticker tiene un margen blanco de 5mm.</div>
-                    </div>
+                    <>
+                      {rectCalcMode === 'preciso' ? (
+                        <div>
+                          En modo Preciso{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {String(order.customRectW).replace('.', ',')}x{String(order.customRectH).replace('.', ',')}cm por plancha.
+                        </div>
+                      ) : (
+                        <div>
+                          En modo Económico{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {customRectMath.adjustedW?.toFixed(1).replace('.', ',')}x{customRectMath.adjustedH?.toFixed(1).replace('.', ',')}cm por plancha.
+                          <div className="mt-1 text-blue-600">Cada sticker tiene un margen blanco de 5mm.</div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Representación Visual de la Hoja */}
-          <div className="w-32 h-[180px] bg-white cl-border-md cl-rounded-md cl-shadow-sm relative flex flex-col items-center justify-center cl-p-sm flex-shrink-0">
-            <div className="absolute top-1 left-2 text-[8px] text-slate-400 font-bold uppercase">Hoja A4</div>
-
-            {customRectMath.qty > 0 && (
-              <div className={`relative w-full h-full mt-2 flex items-center justify-center overflow-hidden ${rectCalcMode === 'preciso' ? 'cl-border-sm border-dashed border-slate-200' : ''}`}>
-                <div className="bg-blue-500/20 cl-border-md border-blue-500 flex items-center justify-center cl-shadow-sm"
-                  style={{
-                    width: `${(customRectMath.renderW / 19) * 100}%`,
-                    height: `${(customRectMath.renderH / 27.7) * 100}%`,
-                    maxWidth: '95%', maxHeight: '95%',
-                  }}>
-                  <ImageIcon className="w-4 h-4 text-blue-600/50" />
-                </div>
+              {/* Representación Visual de la Hoja */}
+              <div className="w-32 h-32 relative flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
+                {customRectMath.qty > 0 ? (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    {/* Hoja A4 - dimensiones según rotación, sin transform CSS */}
+                    <div
+                      className="bg-slate-100 cl-border-md cl-rounded-md cl-shadow-sm relative flex flex-col items-center justify-center"
+                      style={{
+                        width: customRectMath.sheetRotated ? '128px' : '88px',
+                        height: customRectMath.sheetRotated ? '88px' : '128px',
+                      }}
+                    >
+                      <div className="absolute top-1 left-2 text-[8px] text-slate-400 font-bold uppercase">Hoja A4</div>
+                      
+                      {/* Línea guía - contenedor del espacio disponible según modo */}
+                      <div
+                        className="relative flex items-center justify-center border-2"
+                        style={{
+                          width: customRectMath.sheetRotated 
+                            ? (rectCalcMode === 'preciso' ? '113px' : '128px')
+                            : (rectCalcMode === 'preciso' ? '85px' : '88px'),
+                          height: customRectMath.sheetRotated 
+                            ? (rectCalcMode === 'preciso' ? '85px' : '88px')
+                            : (rectCalcMode === 'preciso' ? '113px' : '128px'),
+                          borderColor: rectCalcMode === 'preciso' ? '#94a3b8' : '#cbd5e1',
+                          borderStyle: rectCalcMode === 'preciso' ? 'dashed' : 'solid',
+                          borderWidth: rectCalcMode === 'preciso' ? '2px' : '2px',
+                        }}
+                      >
+                        {/* Sticker con proporciones correctas según valores ingresados por usuario */}
+                        {customRectMath.renderW > 0 && customRectMath.renderH > 0 && (
+                          <div
+                            className="bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center"
+                            style={{
+                              width: `${(customRectMath.renderW / (customRectMath.sheetRotated ? (rectCalcMode === 'preciso' ? 27.1 : 29.7) : (rectCalcMode === 'preciso' ? 20.3 : 21))) * (customRectMath.sheetRotated ? (rectCalcMode === 'preciso' ? 113 : 128) : (rectCalcMode === 'preciso' ? 85 : 88))}px`,
+                              height: `${(customRectMath.renderH / (customRectMath.sheetRotated ? (rectCalcMode === 'preciso' ? 20.3 : 21) : (rectCalcMode === 'preciso' ? 27.1 : 29.7))) * (customRectMath.sheetRotated ? (rectCalcMode === 'preciso' ? 85 : 88) : (rectCalcMode === 'preciso' ? 113 : 128))}px`,
+                            }}
+                          >
+                            <ImageIcon className="w-3 h-3 text-blue-600/50" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-400 text-center">Ingresá medidas</div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 

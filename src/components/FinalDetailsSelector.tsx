@@ -122,7 +122,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
 
         {/* 3.2 Corte/Formato */}
         <div className="mb-8">
-          <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Entrega</label>
+          <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">Formato de Corte</label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {deliveryOptions.filter((opt) => opt.visible !== false).map((opt) => {
               const selected = order.deliveryFormat === opt.id;

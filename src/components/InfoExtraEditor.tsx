@@ -13,7 +13,7 @@ interface InfoExtraEditorProps {
 }
 
 // Editor unificado de "info extra" (descripción + foto) para el Admin. Cualquier
-// opción de la app (material, tamaño, formato de entrega, diseño…) lo reutiliza:
+// opción de la app (material, tamaño, formato de corte, diseño…) lo reutiliza:
 // si todavía no hay info, muestra un botón "Agregar info extra" que despliega los
 // campos; si ya hay contenido, los muestra directamente. La foto se previsualiza.
 const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
@@ -29,21 +29,34 @@ const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
   const hasContent = !!description || !!image;
   const [open, setOpen] = useState(hasContent);
 
-  // Función para abrir la galería de WordPress
+  // Función para abrir la galería de WordPress con modal nativo
   const openWordPressMediaLibrary = () => {
     // Verificar si estamos en el entorno de WordPress y si wp.media está disponible
     if (typeof window !== 'undefined' && (window as any).wp && (window as any).wp.media) {
-      const mediaUploader = (window as any).wp.media({
+      const wp = (window as any).wp;
+
+      // Si el frame ya existe, solo abrirlo
+      if (wp.media.frames.calculadoraInfoFrame) {
+        wp.media.frames.calculadoraInfoFrame.open();
+        return;
+      }
+
+      // Crear un nuevo media frame
+      wp.media.frames.calculadoraInfoFrame = wp.media({
         title: 'Seleccionar imagen',
-        button: { text: 'Usar esta imagen' },
-        multiple: false,
+        button: {
+          text: 'Usar esta imagen'
+        },
+        multiple: false, // Permitir solo una imagen
         library: {
           type: 'image'
         }
       });
 
-      mediaUploader.on('select', () => {
-        const attachment = mediaUploader.state().get('selection').first().toJSON();
+      // Cuando se selecciona una imagen
+      wp.media.frames.calculadoraInfoFrame.on('select', function() {
+        const attachment = wp.media.frames.calculadoraInfoFrame.state().get('selection').first().toJSON();
+
         if (attachment && attachment.url) {
           // Usar la URL de tamaño completo o la URL del tamaño seleccionado
           const imageUrl = attachment.sizes && attachment.sizes.full ? attachment.sizes.full.url : attachment.url;
@@ -51,13 +64,11 @@ const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
         }
       });
 
-      mediaUploader.open();
+      // Abrir el modal
+      wp.media.frames.calculadoraInfoFrame.open();
     } else {
-      // Fallback: abrir el media uploader de WordPress en una nueva ventana
-      const mediaUrl = '/wp-admin/media-upload.php?post_id=' + (typeof window !== 'undefined' ? (window as any).WP_STICKER_DATA?.productId || 0 : 0);
-      if (typeof window !== 'undefined') {
-        window.open(mediaUrl, '_blank', 'width=800,height=600');
-      }
+      // Mostrar alerta si no está disponible
+      alert('La galería de WordPress no está disponible. Asegúrate de estar en el entorno de WordPress admin y que el plugin de integración esté activado.');
     }
   };
 
