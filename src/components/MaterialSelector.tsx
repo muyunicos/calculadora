@@ -17,6 +17,7 @@ interface MaterialSelectorProps {
   activeStep: 0 | 1 | 2 | 3;
   onStepOpen?: () => void;
   onNavigateToNext?: () => void;
+  shouldScrollOnMount: boolean;
 }
 
 export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
@@ -32,18 +33,26 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
   activeStep,
   onStepOpen,
   onNavigateToNext,
+  shouldScrollOnMount,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
   const materialName = materials?.find((m) => m.id === materialId)?.name ?? '';
   const isOpen = activeStep === 1;
   const isDone = !!materialId;
+  const hasScrolledRef = React.useRef(false);
 
-  // Scroll automático cuando se abre este paso
+  // Scroll automático cuando se abre este paso (respetando flag de scroll inicial)
   React.useEffect(() => {
     if (isOpen && stepRef.current) {
+      // Si no debe hacer scroll en el mount inicial y aún no ha scrolleado, evitar scroll
+      if (!shouldScrollOnMount && !hasScrolledRef.current) {
+        hasScrolledRef.current = true;
+        return;
+      }
+      // Permitir scroll en casos normales o cuando shouldScrollOnMount es true
       stepRef.current.scrollTo();
     }
-  }, [isOpen]);
+  }, [isOpen, shouldScrollOnMount]);
 
   return (
     <StepSection

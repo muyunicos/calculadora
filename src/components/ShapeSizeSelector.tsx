@@ -22,6 +22,7 @@ interface ShapeSizeSelectorProps {
   onNavigateToNext?: () => void;
   rectCalcMode: 'preciso' | 'economico';
   setRectCalcMode: (mode: 'preciso' | 'economico') => void;
+  shouldScrollOnMount: boolean;
 }
 
 export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
@@ -41,6 +42,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
   onNavigateToNext,
   rectCalcMode,
   setRectCalcMode,
+  shouldScrollOnMount,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
   const sizeText = order.shapeType === 'Rectangulares'
@@ -96,13 +98,20 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
   const isOpen = activeStep === 2;
   const isDone = isStepComplete;
+  const hasScrolledRef = React.useRef(false);
 
-  // Scroll automático cuando se abre este paso
+  // Scroll automático cuando se abre este paso (respetando flag de scroll inicial)
   React.useEffect(() => {
     if (isOpen && stepRef.current) {
+      // Si no debe hacer scroll en el mount inicial y aún no ha scrolleado, evitar scroll
+      if (!shouldScrollOnMount && !hasScrolledRef.current) {
+        hasScrolledRef.current = true;
+        return;
+      }
+      // Permitir scroll en casos normales o cuando shouldScrollOnMount es true
       stepRef.current.scrollTo();
     }
-  }, [isOpen]);
+  }, [isOpen, shouldScrollOnMount]);
 
   // Manejador para seleccionar forma/tamaño y avanzar al paso 3
   const handleShapeTypeChange = (shape: string) => {

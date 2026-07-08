@@ -1,7 +1,7 @@
 import type { Material, Order, PriceResult, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 import { encodeOrder, encodeOrderCode } from './orderCodec';
 
-const SHARE_BASE_URL = 'https://muyunicos.com/calculadora';
+const SHARE_BASE_URL = 'https://muyunicos.com/cotizador';
 
 // Prefiere el código corto y estable (v1.m..s..); si no puede generarse (datos sin
 // `code`), cae al base64 autocontenido para no romper el compartir.

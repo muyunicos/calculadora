@@ -40,7 +40,7 @@ const App = () => {
   const [activeAdminTab, setActiveAdminTab] = useState<'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs'>('gallery');
   const [showMathDetail, setShowMathDetail] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
-  const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(0);
+  const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(1); // Paso 1 abierto por defecto
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
   const [materialsShowMoreIndex, setMaterialsShowMoreIndex] = useState(2);
@@ -52,6 +52,8 @@ const App = () => {
   const [infoOpenDesignId, setInfoOpenDesignId] = useState<DesignType | null>(null);
   // Modo de cálculo para formas rectangulares: 'preciso' (203x271mm) o 'economico' (210x297mm)
   const [rectCalcMode, setRectCalcMode] = useState<'preciso' | 'economico'>('preciso');
+  // Flag para controlar si debe hacer scroll en la primera carga
+  const [shouldScrollOnMount, setShouldScrollOnMount] = useState(false);
 
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
@@ -114,6 +116,35 @@ const App = () => {
     }
   }, [materials, shapesCatalog, deliveryOptions, designOptions]);
 
+  // Determinar paso inicial basado en opciones predefinidas
+  const initialStepDetermined = useRef(false);
+  useEffect(() => {
+    if (initialStepDetermined.current || !materials || !shapesCatalog) return;
+    initialStepDetermined.current = true;
+    
+    // Verificar si hay opciones predefinidas (desde URL)
+    const hasUrlOrder = typeof window !== 'undefined' && 
+      new URLSearchParams(window.location.search).get('o') !== null;
+    
+    if (hasUrlOrder) {
+      // Determinar qué paso abrir basado en las opciones actuales
+      if (!order.materialId) {
+        setActiveStep(1); // Paso 1: Material
+      } else if (!order.shapeType || (order.shapeType === 'Rectangulares' && !order.customRectW)) {
+        setActiveStep(2); // Paso 2: Forma y tamaño
+      } else if (!order.deliveryFormat || !order.designType || order.sheetsQty === 0) {
+        setActiveStep(3); // Paso 3: Detalles finales
+      } else {
+        setActiveStep(0); // Pedido completo, ninguno abierto
+      }
+      setShouldScrollOnMount(true); // Hacer scroll si hay opciones predefinidas
+    } else {
+      // Sin opciones predefinidas: paso 1 abierto, sin scroll
+      setActiveStep(1);
+      setShouldScrollOnMount(false);
+    }
+  }, [materials, shapesCatalog, order]);
+
   // Sincronizar rectCalcMode con order.rectCalcMode
   useEffect(() => {
     if (order.rectCalcMode && order.rectCalcMode !== rectCalcMode) {
@@ -130,6 +161,29 @@ const App = () => {
       return prev;
     });
   }, [rectCalcMode]);
+
+  // --- ACTUALIZAR URL EN TIEMPO REAL CON PARÁMETROS DE PEDIDO ---
+  useEffect(() => {
+    if (typeof window === 'undefined' || !materials || !shapesCatalog) return;
+    
+    // Solo actualizar si hay suficientes datos para generar un código válido
+    const hasBasicData = order.materialId && order.shapeType && 
+      (order.shapeType !== 'Rectangulares' ? order.sizeIndex >= 0 : (order.customRectW && order.customRectH));
+    
+    if (!hasBasicData) return;
+    
+    try {
+      const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+      if (shortCode) {
+        const newUrl = `${window.location.pathname}?o=${shortCode}`;
+        // Actualizar URL sin recargar la página
+        window.history.pushState({ path: newUrl }, '', newUrl);
+      }
+    } catch (error) {
+      // Si falla la generación del código, no actualizar la URL
+      console.debug('No se pudo generar el código de pedido para la URL:', error);
+    }
+  }, [order, materials, shapesCatalog, deliveryOptions, designOptions]);
 
   // --- CALCULADORA DE HOJA A4 PARA RECTANGULARES ---
   const customRectMath: A4Layout = useMemo(() => {
@@ -507,6 +561,7 @@ const App = () => {
                 activeStep={activeStep}
                 onStepOpen={handleStep1Open}
                 onNavigateToNext={handleNavigateToNext}
+                shouldScrollOnMount={shouldScrollOnMount}
               />
 
               {/* Paso 2: Forma y Tamaño */}
@@ -527,6 +582,7 @@ const App = () => {
                 onNavigateToNext={handleNavigateToNext}
                 rectCalcMode={rectCalcMode}
                 setRectCalcMode={setRectCalcMode}
+                shouldScrollOnMount={shouldScrollOnMount}
               />
 
               {/* Paso 3: Diseño y Entrega */}
@@ -547,6 +603,7 @@ const App = () => {
                 activeStep={activeStep}
                 onStepOpen={handleStep3Open}
                 onNavigateToNext={handleNavigateToNext}
+                shouldScrollOnMount={shouldScrollOnMount}
               />
             </div>
 

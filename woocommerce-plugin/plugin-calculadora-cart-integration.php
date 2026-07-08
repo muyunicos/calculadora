@@ -46,8 +46,8 @@ class CalculadoraCartIntegration {
      * Enqueue scripts
      */
     public function enqueue_scripts() {
-        // Cargar en página del producto y del carrito
-        if (is_product() || is_cart()) {
+        // Cargar en página del producto, del carrito y del cotizador
+        if (is_product() || is_cart() || is_page('cotizador')) {
             wp_enqueue_script(
                 'calculadora-cart-integration',
                 plugin_dir_url(__FILE__) . 'cart-integration.js',
