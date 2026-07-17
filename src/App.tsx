@@ -8,14 +8,12 @@ import {
 
 import type { A4Layout, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
-import { decodeOrder, decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
+import { decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
 import { calcularPrecio, autoComplexity, missingSelections, galleryPricing } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildConsultWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
 import { useConfig } from './hooks/useConfig';
-import { useCalculatorState } from './hooks/useCalculatorState';
 import { useAdminState } from './hooks/useAdminState';
-import { useGalleryState } from './hooks/useGalleryState';
 import { CalculatorHeader } from './components/CalculatorHeader';
 import { MaterialSelector } from './components/MaterialSelector';
 import { ShapeSizeSelector } from './components/ShapeSizeSelector';
@@ -64,20 +62,9 @@ const App = () => {
   } = useConfig(isAdmin);
 
   const [order, setOrder] = useState<Order>(() => {
-    // El base64 viejo es autocontenido, así que se puede decodificar al instante
-    // (sin catálogo). El código corto v1 necesita el catálogo y se aplica luego,
+    // El código corto v1 necesita el catálogo y se aplica luego,
     // cuando termina de cargar la config (ver useEffect más abajo).
-    if (typeof window !== 'undefined') {
-      const urlOrder = new URLSearchParams(window.location.search).get('o');
-      if (urlOrder) {
-        try {
-          return decodeOrder(urlOrder);
-        } catch {
-          /* No es base64: puede ser un código v1, se resuelve al cargar la config. */
-        }
-      }
-    }
-    // Sin defaults: todo arranca vacío. El precio aparece recién cuando el
+    // Sin defaults: todo arranca vacío; el precio aparece recién cuando el
     // cliente eligió todas las opciones.
     return {
       shapeType: '',
@@ -166,14 +153,16 @@ const App = () => {
   useEffect(() => {
     if (typeof window === 'undefined' || !materials || !shapesCatalog) return;
     
-    // Solo actualizar si hay suficientes datos para generar un código válido
+    // Solo actualizar si hay suficientes datos básicos para generar código corto
     const hasBasicData = order.materialId && order.shapeType && 
       (order.shapeType !== 'Rectangulares' ? order.sizeIndex >= 0 : (order.customRectW && order.customRectH));
     
     if (!hasBasicData) return;
     
     try {
+      // Generar código corto (ahora acepta configuraciones parciales)
       const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+      
       if (shortCode) {
         const newUrl = `${window.location.pathname}?o=${shortCode}`;
         // Actualizar URL sin recargar la página

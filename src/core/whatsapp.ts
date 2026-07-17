@@ -1,10 +1,9 @@
 import type { Material, Order, PriceResult, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
-import { encodeOrder, encodeOrderCode } from './orderCodec';
+import { encodeOrderCode } from './orderCodec';
 
 const SHARE_BASE_URL = 'https://muyunicos.com/cotizador';
 
-// Prefiere el código corto y estable (v1.m..s..); si no puede generarse (datos sin
-// `code`), cae al base64 autocontenido para no romper el compartir.
+// Genera URL con código corto y estable (v1.m..s..). Acepta configuraciones parciales.
 export function buildShareUrl(
   order: Order,
   materials: Material[],
@@ -15,8 +14,8 @@ export function buildShareUrl(
   adjustedH?: number,
 ): string {
   const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || [], adjustedW, adjustedH);
-  const code = shortCode ?? (typeof window !== 'undefined' ? encodeOrder(order) : '');
-  return `${SHARE_BASE_URL}?o=${code}`;
+  if (!shortCode) return SHARE_BASE_URL; // Fallback si no se puede generar código
+  return `${SHARE_BASE_URL}?o=${shortCode}`;
 }
 
 const formatoLabel = (deliveryFormat: Order['deliveryFormat']): string =>
@@ -26,13 +25,17 @@ const formatoLabel = (deliveryFormat: Order['deliveryFormat']): string =>
       ? 'Troquel Individual'
       : 'Planchas (Medio corte)';
 
+// Función combinada para generar mensajes de WhatsApp
 export function buildWhatsappMessage(
   order: Order,
   results: PriceResult | null,
   sizeText: string,
   shareUrl: string,
+  isConsult: boolean = false,
 ): string {
-  return `Hola! Quería encargar stickers:
+  const intro = isConsult ? 'Hola! Quería consultarte por estos stickers:' : 'Hola! Quería encargar stickers:';
+  
+  return `${intro}
 
 📦 *Material:* ${results?.activeMaterial?.name || ''}
 ✂️ *Formato:* ${formatoLabel(order.deliveryFormat)}
@@ -44,23 +47,13 @@ export function buildWhatsappMessage(
 ${shareUrl}`;
 }
 
-export function buildConsultWhatsappMessage(
+// Alias para compatibilidad con código existente
+export const buildConsultWhatsappMessage = (
   order: Order,
   results: PriceResult | null,
   sizeText: string,
   shareUrl: string,
-): string {
-  return `Hola! Quería consultarte por estos stickers:
-
-📦 *Material:* ${results?.activeMaterial?.name || ''}
-✂️ *Formato:* ${formatoLabel(order.deliveryFormat)}
-📏 *Medida:* ${order.shapeType} ${sizeText}
-🔢 *Cantidad:* ${results?.totalStickers || 0} unid. (${order.sheetsQty} planchas)
-💰 *Total Estimado:* $${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) || 0}
-
-🔗 *Ver detalle del presupuesto:*
-${shareUrl}`;
-}
+): string => buildWhatsappMessage(order, results, sizeText, shareUrl, true);
 
 export function buildWhatsappLink(message: string): string {
   return `https://api.whatsapp.com/send?phone=542235331311&text=${encodeURIComponent(message)}`;

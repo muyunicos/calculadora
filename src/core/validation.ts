@@ -124,12 +124,20 @@ export function normalizeAppData(data: ValidatedAppData): ValidatedAppData {
     image: item.image && item.image.trim() !== '' ? item.image : DEFAULT_IMAGE
   })) || [];
 
+  // Ordenar galería por fecha más reciente primero
+  // Los IDs se generan como g${Date.now()}, así que extraemos el timestamp numérico del ID
+  const sortedGallery = normalizedGallery.sort((a, b) => {
+    const timestampA = parseInt(a.id.replace('g', ''), 10);
+    const timestampB = parseInt(b.id.replace('g', ''), 10);
+    return timestampB - timestampA; // Descendente: más reciente primero
+  });
+
   // NO normalizar materials, shapes, deliveryOptions, designOptions
   // Estos pueden tener image vacío si no hay info adicional
   // Si no hay description ni image, OptionInfoPanel no mostrará nada (comportamiento correcto)
 
   return {
     ...data,
-    gallery: normalizedGallery,
+    gallery: sortedGallery,
   };
 }

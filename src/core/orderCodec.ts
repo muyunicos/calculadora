@@ -1,23 +1,5 @@
 import type { DeliveryFormat, DesignType, Material, Order, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 
-// --- CODIFICACIÓN BASE64 UTF-8 (sin escape/unescape deprecados) ---
-// Produce el mismo base64 que btoa(unescape(encodeURIComponent(...))), por lo que
-// las URLs generadas con la versión anterior siguen siendo compatibles.
-export const encodeOrder = (obj: Order): string => {
-  const bytes = new TextEncoder().encode(JSON.stringify(obj));
-  let binary = '';
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  return btoa(binary);
-};
-
-export const decodeOrder = (b64: string): Order => {
-  const binary = atob(b64);
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return JSON.parse(new TextDecoder().decode(bytes)) as Order;
-};
-
 // --- CÓDIGO DE PEDIDO CORTO Y LEGIBLE (v1) ---
 // Formato: tokens separados por '.', cada uno con una letra-clave + valor.
 //   v1.m11.s201.q25.f2.d0          (material 11, forma/tamaño 201, 25 planchas,
@@ -44,12 +26,13 @@ const roundTo5mm = (cm: number): number => {
 };
 
 // Devuelve null si el pedido no puede representarse (p.ej. material/tamaño sin code).
+// Ahora acepta configuraciones parciales para generar URLs cortas desde el principio.
 export function encodeOrderCode(
   order: Order,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
-  deliveryOptions: DeliveryOption[],
-  designOptions: DesignOption[],
+  deliveryOptions?: DeliveryOption[],
+  designOptions?: DesignOption[],
   adjustedW?: number,
   adjustedH?: number,
 ): string | null {
@@ -77,12 +60,25 @@ export function encodeOrderCode(
     parts.push(`s${item.code}`);
   }
 
-  const deliveryOption = deliveryOptions?.find((o) => o.id === order.deliveryFormat);
-  const designOption = designOptions?.find((o) => o.id === order.designType);
-  if (!order.sheetsQty || order.sheetsQty < 1 || !deliveryOption || !designOption) return null;
-
-  parts.push(`q${order.sheetsQty}`, `f${deliveryOption.code}`, `d${designOption.code}`);
-  if (designOption.isCustomTime) parts.push(`t${order.customDesignTime}`);
+  // Campos opcionales - solo agregar si están disponibles
+  if (order.sheetsQty && order.sheetsQty >= 1) {
+    parts.push(`q${order.sheetsQty}`);
+  }
+  
+  if (deliveryOptions) {
+    const deliveryOption = deliveryOptions?.find((o) => o.id === order.deliveryFormat);
+    if (deliveryOption) {
+      parts.push(`f${deliveryOption.code}`);
+    }
+  }
+  
+  if (designOptions) {
+    const designOption = designOptions?.find((o) => o.id === order.designType);
+    if (designOption) {
+      parts.push(`d${designOption.code}`);
+      if (designOption.isCustomTime) parts.push(`t${order.customDesignTime}`);
+    }
+  }
 
   return parts.join('.');
 }
@@ -92,12 +88,13 @@ const isOrderCode = (s: string): boolean => s.startsWith(`${ORDER_CODE_VERSION}.
 // Reconstruye el Order desde el código corto. La complejidad NO se codifica: se
 // recalcula sola al cargar (autoComplexity), por lo que arranca en un valor neutro.
 // Devuelve null si el código es inválido o referencia opciones inexistentes.
+// Ahora acepta configuraciones parciales (solo material, material+forma, etc).
 export function decodeOrderCode(
   code: string,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
-  deliveryOptions: DeliveryOption[],
-  designOptions: DesignOption[],
+  deliveryOptions?: DeliveryOption[],
+  designOptions?: DesignOption[],
 ): Order | null {
   const tokens = code.split('.');
   if (tokens[0] !== ORDER_CODE_VERSION) return null;
@@ -164,15 +161,21 @@ export function decodeOrderCode(
         order.sheetsQty = parseInt(val, 10) || 0;
         break;
       case 'f': {
-        const deliveryOption = deliveryOptions?.find((o) => o.code === parseInt(val, 10));
-        if (!deliveryOption) return null;
-        order.deliveryFormat = deliveryOption.id;
+        if (deliveryOptions) {
+          const deliveryOption = deliveryOptions?.find((o) => o.code === parseInt(val, 10));
+          if (deliveryOption) {
+            order.deliveryFormat = deliveryOption.id;
+          }
+        }
         break;
       }
       case 'd': {
-        const designOption = designOptions?.find((o) => o.code === parseInt(val, 10));
-        if (!designOption) return null;
-        order.designType = designOption.id;
+        if (designOptions) {
+          const designOption = designOptions?.find((o) => o.code === parseInt(val, 10));
+          if (designOption) {
+            order.designType = designOption.id;
+          }
+        }
         break;
       }
       case 't':
@@ -186,19 +189,15 @@ export function decodeOrderCode(
   return order;
 }
 
-// Decodifica cualquier formato de `?o=`: el código corto v1 (requiere catálogo) o
-// el base64 viejo (autocontenido). Mantiene compatibilidad con links ya compartidos.
+// Decodifica el código corto v1 (requiere catálogo).
+// Devuelve null si el código es inválido o referencia opciones inexistentes.
 export function decodeAnyOrder(
   param: string,
   materials: Material[],
   shapesCatalog: ShapesCatalog,
-  deliveryOptions: DeliveryOption[],
-  designOptions: DesignOption[],
+  deliveryOptions?: DeliveryOption[],
+  designOptions?: DesignOption[],
 ): Order | null {
   if (isOrderCode(param)) return decodeOrderCode(param, materials, shapesCatalog, deliveryOptions, designOptions);
-  try {
-    return decodeOrder(param);
-  } catch {
-    return null;
-  }
+  return null;
 }

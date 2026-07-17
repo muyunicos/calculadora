@@ -83,11 +83,17 @@ class CalculadoraCartIntegration {
         
         $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
         $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
-        $calculator_data = isset($_POST['calculator_data']) ? sanitize_text_field($_POST['calculator_data']) : '';
+        $calculator_data = isset($_POST['calculator_data']) ? $_POST['calculator_data'] : '';
         
         // Verificar que sea el producto correcto
         if ($product_id !== $this->target_product_id) {
             wp_send_json_error(array('error' => 'Invalid product ID'));
+        }
+        
+        // Validar que sea JSON válido antes de procesar
+        $decoded_data = json_decode(stripslashes($calculator_data), true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_send_json_error(array('error' => 'Invalid JSON data: ' . json_last_error_msg()));
         }
         
         // Agregar al carrito
@@ -97,7 +103,7 @@ class CalculadoraCartIntegration {
             0, // variation ID
             array(), // variation data
             array(
-                'calculator_data' => json_decode(stripslashes($calculator_data), true)
+                'calculator_data' => $decoded_data
             )
         );
         
