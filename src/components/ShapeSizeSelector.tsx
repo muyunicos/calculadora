@@ -21,7 +21,6 @@ interface ShapeSizeSelectorProps {
   onStepOpen?: () => void;
   onNavigateToNext?: () => void;
   rectCalcMode: 'preciso' | 'economico';
-  setRectCalcMode: (mode: 'preciso' | 'economico') => void;
   shouldScrollOnMount: boolean;
 }
 
@@ -41,7 +40,6 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
   onStepOpen,
   onNavigateToNext,
   rectCalcMode,
-  setRectCalcMode,
   shouldScrollOnMount,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
@@ -128,6 +126,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
   };
 
   // Ajustar valores automáticamente al cambiar entre modos
+  // OPTIMIZACIÓN: Solo ejecutar cuando cambia rectCalcMode, no en cada cambio de input
   React.useEffect(() => {
     const w = parseFloat(String(order.customRectW));
     const h = parseFloat(String(order.customRectH));
@@ -151,7 +150,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
         setOrder({ ...order, customRectW: newW, customRectH: newH });
       }
     }
-  }, [rectCalcMode, order.customRectW, order.customRectH, setOrder]);
+  }, [rectCalcMode]); // Solo depende de rectCalcMode
 
 
   return (
@@ -217,13 +216,13 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                 {/* Toggle de modo */}
                 <div className="mt-2 flex items-center gap-2">
                   <button
-                    onClick={() => setRectCalcMode('preciso')}
+                    onClick={() => setOrder({ ...order, rectCalcMode: 'preciso' })}
                     className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${rectCalcMode === 'preciso' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
                   >
                     Preciso
                   </button>
                   <button
-                    onClick={() => setRectCalcMode('economico')}
+                    onClick={() => setOrder({ ...order, rectCalcMode: 'economico' })}
                     className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${rectCalcMode === 'economico' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
                   >
                     Económico

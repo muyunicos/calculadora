@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
 import { validateAppData, normalizeAppData } from '../core/validation';
 import { useToast } from '../components/ToastProvider';
+import { useDebounce } from './useDebounce';
 
 export interface UseConfigResult {
   config: Config | null;
@@ -175,19 +176,27 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   // --- DETECCIÓN DE CAMBIOS REALES (dirty flag) ---
   // Compara el estado actual con la snapshot original. Solo se marca como
   // "con cambios" si el admin editó algo de verdad.
+  // OPTIMIZACIÓN: Usamos un solo debounce para todos los datos en lugar de 7 debounces separados.
+  // Esto reduce de 7 timers a 1 solo timer, ahorrando recursos significativamente.
+  const allData = useMemo(() => ({
+    config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions
+  }), [config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions]);
+  
+  const debouncedAllData = useDebounce(allData, 800);
+
   useEffect(() => {
     if (!isLoaded || !originalDataRef.current) return;
     const original = originalDataRef.current;
     const changed =
-      !deepEqual(config, original.config) ||
-      !deepEqual(materials, original.materials) ||
-      !deepEqual(shapesCatalog, original.shapesCatalog) ||
-      !deepEqual(shapesShowMoreIndex, original.shapesShowMoreIndex) ||
-      !deepEqual(gallery, original.gallery) ||
-      !deepEqual(deliveryOptions, original.deliveryOptions) ||
-      !deepEqual(designOptions, original.designOptions);
+      !deepEqual(debouncedAllData.config, original.config) ||
+      !deepEqual(debouncedAllData.materials, original.materials) ||
+      !deepEqual(debouncedAllData.shapesCatalog, original.shapesCatalog) ||
+      !deepEqual(debouncedAllData.shapesShowMoreIndex, original.shapesShowMoreIndex) ||
+      !deepEqual(debouncedAllData.gallery, original.gallery) ||
+      !deepEqual(debouncedAllData.deliveryOptions, original.deliveryOptions) ||
+      !deepEqual(debouncedAllData.designOptions, original.designOptions);
     setHasChanges(changed);
-  }, [config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions, isLoaded]);
+  }, [debouncedAllData, isLoaded]);
 
   // --- GUARDADO EXPLÍCITO (botón "Guardar") ---
   // Solo se ejecuta cuando el admin toca el botón. No hay autoguardado.

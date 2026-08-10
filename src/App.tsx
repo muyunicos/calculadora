@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDebounce } from './hooks/useDebounce';
 import {
   Calculator, Package, Printer, Clock, TrendingUp,
   Scissors, Trash2, Plus, ArrowUp, ArrowDown,
@@ -48,8 +49,6 @@ const App = () => {
   const [infoOpenSizeIndex, setInfoOpenSizeIndex] = useState<number | null>(null);
   const [infoOpenDeliveryId, setInfoOpenDeliveryId] = useState<DeliveryFormat | null>(null);
   const [infoOpenDesignId, setInfoOpenDesignId] = useState<DesignType | null>(null);
-  // Modo de cálculo para formas rectangulares: 'preciso' (203x271mm) o 'economico' (210x297mm)
-  const [rectCalcMode, setRectCalcMode] = useState<'preciso' | 'economico'>('preciso');
   // Flag para controlar si debe hacer scroll en la primera carga
   const [shouldScrollOnMount, setShouldScrollOnMount] = useState(false);
 
@@ -80,6 +79,10 @@ const App = () => {
       rectCalcMode: 'preciso',
     };
   });
+
+  // Modo de cálculo para formas rectangulares: 'preciso' (203x271mm) o 'economico' (210x297mm)
+  // Usamos directamente order.rectCalcMode como fuente de verdad para evitar loops
+  const rectCalcMode = order.rectCalcMode || 'preciso';
 
   // Aplica un código de pedido corto (v1) desde la URL una vez cargado el catálogo
   // (necesario para resolver los `code` de material/tamaño a forma+índice).
@@ -132,36 +135,26 @@ const App = () => {
     }
   }, [materials, shapesCatalog, order]);
 
-  // Sincronizar rectCalcMode con order.rectCalcMode
-  useEffect(() => {
-    if (order.rectCalcMode && order.rectCalcMode !== rectCalcMode) {
-      setRectCalcMode(order.rectCalcMode);
-    }
-  }, [order.rectCalcMode]);
-
-  // Actualizar order.rectCalcMode cuando cambia el toggle
-  useEffect(() => {
-    setOrder((prev) => {
-      if (prev.rectCalcMode !== rectCalcMode) {
-        return { ...prev, rectCalcMode };
-      }
-      return prev;
-    });
-  }, [rectCalcMode]);
-
   // --- ACTUALIZAR URL EN TIEMPO REAL CON PARÁMETROS DE PEDIDO ---
+  // OPTIMIZACIÓN: Usamos debounce para evitar actualizaciones excesivas del historial
+  // cuando el usuario hace cambios rápidos. La URL solo se actualiza cuando el usuario
+  // deja de cambiar opciones por 1000ms (aumentado de 500ms para reducir carga).
+  // Además, solo actualizamos cuando el pedido está completo para evitar operaciones innecesarias.
+  const debouncedOrder = useDebounce(order, 1000);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !materials || !shapesCatalog) return;
     
-    // Solo actualizar si hay suficientes datos básicos para generar código corto
-    const hasBasicData = order.materialId && order.shapeType && 
-      (order.shapeType !== 'Rectangulares' ? order.sizeIndex >= 0 : (order.customRectW && order.customRectH));
+    // Solo actualizar si el pedido está completo (todos los campos requeridos)
+    const isComplete = debouncedOrder.materialId && debouncedOrder.shapeType && 
+      (debouncedOrder.shapeType !== 'Rectangulares' ? debouncedOrder.sizeIndex >= 0 : (debouncedOrder.customRectW && debouncedOrder.customRectH)) &&
+      debouncedOrder.deliveryFormat && debouncedOrder.designType && debouncedOrder.sheetsQty > 0;
     
-    if (!hasBasicData) return;
+    if (!isComplete) return;
     
     try {
-      // Generar código corto (ahora acepta configuraciones parciales)
-      const shortCode = encodeOrderCode(order, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+      // Generar código corto
+      const shortCode = encodeOrderCode(debouncedOrder, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
       
       if (shortCode) {
         const newUrl = `${window.location.pathname}?o=${shortCode}`;
@@ -172,7 +165,7 @@ const App = () => {
       // Si falla la generación del código, no actualizar la URL
       console.debug('No se pudo generar el código de pedido para la URL:', error);
     }
-  }, [order, materials, shapesCatalog, deliveryOptions, designOptions]);
+  }, [debouncedOrder, materials, shapesCatalog, deliveryOptions, designOptions]);
 
   // --- CALCULADORA DE HOJA A4 PARA RECTANGULARES ---
   const customRectMath: A4Layout = useMemo(() => {
@@ -572,7 +565,6 @@ const App = () => {
                 onStepOpen={handleStep2Open}
                 onNavigateToNext={handleNavigateToNext}
                 rectCalcMode={rectCalcMode}
-                setRectCalcMode={setRectCalcMode}
                 shouldScrollOnMount={shouldScrollOnMount}
               />
 
