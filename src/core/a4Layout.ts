@@ -45,12 +45,12 @@ export function calcA4Layout(rawW: number | string, rawH: number | string, mode:
 
   let bestResult: { qty: number; sheetRotated: boolean; cols: number; rows: number; finalW: number; finalH: number } | null = null;
 
-  orientations.forEach((ori) => {
+  for (const ori of orientations) {
     // Calcular cuántos entran del sticker en orientación FIJA
     const cols = Math.floor(ori.sheetW / rectWmm);
     const rows = Math.floor(ori.sheetH / rectHmm);
 
-    if (cols < 1 || rows < 1) return; // No entra en esta orientación
+    if (cols < 1 || rows < 1) continue; // No entra en esta orientación
 
     const qty = cols * rows;
 
@@ -88,7 +88,7 @@ export function calcA4Layout(rawW: number | string, rawH: number | string, mode:
         finalH: finalHmm / 10,
       };
     }
-  });
+  }
 
   if (!bestResult) {
     return { qty: 0, fitType: 'none', renderW: w, renderH: h, sheetRotated: false, adjustedW: w, adjustedH: h };

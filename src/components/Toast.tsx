@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
-import { Toast, ToastType } from './ToastProvider';
+import type { Toast as ToastData, ToastType } from './ToastProvider';
+import { useToast } from './ToastProvider';
 
 interface ToastProps {
-  toast: Toast;
+  toast: ToastData;
   onRemove: (id: string) => void;
 }
 
@@ -30,7 +31,7 @@ const toastStyles: Record<ToastType, { bg: string; icon: any; textColor: string 
   },
 };
 
-export const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
+export const ToastItem: React.FC<ToastProps> = ({ toast, onRemove }) => {
   const { bg, icon: Icon, textColor } = toastStyles[toast.type];
 
   useEffect(() => {
@@ -64,13 +65,13 @@ export const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
 };
 
 export const ToastContainer: React.FC = () => {
-  const { toasts, removeToast } = require('./ToastProvider').useToast();
+  const { toasts, removeToast } = useToast();
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
       <div className="pointer-events-auto flex flex-col gap-2">
         {toasts.map((toast) => (
-          <Toast key={toast.id} toast={toast} onRemove={removeToast} />
+          <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
         ))}
       </div>
     </div>

@@ -9,7 +9,8 @@
     "build:css": "tailwindcss -i src/styles.css -o assets/css/calculadora_stickers.css --minify",
     "watch:css": "tailwindcss -i src/styles.css -o assets/css/calculadora_stickers.css --watch",
     "build": "npm run build:js && npm run build:css",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "reglas": "node scripts/generar-reglas.js"
   },
   "dependencies": {
     "calcustickers": "file:",

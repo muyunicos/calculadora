@@ -6,7 +6,7 @@ import InfoExtraEditor from './InfoExtraEditor';
 interface AdminMaterialsPanelProps {
   materials: Material[];
   resolveImage: (src: string) => string;
-  updateMaterial: (id: string, field: string, value: string) => void;
+  updateMaterial: (id: string, field: string, value: string | boolean) => void;
   addMaterial: (orderSetter: (order: Order) => void) => void;
   removeMaterial: (id: string, order: Order, orderSetter: (order: Order) => void) => void;
   moveMaterial: (index: number, direction: -1 | 1) => void;

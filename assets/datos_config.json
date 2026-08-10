@@ -18,7 +18,7 @@
             "id": "m2",
             "code": 10,
             "name": "Papel Adhesivo Fotográfico",
-            "description": "Acabado brillante y colores vivos. Ideal para uso en interior (agendas, cuadernos, packaging). Editá este texto desde el panel Admin.",
+            "description": "Acabado brillante y colores vivos. Ideal para uso en interior (agendas, cuadernos, packaging).",
             "sheetCost": 350,
             "printTime": 1,
             "inkCost": 70,
@@ -32,7 +32,7 @@
             "id": "m1",
             "code": 11,
             "name": "Vinilo Adhesivo Blanco",
-            "description": "Resistente al agua y a roces, adhesivo fuerte. Ideal para exterior, botellas, autos y termos. Editá este texto desde el panel Admin.",
+            "description": "Resistente al agua y a roces, adhesivo fuerte. Ideal para exterior, botellas, autos y termos.",
             "sheetCost": 850,
             "printTime": 2,
             "inkCost": 70,
@@ -205,11 +205,18 @@
     },
     "gallery": [
         {
-            "id": "g1",
-            "image": "https://muyunicos.com/wp-content/uploads/2026/06/Stickers-formas-4cm-doblecorte.webp",
-            "title": "Formas en Vinilo",
-            "caption": "Formas personalizadas de 4cm en vinilo impermeable con doble corte. Ideal para termos, celulares, notebook, etc.",
-            "order": "v1.m11.s140.q5.f2.d0",
+            "id": "g1781795842620",
+            "image": "https://muyunicos.com/wp-content/themes/generatepress-child/assets/images/default.webp",
+            "title": "Etiquetas de condimentos",
+            "caption": "Etiquetas circulares de 6cm para frascos en vinilo.",
+            "order": "v1.m11.s60.q2.f1.d0"
+        },
+        {
+            "id": "g3",
+            "image": "https://muyunicos.com/wp-content/uploads/2026/06/circulo3cm.webp",
+            "title": "Etiquetas Circulares",
+            "caption": "Círculos adhesivos de 3cm. Perfecto para packaging y etiquetas de emprendimientos con logo.",
+            "order": "v1.m10.s30.q5.f1.d0",
             "visible": true
         },
         {
@@ -221,19 +228,12 @@
             "visible": true
         },
         {
-            "id": "g3",
-            "image": "https://muyunicos.com/wp-content/uploads/2026/06/circulo3cm.webp",
-            "title": "Etiquetas Circulares",
-            "caption": "Círculos adhesivos de 3cm. Perfecto para packaging y etiquetas de emprendimientos con logo.",
-            "order": "v1.m10.s30.q5.f1.d0",
+            "id": "g1",
+            "image": "https://muyunicos.com/wp-content/uploads/2026/06/Stickers-formas-4cm-doblecorte.webp",
+            "title": "Formas en Vinilo",
+            "caption": "Formas personalizadas de 4cm en vinilo impermeable con doble corte. Ideal para termos, celulares, notebook, etc.",
+            "order": "v1.m11.s140.q5.f2.d0",
             "visible": true
-        },
-        {
-            "id": "g1781795842620",
-            "image": "https://muyunicos.com/wp-content/themes/generatepress-child/assets/images/default.webp",
-            "title": "Etiquetas de condimentos",
-            "caption": "Etiquetas circulares de 6cm para frascos en vinilo.",
-            "order": "v1.m11.s60.q2.f1.d0"
         }
     ],
     "deliveryOptions": [

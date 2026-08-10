@@ -58,7 +58,7 @@ const App = () => {
   const {
     config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions,
     setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setGallery, setDeliveryOptions, setDesignOptions,
-    isLoaded, loadError, isSaving, saveError,
+    isLoaded, loadError, isSaving, saveError, hasChanges, saveConfig,
   } = useConfig(isAdmin);
 
   const [order, setOrder] = useState<Order>(() => {
@@ -523,6 +523,8 @@ const App = () => {
             setIsDeleteMode={setIsDeleteMode}
             isSaving={isSaving}
             saveError={saveError}
+            hasChanges={hasChanges}
+            onSave={saveConfig}
           />
 
         {/* CONTENIDO PRINCIPAL */}

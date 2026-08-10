@@ -1,7 +1,7 @@
 import React from 'react';
-import { Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, AlertTriangle } from 'lucide-react';
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
 interface SaveIndicatorProps {
   status: SaveStatus;
@@ -18,6 +18,12 @@ export const SaveIndicator: React.FC<SaveIndicatorProps> = ({ status, className 
       text: 'Sin cambios',
       color: 'text-slate-500',
       bgColor: 'bg-slate-100',
+    },
+    dirty: {
+      icon: AlertTriangle,
+      text: 'Cambios sin guardar',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
     },
     saving: {
       icon: Loader2,

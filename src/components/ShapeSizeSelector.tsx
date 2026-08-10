@@ -310,21 +310,24 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
         // VISTA PARA CIRCULARES Y FORMAS (Catálogo con imágenes)
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 cl-gap-md">
-            {shapesCatalog[order.shapeType]?.filter((s) => s.visible !== false).map((s, idx) => {
-              const catalog = shapesCatalog[order.shapeType];
-              const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog?.length ?? 0;
-              const isHidden = idx >= showMoreIdx && expandedShapesCategory !== order.shapeType;
+            {(() => {
+              const catalog = shapesCatalog[order.shapeType] || [];
+              const visibleShapes = catalog.filter((s) => s.visible !== false);
+              return visibleShapes.map((s, visibleIdx) => {
+              const originalIdx = catalog.indexOf(s);
+              const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog.length;
+              const isHidden = originalIdx >= showMoreIdx && expandedShapesCategory !== order.shapeType;
               if (isHidden) return null;
 
               const shapeIndex = Object.keys(shapesCatalog).indexOf(order.shapeType) + 1;
-              const imageFileName = `2_${shapeIndex}_${idx + 1}.png`;
+              const imageFileName = `2_${shapeIndex}_${originalIdx + 1}.png`;
               const imagePath = resolveImage(imageFileName);
 
               const hasInfo = !!(s.description || s.image);
               return (
-                <div key={idx} className="relative">
-                  <button onClick={() => handleSizeSelect(idx)}
-                    className={`w-full h-full cl-option-card flex flex-col items-center justify-center min-h-[110px] sm:min-h-[100px] text-center p-3 sm:p-4 ${order.sizeIndex === idx ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
+                <div key={originalIdx} className="relative">
+                  <button onClick={() => handleSizeSelect(originalIdx)}
+                    className={`w-full h-full cl-option-card flex flex-col items-center justify-center min-h-[110px] sm:min-h-[100px] text-center p-3 sm:p-4 ${order.sizeIndex === originalIdx ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
 
                     <div className="w-12 h-12 cl-mb-sm flex items-center justify-center opacity-80">
                       <img
@@ -336,15 +339,15 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                       <div className={`absolute -z-10 w-8 h-8 cl-border-md border-slate-200 border-dashed ${order.shapeType === 'Circulares' ? 'cl-rounded-full' : order.shapeType === 'A Medida' ? 'cl-star-shape' : 'cl-rounded-full'}`}></div>
                     </div>
 
-                    {order.sizeIndex === idx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
+                    {order.sizeIndex === originalIdx && <div className="absolute inset-0 border-2 border-blue-600 rounded-xl pointer-events-none"></div>}
                     <div className="font-bold text-slate-500">{s.size}</div>
                     <div className="text-xs mt-0.5 font-medium text-slate-500">{s.qty} uni/plancha</div>
                   </button>
                   {hasInfo && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setInfoOpenSizeIndex(infoOpenSizeIndex === idx ? null : idx); }}
-                      className={infoBtnClass(infoOpenSizeIndex === idx)}
+                      onClick={(e) => { e.stopPropagation(); setInfoOpenSizeIndex(infoOpenSizeIndex === originalIdx ? null : originalIdx); }}
+                      className={infoBtnClass(infoOpenSizeIndex === originalIdx)}
                       title="Más info"
                       aria-label={`Más info sobre ${s.size}`}
                     >
@@ -353,14 +356,16 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                   )}
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
 
           {/* Botón "Ver más" si hay tamaños ocultos */}
           {(() => {
             const catalog = shapesCatalog[order.shapeType];
             const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog?.length ?? 0;
-            const hasHidden = showMoreIdx < (catalog?.length ?? 0);
+            const visibleCount = catalog ? catalog.filter((s) => s.visible !== false).length : 0;
+            const hasHidden = showMoreIdx < (catalog?.length ?? 0) && visibleCount < (catalog?.length ?? 0);
             return (
               hasHidden && (
                 <button

@@ -69,12 +69,13 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const isOpen = openIndex !== null;
-  const current = isOpen ? items[openIndex] : null;
+  const visibleItems = items.filter((item) => item.visible !== false);
+  const current = isOpen ? visibleItems[openIndex] : null;
   const currentPricing = current ? getPricing(current.order, extractSheetsFromCode(current.order)) : null;
 
   const close = () => setOpenIndex(null);
-  const prev = () => setOpenIndex((i) => (i === null ? i : (i - 1 + items.length) % items.length));
-  const next = () => setOpenIndex((i) => (i === null ? i : (i + 1) % items.length));
+  const prev = () => setOpenIndex((i) => (i === null ? i : (i - 1 + visibleItems.length) % visibleItems.length));
+  const next = () => setOpenIndex((i) => (i === null ? i : (i + 1) % visibleItems.length));
 
   // Navegación por teclado y bloqueo del scroll de fondo cuando el lightbox está abierto.
   useEffect(() => {
@@ -103,7 +104,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
       </div>
       <p className="text-sm text-slate-500 mb-4">Podés elegir una base para personalizar a tu gusto.</p>
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
-        {items.filter((item) => item.visible !== false).map((item, idx) => {
+        {visibleItems.map((item, idx) => {
           const label = item.title || item.caption;
           const displaySheets = extractSheetsFromCode(item.order);
           const pricing = getPricing(item.order, displaySheets);
@@ -175,7 +176,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
                 onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
                 style={{ transition: 'opacity 0.3s ease-in-out' }}
               />
-              {items.length > 1 && (
+              {visibleItems.length > 1 && (
                 <>
                   <button
                     onClick={prev}
