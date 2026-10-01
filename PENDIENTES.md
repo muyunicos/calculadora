@@ -57,30 +57,31 @@ El ejemplo de `wp_localize_script` ya apunta a `datos_config_etag.php`, con el c
 advierte que `WP_STICKER_DATA.configUrl` gana sobre el fallback de `src/core/wp.ts`.
 Se agregó además una nota de deploy en la sección 4 (subir el `.php` sí o sí).
 
-### 6. Comentarios que siguen diciendo `datos_config.json`
-Son correctos (es el nombre del archivo de datos) pero pueden confundir ahora que
-el transporte es un endpoint PHP. Revisar:
-- `src/App.tsx:485` (texto del error en pantalla)
-- `src/hooks/useConfig.ts:33`
-- `src/core/options.ts:7`
-- `src/types/index.ts:136`
-
-Sugerencia: dejar el nombre del archivo, aclarando que se sirve vía
-`datos_config_etag.php`.
+### ~~6. Comentarios que dicen `datos_config.json`~~ ✅ RESUELTO
+Los que necesitaban aclaración se actualizaron:
+- `src/hooks/useConfig.ts:33` → aclara que el archivo se pide a `CONFIG_URL` (el endpoint).
+- `src/types/index.ts:136` → idem.
+- `src/App.tsx:485` → el mensaje de error **decía** que no se pudo leer
+  `datos_config.json`, cuando el frontend ahora pide `datos_config_etag.php`. Era el más
+  problemático: si faltaba el endpoint, el mensaje mandaba a revisar el archivo
+  equivocado. Ahora nombra el endpoint y pide verificar ambos.
+- `src/core/options.ts:7` → se revisó y **no necesitó cambio**: habla del archivo de
+  datos, no del transporte.
 
 ## 🟢 OPCIONALES
 
-### 7. `test.js` en la raíz — archivo muerto
-Contiene un `useDebounce` compilado a mano; no lo importa nadie y no está en
-`package.json` scripts. Está **trackeado** en git. Decidir: borrar, o mover a
-scripts de prueba reales.
+### ~~7. `test.js` en la raíz — archivo muerto~~ ✅ RESUELTO (borrado)
+Era una copia compilada a mano de `useDebounce`, que hoy existe en TypeScript en
+`src/hooks/useDebounce.ts`. No lo referenciaba nada, no estaba en `package.json` scripts
+y usaba `require()` dentro de un proyecto ESM. Eliminado con `git rm` (recuperable con
+`git checkout HEAD~1 -- test.js` si alguna vez hizo falta).
 
-### 8. `README.md:151` — referencia a `plugin/plugin-calculadora-admin-integration.php`
-Ese directorio **no existe** en el repo (los PHP del proyecto son
-`assets/guardar_datos.php`, `assets/datos_config_etag.php` y
-`woocommerce-plugin/plugin-calculadora-cart-integration.php`). El plugin de Media
-Library debe estar en el servidor o en otro repo. Actualizar la instrucción o
-documentar de dónde sale.
+### ~~8. `README.md` — referencia a `plugin/plugin-calculadora-admin-integration.php`~~ ✅ RESUELTO
+Ese directorio no existe en el repo, así que el `cp` de la instrucción no podía
+funcionar. La sección 2 ahora aclara que el plugin vive solo en el servidor
+(`wp-content/plugins/`), que se instala por FTP, y que el código que lo usa es
+`AdminGalleryPanel` vía `window.wp.media`, con fallback a abrir el media uploader en
+otra pestaña (verificado en `AdminGalleryPanel.tsx:49-54`).
 
 ### 9. El código de integración con WP no está en ningún repo local
 `mu_sticker_calculator_enqueue` / `mu_sticker_calculator_shortcode` viven solo en
@@ -93,24 +94,18 @@ integración en algún repo para que no viva solo en producción.
 Una vez vaciados, borrar los archivos o agregar los patrones al `.gitignore` (hoy están
 trackeados a propósito para que las tareas no se pierdan).
 
-### 11. `MIGRATION-GUIDE.md` — sección 2 todavía describe Cloudflare como CDN activa
-Este repo tiene su propio `MIGRATION-GUIDE.md` (copiado del tema hijo) que quedó
-desactualizado respecto de la infraestructura real:
+### ~~11. `MIGRATION-GUIDE.md` — Cloudflare~~ ✅ RESUELTO (en este repo)
+La sección 2 quedó alineada con la infraestructura real:
+- CDN de Hostinger por subdominio, con bloqueo de país en el edge y TLS 1.3.
+- La purga de caché es **manual** (antes decía automática vía API de Cloudflare).
+- Se advierte que `cf-cache-status` no existe: hay que verificar desde Network.
+- PHP 8.5.4 (antes 8.3.28).
 
-- Línea 43: "DNS en Cloudflare con reglas de bloqueo por IP/País" → ahora es CDN de
-  Hostinger por subdominio, con el bloqueo de país en el edge.
-- Líneas 46 y 49-56: "Cloudflare es la ÚNICA CDN activa", la API de Cloudflare
-  integrada en LiteSpeed, y el header `cf-cache-status`. **Nada de eso es válido hoy**,
-  así que cualquier verificación de caché que se apoye en `cf-cache-status` es
-  inejecutable. Hay que verificar desde la pestaña Network del navegador.
-- La purga automática de caché vía API de Cloudflare ya no existe: ahora hay que purgar
-  LiteSpeed y la CDN de Hostinger a mano.
-- PHP real: **8.5.4** (el guide de la calculadora dice 8.3.28).
+Las dos menciones que quedan de "Cloudflare" son intencionales: documentan el retiro.
 
-Fuente verificada: `.specify/memory/constitution.md` del repo `muyunicos`, que registra
-el cambio de infraestructura y avisa que "el guide está pendiente de actualizar".
-Ojo: ese `MIGRATION-GUIDE.md` **no está en la calculadora sino en el repo del tema
-hijo** (`muyunicos`), que es donde debería corregirse; la copia de este repo es derivada.
+**Pendiente equivalente en el tema hijo**: este `MIGRATION-GUIDE.md` es una copia.
+La versión original está en el repo del tema hijo y también debería corregirse, pero
+queda fuera de este repo.
 
 ## ✅ YA RESUELTO (referencia, no hacer nada)
 - `useAdminState.ts` eliminado por ser código muerto (la lógica ya estaba en `App.tsx`).

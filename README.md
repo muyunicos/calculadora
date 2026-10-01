@@ -144,14 +144,16 @@ add_shortcode('mu_sticker_calculator', 'mu_sticker_calculator_shortcode');
 
 ### 2. Plugin de Integración Media Library
 
-Para habilitar la selección de imágenes mediante el modal nativo de WordPress:
+Para habilitar la selección de imágenes mediante el modal nativo de WordPress, el panel
+de galería (`AdminGalleryPanel`) usa `window.wp.media`.
 
-```bash
-# Copiar el plugin al directorio de plugins de WordPress
-cp plugin/plugin-calculadora-admin-integration.php /path/to/wordpress/wp-content/plugins/
+> ⚠️ **Este plugin no está versionado en este repo.** El archivo
+> `plugin-calculadora-admin-integration.php` vive solo en el servidor
+> (`wp-content/plugins/`). Si no está instalado, el botón de galería cae al fallback
+> de abrir el media uploader en una pestaña nueva.
 
-# Activar el plugin desde el panel de administración de WordPress
-```
+Para instalarlo, subilo por FTP / Administrador de archivos a `wp-content/plugins/` y
+activálo desde el panel de WordPress.
 
 **Funciones del plugin:**
 - Carga los scripts de WordPress Media Library (`wp_enqueue_media`)

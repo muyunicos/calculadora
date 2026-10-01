@@ -34,16 +34,17 @@ FLUJO DE TRABAJO Y DESPLIEGUE
 ════════════════════════════════════════════════════════════════
 
 Hosting: Hostinger Plan Business (Espacio: 200GB | RAM: 3072 MB | Núcleos: 2 | PHP Workers: 60)
-Stack: PHP 8.3.28 | MySQL 11.8.3-MariaDB-log | LiteSpeed Cache 7.9
+Stack: PHP 8.5.4 | MySQL 11.8.3-MariaDB-log | LiteSpeed Cache 7.9
 Tema: GeneratePress 3.6.1 + GeneratePress Child
 
 Dominio y Seguridad:
 - Dominio principal (muyunicos.com) en DonWeb.
 - Redirección automática de muyunicos.com.ar a muyunicos.com.
-- DNS en Cloudflare con reglas de bloqueo por IP/País (SC, CN, IN, SG bloqueados) 
-  para mitigar el abuso de recursos.
+- CDN de Hostinger por subdominio, con nivel de seguridad alto y bloqueo de tráfico
+  por país en el edge (SC, CN, IN, SG bloqueados) para mitigar el abuso de recursos.
+- TLS 1.3.
 
-Caché y CDN (LiteSpeed + Cloudflare):
+Caché y CDN (LiteSpeed + CDN de Hostinger):
 - Config de la calculadora (assets/datos_config.json) se sirve vía assets/datos_config_etag.php
   (ETag = md5 del archivo, Cache-Control: public, max-age=60, responde 304 si el If-None-Match coincide).
   El endpoint SOLO se usa si el functions.php del tema hijo inyecta
@@ -51,9 +52,11 @@ Caché y CDN (LiteSpeed + Cloudflare):
   El admin guarda vía guardar_datos.php sobre el mismo .json, así que el ciclo guardar→leer es coherente.
 - LiteSpeed Cache utiliza el Preajuste Avanzado (Guest Mode ON, sin combinar CSS/JS para proteger modularidad).
 - El Retraso de JS (JS Delay) se activa manualmente en la configuración de página.
-- Cloudflare es la ÚNICA CDN activa. La CDN de QUIC.cloud está apagada (OFF) para evitar conflictos DNS/SSL.
-- La API de Cloudflare está integrada en LiteSpeed vía Token dedicado (Permisos mínimos: Zone Read, Cache Purge) para vaciar la caché global automáticamente.
-- Cloudflare NO almacena el HTML en caché (sin reglas "Cache Everything"). El HTML cacheado por subdominio lo maneja estrictamente LiteSpeed.
+- La CDN de Hostinger es la única CDN activa. El proveedor anterior (Cloudflare) fue retirado.
+- La purga de caché NO es automática: hay que purgarla a mano en LiteSpeed y en la CDN de Hostinger.
+- La CDN no almacena el HTML en caché. El HTML cacheado por subdominio lo maneja estrictamente LiteSpeed.
+- ⚠️ No existe la cabecera `cf-cache-status`: toda verificación de caché se hace desde la
+  pestaña Network del navegador (status 200 vs 304), nunca desde headers de CDN.
 
 Object Cache (LiteSpeed):
 - Caché de objetos: ON (Memcached, prueba de conexión exitosa).
