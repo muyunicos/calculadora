@@ -93,52 +93,79 @@ npm run typecheck
 
 ## Integración con WordPress
 
-### 1. Configuración del Tema
+### 1. Configuración del Shortcode
 
-En el archivo `functions.php` del tema hijo:
+El código va en el **`functions.php` del tema hijo**, o en un plugin de snippets
+(WPCode / Fragmentos de código). Este es el shortcode real en producción:
 
 ```php
-function mu_sticker_calculator_enqueue() {
-    // Registrar el script
-    wp_register_script(
-        'mu-sticker-calculator',
-        get_stylesheet_directory_uri() . '/assets/js/calculadora_stickers.js',
-        [],
-        '0.1.0',
+/**
+ * Shortcode de la Calculadora de Stickers.
+ * Pegar en functions.php del tema hijo (o en un Code Snippet).
+ *
+ * Estructura esperada en el tema:
+ *   /assets/js/calculadora_stickers.js     (bundle compilado)
+ *   /assets/css/calculadora_stickers.css   (Tailwind compilado)
+ *   /assets/guardar_datos.php              (recibe el POST del admin)
+ *   /assets/datos_config.json              (datos: config, materials, shapesCatalog...)
+ *   /assets/datos_config_etag.php          (endpoint con ETag; sirve el .json de arriba)
+ *   /assets/2_1_1.png, 2_1_2.png, ...     (previews de formas)
+ */
+function mu_sticker_calculator_shortcode() {
+    $assets_url = get_stylesheet_directory_uri() . '/assets';
+
+    // CSS (Tailwind compilado). filemtime como versión: al subir el archivo,
+    // cambia el ?ver= y el navegador baja el nuevo sin purgar caché.
+    $css_path = get_stylesheet_directory() . '/assets/css/calculadora_stickers.css';
+    $css_ver  = file_exists( $css_path ) ? filemtime( $css_path ) : '1.0';
+
+    wp_enqueue_style(
+        'mu-sticker-calculator-css',
+        $assets_url . '/css/calculadora_stickers.css',
+        array(),
+        $css_ver
+    );
+
+    // JS (React + lucide empaquetados en el bundle).
+    $js_path = get_stylesheet_directory() . '/assets/js/calculadora_stickers.js';
+    $js_ver  = file_exists( $js_path ) ? filemtime( $js_path ) : '1.0';
+
+    wp_enqueue_script(
+        'mu-sticker-calculator-js',
+        $assets_url . '/js/calculadora_stickers.js',
+        array(),
+        $js_ver,
         true
     );
 
-    // Registrar el estilo
-    wp_register_style(
-        'mu-sticker-calculator-style',
-        get_stylesheet_directory_uri() . '/assets/css/calculadora_stickers.css',
-        [],
-        '0.1.0'
-    );
+    $is_admin = current_user_can( 'manage_options' );
 
-    // Inyectar datos de configuración
-    wp_localize_script('mu-sticker-calculator', 'WP_STICKER_DATA', [
-        'isAdmin' => current_user_can('manage_options'),
-        'assetsUrl' => get_stylesheet_directory_uri() . '/assets',
+    // Datos para el bundle: admin real + URLs absolutas del tema.
+    wp_localize_script( 'mu-sticker-calculator-js', 'WP_STICKER_DATA', array(
+        'isAdmin'   => $is_admin,
+        'assetsUrl' => $assets_url,
         // Endpoint con ETag: sirve datos_config.json con Cache-Control: max-age=60
-        // y responde 304 si el If-None-Match del navegador coincide con el md5 actual.
-        // Reduce el consumo de PHP en la petición más repetida del frontend.
-        // OJO: WP_STICKER_DATA.configUrl tiene prioridad sobre el fallback de
-        // src/core/wp.ts. Si acá queda datos_config.json, el ETag no se usa nunca.
-        'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config_etag.php',
-        'saveUrl' => get_stylesheet_directory_uri() . '/assets/guardar_datos.php',
-    ]);
-}
-add_action('wp_enqueue_scripts', 'mu_sticker_calculator_enqueue');
+        // y responde 304 si el If-None-Match coincide con el md5 actual.
+        // OJO: este valor tiene prioridad sobre el fallback de src/core/wp.ts.
+        // Si queda datos_config.json, el ETag no se usa nunca.
+        'configUrl' => $assets_url . '/datos_config_etag.php',
+        'saveUrl'   => $assets_url . '/guardar_datos.php',
+    ) );
 
-// Shortcode para renderizar la calculadora
-function mu_sticker_calculator_shortcode() {
-    wp_enqueue_script('mu-sticker-calculator');
-    wp_enqueue_style('mu-sticker-calculator-style');
-    return '<div id="mu-sticker-calculator-root"></div>';
+    // Media Library para el botón de galería del admin. Solo para admins:
+    // son varios cientos de KB (wp-media, Backbone, underscore, jQuery UI).
+    if ( $is_admin ) {
+        wp_enqueue_media();
+    }
+
+    return '<div id="mu-sticker-calculator-root">Cargando cotizador pro...</div>';
 }
-add_shortcode('mu_sticker_calculator', 'mu_sticker_calculator_shortcode');
+add_shortcode( 'calculadora_stickers', 'mu_sticker_calculator_shortcode' );
 ```
+
+> ⚠️ **Ojo con las rutas:** este código usa `get_stylesheet_directory_uri()`, que
+> **solo funciona si vive en el tema hijo**. Si se mueve a un plugin, hay que cambiarlo
+> por `get_theme_file_uri()`, porque los assets siguen en el tema.
 
 ### 2. Media Library en el panel de galería
 
@@ -172,8 +199,12 @@ de galería solo existe para admins. Sin el `if`, los clientes los descargan de 
 En cualquier página o post de WordPress:
 
 ```
-[mu_sticker_calculator]
+[calculadora_stickers]
 ```
+
+> ⚠️ El nombre del shortcode es `calculadora_stickers` (no `mu_sticker_calculator`,
+> que era como figuraba antes en esta documentación y nunca existió en producción).
+> Cambiarlo implica actualizar también el contenido de la página donde está insertado.
 
 ### 4. Archivo de Configuración
 
