@@ -1,0 +1,15 @@
+# Normalizar fin de línea a LF en el repositorio.
+# Evita que Git convierta a CRLF en Windows y genere diffs falsos
+# (sobre todo en el bundle minificado assets/js/calculadora_stickers.js).
+* text=auto eol=lf
+
+# Binarios: nunca tocar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
