@@ -37,14 +37,13 @@ Cloudflare sirviendo la URL vieja. Considerar purgar caché en ambos.
 
 ## 🟡 LIMPIEZA / DOCS
 
-### 4. `README.md:52` — árbol de `hooks/` desactualizado
-Todavía lista `useAdminState.ts`, que fue eliminado (el estado admin vive inline
-en `App.tsx`). Quitar esa línea.
+### ~~4. `README.md:52` — árbol de `hooks/`~~ ✅ RESUELTO
+`useAdminState.ts` ya no figura en el árbol de `hooks/` (el estado admin vive inline en `App.tsx`).
 
-### 5. `README.md:126` — documentar el endpoint con ETag
-El ejemplo de `wp_localize_script` debe reflejar el `configUrl` del paso 1, más una
-línea explicando el mecanismo ETag/304 y el `max-age=60` de
-`assets/datos_config_etag.php`.
+### ~~5. `README.md:126` — documentar el endpoint con ETag~~ ✅ RESUELTO
+El ejemplo de `wp_localize_script` ya apunta a `datos_config_etag.php`, con el comentario que
+advierte que `WP_STICKER_DATA.configUrl` gana sobre el fallback de `src/core/wp.ts`.
+Se agregó además una nota de deploy en la sección 4 (subir el `.php` sí o sí).
 
 ### 6. Comentarios que siguen diciendo `datos_config.json`
 Son correctos (es el nombre del archivo de datos) pero pueden confundir ahora que
@@ -64,10 +63,23 @@ Contiene un `useDebounce` compilado a mano; no lo importa nadie y no está en
 `package.json` scripts. Está **trackeado** en git. Decidir: borrar, o mover a
 scripts de prueba reales.
 
-### 8. `.gitignore` — se ignora `PLAN_REFACTOR.md` a mano
-Si `PENDIENTES.md` también debería ser efímero, agregar el patrón al `.gitignore`
-cuando este archivo se borre. (Hoy quedó trackeado a propósito para que las
-tareas no se pierdan.)
+### 8. `README.md:151` — referencia a `plugin/plugin-calculadora-admin-integration.php`
+Ese directorio **no existe** en el repo (los PHP del proyecto son
+`assets/guardar_datos.php`, `assets/datos_config_etag.php` y
+`woocommerce-plugin/plugin-calculadora-cart-integration.php`). El plugin de Media
+Library debe estar en el servidor o en otro repo. Actualizar la instrucción o
+documentar de dónde sale.
+
+### 9. El código de integración con WP no está en ningún repo local
+`mu_sticker_calculator_enqueue` / `mu_sticker_calculator_shortcode` viven solo en
+el servidor: el repo `muyunicos` (tema hijo) no los menciona, ni en el código ni
+en el historial. Por eso los pasos 1 y 2 de acá hay que hacerlos por FTP o
+Administrador de archivos, y no se pueden versionar. Vale la pena commitear esa
+integración en algún repo para que no viva solo en producción.
+
+### 10. `PENDIENTES.md` — decidir su destino
+Una vezvaciado, borrar el archivo o agregar el patrón al `.gitignore` (hoy está
+trackeado a propósito para que las tareas no se pierdan).
 
 ## ✅ YA RESUELTO (referencia, no hacer nada)
 - `useAdminState.ts` eliminado por ser código muerto (la lógica ya estaba en `App.tsx`).

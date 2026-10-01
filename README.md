@@ -49,7 +49,6 @@ calculadora/
 │   ├── hooks/                 # Custom hooks React
 │   │   ├── useConfig.ts       # Hook para cargar/guardar configuración
 │   │   ├── useCalculatorState.ts     # Estado del cotizador
-│   │   ├── useAdminState.ts          # Estado del panel admin
 │   │   └── useGalleryState.ts        # Estado de la galería
 │   ├── types/                 # Definiciones TypeScript
 │   │   └── index.ts
@@ -123,7 +122,12 @@ function mu_sticker_calculator_enqueue() {
     wp_localize_script('mu-sticker-calculator', 'WP_STICKER_DATA', [
         'isAdmin' => current_user_can('manage_options'),
         'assetsUrl' => get_stylesheet_directory_uri() . '/assets',
-        'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config.json',
+        // Endpoint con ETag: sirve datos_config.json con Cache-Control: max-age=60
+        // y responde 304 si el If-None-Match del navegador coincide con el md5 actual.
+        // Reduce el consumo de PHP en la petición más repetida del frontend.
+        // OJO: WP_STICKER_DATA.configUrl tiene prioridad sobre el fallback de
+        // src/core/wp.ts. Si acá queda datos_config.json, el ETag no se usa nunca.
+        'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config_etag.php',
         'saveUrl' => get_stylesheet_directory_uri() . '/assets/guardar_datos.php',
     ]);
 }
@@ -163,6 +167,11 @@ En cualquier página o post de WordPress:
 ```
 
 ### 4. Archivo de Configuración
+
+> ⚠️ **Deploy**: además de `datos_config.json`, hay que subir `assets/datos_config_etag.php`
+> al servidor. Sin ese archivo, la calculadora queda sin configuración y muestra la
+> pantalla de error de `loadError`. El despliegue es manual por FTP / Administrador
+> de archivos a `/generatepress-child/`.
 
 El archivo `assets/datos_config.json` contiene toda la configuración editable desde el panel de administración:
 - `config`: Parámetros de pricing (salario, márgenes, tiempos)
