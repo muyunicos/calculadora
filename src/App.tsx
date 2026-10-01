@@ -482,9 +482,10 @@ const App = () => {
         <AlertTriangle className="w-10 h-10 text-amber-500" />
         <h2 className="text-lg font-bold text-slate-800">No se pudo cargar la configuración</h2>
         <p className="text-sm text-slate-500 max-w-md">
-          No se pudo leer <code className="bg-slate-100 px-1 rounded">datos_config.json</code>.
-          {loadError ? ` Detalle: ${loadError}.` : ''} Verificá que el archivo exista y tenga la
-          estructura esperada (config, materials, shapesCatalog).
+          No se pudo leer la configuración desde <code className="bg-slate-100 px-1 rounded">datos_config_etag.php</code>
+          {loadError ? ` Detalle: ${loadError}.` : ''} Verificá que ese archivo esté subido al servidor y que
+          <code className="bg-slate-100 px-1 rounded">datos_config.json</code> tenga la estructura esperada
+          (config, materials, shapesCatalog).
         </p>
       </div>
     );

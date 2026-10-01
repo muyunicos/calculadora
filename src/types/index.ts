@@ -134,6 +134,8 @@ export interface GalleryPricing {
 }
 
 // Estructura persistida en datos_config.json (la fuente de datos del admin).
+// OJO: el nombre del archivo es datos_config.json, pero el frontend lo pide a
+// CONFIG_URL, que en producción es el endpoint datos_config_etag.php.
 export interface AppData {
   config: Config;
   materials: Material[];

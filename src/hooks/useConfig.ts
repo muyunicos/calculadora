@@ -31,6 +31,8 @@ export interface UseConfigResult {
 }
 
 // Maneja la carga (pública) y el guardado (admin, explícito con botón) de datos_config.json.
+// El archivo se pide a CONFIG_URL: en producción, el endpoint datos_config_etag.php
+// (ETag + max-age=60), que a su vez sirve el .json. Si no hay endpoint, se pide el .json.
 // IMPORTANTE: no hay valores por defecto en código. El estado arranca en null y
 // SIEMPRE se hidrata desde el archivo. Si la carga falla, se expone loadError.
 export function useConfig(isAdmin: boolean): UseConfigResult {
