@@ -67,8 +67,8 @@ const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
       // Abrir el modal
       wp.media.frames.calculadoraInfoFrame.open();
     } else {
-      // Mostrar alerta si no está disponible
-      alert('La galería de WordPress no está disponible. Asegúrate de estar en el entorno de WordPress admin y que el plugin de integración esté activado.');
+      // wp_enqueue_media() no se llamó en el shortcode: la Media Library no está cargada.
+      alert('La galería de WordPress no está disponible. Verificá que el shortcode llame a wp_enqueue_media() para el usuario admin.');
     }
   };
 
