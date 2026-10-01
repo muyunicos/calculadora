@@ -1,7 +1,18 @@
-# PENDIENTES — calculations de stickers
+# PENDIENTES — Calculadora de stickers
 
-> Generado al cerrar el commit del trabajo de caché ETag + limpieza.
-> **No es documentación**: es una lista de tareas para borrar cuando se vacíe.
+> Lista de tareas para borrar cuando se vacíe. El deploy está en **CHECKLIST-DEPLOY.md**.
+
+## ✅ DEPLOY
+
+Ver **CHECKLIST-DEPLOY.md** en la raíz. Resumen: subir el endpoint, cambiar
+`configUrl` en el `functions.php` del servidor, subir el bundle recién después,
+purgar caché y verificar el `304`.
+
+> Nota de infraestructura: la CDN ahora es **Hostinger por subdominio**, no Cloudflare.
+> Las verificaciones que usaban `cf-cache-status` no sirven; y la purga automática de
+> caché vía API de Cloudflare ya no está disponible (hay que purgar a mano).
+> El `MIGRATION-GUIDE.md` de este repo sigue nombrando a Cloudflare: queda como deuda
+> de documentación (ver punto 11).
 
 ## 🔴 BLOQUEANTES (hay que hacerlos sí o sí)
 
@@ -32,8 +43,9 @@ DevTools → Network → recargar dos veces:
 - 1ª carga: `200` con el JSON.
 - 2ª carga: **`304`**.
 
-Si sigue apareciendo `200`, el paso 1 no se aplicó o hay caché de LiteSpeed /
-Cloudflare sirviendo la URL vieja. Considerar purgar caché en ambos.
+Si sigue apareciendo `200`, el paso 1 no se aplicó o hay caché de LiteSpeed / CDN
+de Hostinger sirviendo la URL vieja. Considerar purgar caché en ambos.
+(El detalle completo está en **CHECKLIST-DEPLOY.md**.)
 
 ## 🟡 LIMPIEZA / DOCS
 
@@ -77,9 +89,28 @@ en el historial. Por eso los pasos 1 y 2 de acá hay que hacerlos por FTP o
 Administrador de archivos, y no se pueden versionar. Vale la pena commitear esa
 integración en algún repo para que no viva solo en producción.
 
-### 10. `PENDIENTES.md` — decidir su destino
-Una vezvaciado, borrar el archivo o agregar el patrón al `.gitignore` (hoy está
-trackeado a propósito para que las tareas no se pierdan).
+### 10. `PENDIENTES.md` / `CHECKLIST-DEPLOY.md` — decidir su destino
+Una vez vaciados, borrar los archivos o agregar los patrones al `.gitignore` (hoy están
+trackeados a propósito para que las tareas no se pierdan).
+
+### 11. `MIGRATION-GUIDE.md` — sección 2 todavía describe Cloudflare como CDN activa
+Este repo tiene su propio `MIGRATION-GUIDE.md` (copiado del tema hijo) que quedó
+desactualizado respecto de la infraestructura real:
+
+- Línea 43: "DNS en Cloudflare con reglas de bloqueo por IP/País" → ahora es CDN de
+  Hostinger por subdominio, con el bloqueo de país en el edge.
+- Líneas 46 y 49-56: "Cloudflare es la ÚNICA CDN activa", la API de Cloudflare
+  integrada en LiteSpeed, y el header `cf-cache-status`. **Nada de eso es válido hoy**,
+  así que cualquier verificación de caché que se apoye en `cf-cache-status` es
+  inejecutable. Hay que verificar desde la pestaña Network del navegador.
+- La purga automática de caché vía API de Cloudflare ya no existe: ahora hay que purgar
+  LiteSpeed y la CDN de Hostinger a mano.
+- PHP real: **8.5.4** (el guide de la calculadora dice 8.3.28).
+
+Fuente verificada: `.specify/memory/constitution.md` del repo `muyunicos`, que registra
+el cambio de infraestructura y avisa que "el guide está pendiente de actualizar".
+Ojo: ese `MIGRATION-GUIDE.md` **no está en la calculadora sino en el repo del tema
+hijo** (`muyunicos`), que es donde debería corregirse; la copia de este repo es derivada.
 
 ## ✅ YA RESUELTO (referencia, no hacer nada)
 - `useAdminState.ts` eliminado por ser código muerto (la lógica ya estaba en `App.tsx`).

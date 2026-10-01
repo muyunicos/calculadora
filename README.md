@@ -172,6 +172,7 @@ En cualquier página o post de WordPress:
 > al servidor. Sin ese archivo, la calculadora queda sin configuración y muestra la
 > pantalla de error de `loadError`. El despliegue es manual por FTP / Administrador
 > de archivos a `/generatepress-child/`.
+> El orden exacto de subida y la verificación están en **[CHECKLIST-DEPLOY.md](CHECKLIST-DEPLOY.md)**.
 
 El archivo `assets/datos_config.json` contiene toda la configuración editable desde el panel de administración:
 - `config`: Parámetros de pricing (salario, márgenes, tiempos)
