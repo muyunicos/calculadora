@@ -18,17 +18,23 @@
 - Los cambios de servidor/DNS/CDN **se hacen desde el panel de Hostinger**, no desde un commit.
 - Fuente: `.specify/memory/constitution.md` del repo del tema hijo `muyunicos`.
 
-## ⚠️ Lo único que bloquea todo
+## ⚠️ Los dos cambios que bloquean (ambos en el mismo archivo)
 
-`src/core/wp.ts:21` define
+El shortcode (`mu_sticker_calculator_shortcode`) **no está versionado en ningún repo
+local** — el repo `muyunicos` (tema hijo) no lo menciona, ni en el código ni en el
+historial. Vive solo en el servidor, en un plugin de snippets, y hay que editarlo por FTP.
+
+**Cambio 1 — ETag.** En `src/core/wp.ts:21`,
 `CONFIG_URL = WP.configUrl || \`${ASSETS_URL}/datos_config_etag.php\``.
-**`WP.configUrl` siempre gana.** La integración de la calculadora
-(`mu_sticker_calculator_enqueue` con su `wp_localize_script`) **no está versionada en
-ningún repo local** — el repo `muyunicos` (tema hijo) no la menciona, ni en el código
-ni en el historial. Vive solo en el servidor y hay que editarla por FTP.
+**`WP.configUrl` siempre gana**, así que mientras apunte a `datos_config.json` el
+endpoint nunca se ejecuta y todo el trabajo de caché es inerte.
 
-Mientras `configUrl` apunte a `datos_config.json`, **el ETag no se ejecuta nunca**
-y todo el trabajo de caché es inerte.
+**Cambio 2 — Media Library.** Hoy el botón "Galería" del admin abre
+`/wp-admin/media-upload.php` en una pestaña nueva, porque `window.wp.media` no está
+cargado: nadie llama a `wp_enqueue_media()`. Es una función del núcleo de WordPress,
+no hace falta ningún plugin.
+
+Los dos van en el mismo archivo, así que conviene hacerlos de una sola vez.
 
 ---
 
@@ -42,20 +48,42 @@ destino: /generatepress-child/assets/datos_config_etag.php
 Aunque todavía nadie lo llame, subirlo primero evita el escenario de rotura del paso 3.
 Verificar permisos: el resto de `assets/*.php` es `644`.
 
-## Paso 2 — Editar el `functions.php` del tema hijo (activa el ETag)
+## Paso 2 — Editar el shortcode (ETag + Media Library)
 
-Archivo del tema hijo en el servidor, sección del enqueue de la calculadora:
+Archivo del tema hijo en el servidor, dentro de `mu_sticker_calculator_shortcode()`.
+
+**2a. Activar el ETag** — cambiar dentro del `wp_localize_script`:
 
 ```php
 // ANTES (el ETag queda inerte)
-'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config.json',
+'configUrl' => $assets_url . '/assets/datos_config.json',
 
 // DESPUÉS
-'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config_etag.php',
+'configUrl' => $assets_url . '/assets/datos_config_etag.php',
 ```
 
 No cambiar `saveUrl`: el admin sigue guardando sobre `datos_config.json` y el ETag se
 calcula sobre ese mismo archivo. El ciclo guardar → leer queda coherente.
+
+**2b. Cargar la Media Library** — agregar **después** del `wp_localize_script`:
+
+```php
+// Media Library para el botón de galería del admin. Solo para admins:
+// son varios cientos de KB (wp-media, Backbone, underscore, jQuery UI).
+if ( $is_admin ) {
+    wp_enqueue_media();
+}
+```
+
+> ⚠️ **El `if ( $is_admin )` no es opcional.** Sin el condicional, los clientes
+> también descargan esos scripts. El botón de galería solo existe para admins.
+
+> 📌 El docblock del snippet dice que espera `/assets/datos_config.json` pero no
+> menciona `datos_config_etag.php`. Conviene agregarlo para que la lista de archivos
+> esperados refleje lo que el shortcode realmente necesita.
+
+La versión canónica y completa de este shortcode está en el **README de este repo**
+(sección 1), con los tres cambios ya aplicados.
 
 ## Paso 3 — Subir el bundle compilado (recién después del paso 1)
 
@@ -90,20 +118,29 @@ hay que purgar a mano.
 4. **Recarga tras inactividad** (dejar la pestaña oculta >5 min y volver): antes había
    un listener que recargaba la config; se eliminó por ser redundante con el ETag.
    No debe aparecer ningún error.
+5. **Botón "Galería" del admin**: debe abrir el modal **sobre la página**.
+   - Si abre una pestaña nueva con `/wp-admin/media-upload.php` → falta el
+     `wp_enqueue_media()` del paso 2b.
+   - En DevTools → Network, el `<head>` de un admin debe incluir los scripts
+     `wp-media-views`, `media-views` y `backbone`. Un cliente normal **no** debe
+     verlos (verifícalo con una ventana incógnita sin login).
 
 ## Archivos involucrados
 
-| Archivo | Paso | Nota |
+| Archivo / cambio | Paso | Nota |
 |---|---|---|
 | `assets/datos_config_etag.php` | 1 | **Nuevo.** Requisito del paso 3 |
 | `assets/js/calculadora_stickers.js` | 3 | Regenerado con `npm run build:js` |
-| `functions.php` (tema hijo, en el servidor) | 2 | Sin versionar; editar por FTP |
+| `configUrl` → endpoint ETag | 2a | En el shortcode del servidor, no versionado |
+| `wp_enqueue_media()` condicional | 2b | En el shortcode del servidor, no versionado |
 | `assets/datos_config.json` | — | **No subir.** Solo lo escribe el admin vía `guardar_datos.php` |
 
 ## Rollback
 
 Si algo falla, los cambios son independientes y se revierten por separado:
 
-- Revertir el `functions.php` a `datos_config.json` → la calculadora vuelve a pedir el
+- Revertir el `configUrl` a `datos_config.json` → la calculadora vuelve a pedir el
   JSON crudo. **Este es el rollback más simple y no requiere tocar archivos.**
+- Quitar el `wp_enqueue_media()` → vuelve el fallback de abrir el uploader en otra
+  pestaña. Nada más se rompe.
 - Volver a subir el bundle anterior si el problema fuera de los timers.

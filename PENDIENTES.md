@@ -110,7 +110,7 @@ el README **no existe** — ni en el repo ni instalado en el servidor. La refere
 histórica. README y el `alert` de `InfoExtraEditor` ya se corrigieron.
 
 **Fix pendiente (en el servidor, no versionado):** agregar al shortcode, después del
-`wp_localize_script`:
+`wp_localize_script`. Está en el **Paso 2b del CHECKLIST-DEPLOY.md**:
 
 ```php
 if ( $is_admin ) {
