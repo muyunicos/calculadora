@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Package, ChevronUp, MessageCircle } from 'lucide-react';
 import type { Order, PriceResult } from '../types';
 
@@ -16,21 +16,42 @@ interface MobileSummaryBarProps {
 const money = (n?: number) => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
 const perUnit = (n?: number) => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 
-// Función para hacer scroll al resumen del pedido
-const scrollToSummary = () => {
-  // Pequeño delay para asegurar que el DOM esté completamente renderizado
-  setTimeout(() => {
-    const summaryElement = document.getElementById('order-summary');
-    if (summaryElement) {
-      const offset = 80;
-      const elementPosition = summaryElement.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+// Función para hacer scroll al resumen del pedido con cleanup proper
+const useScrollToSummary = () => {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const scrollToSummary = useCallback(() => {
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
-  }, 100);
+
+    // Pequeño delay para asegurar que el DOM esté completamente renderizado
+    timerRef.current = setTimeout(() => {
+      const summaryElement = document.getElementById('order-summary');
+      if (summaryElement) {
+        const offset = 80;
+        const elementPosition = summaryElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+      timerRef.current = null;
+    }, 100);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  return scrollToSummary;
 };
 
 // Barra fija inferior para móvil: muestra el precio o progreso + CTA.
@@ -45,6 +66,7 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
   const isComplete = !!results;
   const [isVisible, setIsVisible] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const scrollToSummary = useScrollToSummary();
 
   useEffect(() => {
     const summaryElement = document.getElementById('order-summary');

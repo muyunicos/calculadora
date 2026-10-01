@@ -6,8 +6,8 @@ import { useState, useEffect } from 'react';
  * @param delay - Tiempo de delay en milisegundos (default: 500ms)
  * @returns Valor debounced
  */
-export function useDebounce(value: any, delay = 500) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
+export function useDebounce<T>(value: T, delay = 500): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
     const handler = setTimeout(() => {

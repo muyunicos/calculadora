@@ -14,7 +14,6 @@ import { calcA4Layout } from './core/a4Layout';
 import { calcularPrecio, autoComplexity, missingSelections, galleryPricing } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildConsultWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
 import { useConfig } from './hooks/useConfig';
-import { useAdminState } from './hooks/useAdminState';
 import { CalculatorHeader } from './components/CalculatorHeader';
 import { MaterialSelector } from './components/MaterialSelector';
 import { ShapeSizeSelector } from './components/ShapeSizeSelector';

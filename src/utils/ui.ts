@@ -2,10 +2,6 @@
  * UI utility functions
  */
 
-import { ASSETS_URL } from '../core/wp';
-
-const ASSETS_PATH = ASSETS_URL;
-
 /**
  * Returns the CSS class for the info button based on whether it's active
  * @param active - Whether the info panel is currently open

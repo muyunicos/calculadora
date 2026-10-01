@@ -66,9 +66,6 @@ class CalculadoraCartIntegration {
                 'product_id' => $this->target_product_id,
                 'nonce' => $nonce
             ));
-            
-            // También hacer el nonce disponible globalmente
-            wp_localize_script('calculadora-cart-integration', 'calculator_add_to_cart_nonce', $nonce);
         }
     }
     

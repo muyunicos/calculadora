@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 import type { Toast as ToastData, ToastType } from './ToastProvider';
 import { useToast } from './ToastProvider';
@@ -33,15 +33,6 @@ const toastStyles: Record<ToastType, { bg: string; icon: any; textColor: string 
 
 export const ToastItem: React.FC<ToastProps> = ({ toast, onRemove }) => {
   const { bg, icon: Icon, textColor } = toastStyles[toast.type];
-
-  useEffect(() => {
-    // Auto-remove after duration (handled by ToastProvider, but this is a backup)
-    const timer = setTimeout(() => {
-      onRemove(toast.id);
-    }, toast.duration || 3000);
-
-    return () => clearTimeout(timer);
-  }, [toast.id, toast.duration, onRemove]);
 
   return (
     <div
