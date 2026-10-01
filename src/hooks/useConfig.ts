@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import equal from 'fast-deep-equal';
 import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
@@ -27,25 +28,6 @@ export interface UseConfigResult {
   isSaving: boolean;
   hasChanges: boolean;
   saveConfig: () => Promise<void>;
-}
-
-// Comparación profunda simple para detectar cambios reales.
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== typeof b) return false;
-  if (a === null || b === null) return a === b;
-  if (typeof a !== 'object') return a === b;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  if (Array.isArray(a)) {
-    if (a.length !== (b as unknown[]).length) return false;
-    return a.every((item, i) => deepEqual(item, (b as unknown[])[i]));
-  }
-  const aObj = a as Record<string, unknown>;
-  const bObj = b as Record<string, unknown>;
-  const aKeys = Object.keys(aObj);
-  const bKeys = Object.keys(bObj);
-  if (aKeys.length !== bKeys.length) return false;
-  return aKeys.every((key) => deepEqual(aObj[key], bObj[key]));
 }
 
 // Maneja la carga (pública) y el guardado (admin, explícito con botón) de datos_config.json.
@@ -86,7 +68,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     setLoadError(null);
     if (isReload) setIsLoaded(false);
     try {
-      const res = await fetch(CONFIG_URL, { cache: 'no-store' });
+      const res = await fetch(CONFIG_URL, { cache: 'no-cache' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // Verificar que la respuesta sea JSON antes de parsear.
       // Después de inactividad, el servidor/CDN puede devolver HTML (error,
@@ -141,38 +123,6 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     loadConfig();
   }, [loadConfig]);
 
-  // --- RE-CARGAR AL VOLVER A LA PESTAÑA DESPUÉS DE INACTIVIDAD ---
-  // Cuando la página estuvo inactiva (background tab) mucho tiempo, el
-  // servidor puede devolver respuestas stale o errores. Re-cargamos la
-  // config para asegurar datos frescos.
-  useEffect(() => {
-    let lastHiddenTime: number | null = null;
-    const THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos de inactividad
-
-    const handleVisibilityChange = () => {
-      if (typeof document === 'undefined') return;
-      if (document.hidden) {
-        lastHiddenTime = Date.now();
-      } else {
-        // La página volvió a ser visible
-        if (lastHiddenTime !== null) {
-          const hiddenDuration = Date.now() - lastHiddenTime;
-          lastHiddenTime = null;
-          // Solo re-cargar si estuvo oculta más del threshold Y no hay
-          // cambios sin guardar (para no pisar ediciones del admin).
-          if (hiddenDuration >= THRESHOLD_MS && !hasChanges && !isSaving) {
-            loadConfig(true);
-          }
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [loadConfig, hasChanges, isSaving]);
-
   // --- DETECCIÓN DE CAMBIOS REALES (dirty flag) ---
   // Compara el estado actual con la snapshot original. Solo se marca como
   // "con cambios" si el admin editó algo de verdad.
@@ -188,13 +138,13 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     if (!isLoaded || !originalDataRef.current) return;
     const original = originalDataRef.current;
     const changed =
-      !deepEqual(debouncedAllData.config, original.config) ||
-      !deepEqual(debouncedAllData.materials, original.materials) ||
-      !deepEqual(debouncedAllData.shapesCatalog, original.shapesCatalog) ||
-      !deepEqual(debouncedAllData.shapesShowMoreIndex, original.shapesShowMoreIndex) ||
-      !deepEqual(debouncedAllData.gallery, original.gallery) ||
-      !deepEqual(debouncedAllData.deliveryOptions, original.deliveryOptions) ||
-      !deepEqual(debouncedAllData.designOptions, original.designOptions);
+      !equal(debouncedAllData.config, original.config) ||
+      !equal(debouncedAllData.materials, original.materials) ||
+      !equal(debouncedAllData.shapesCatalog, original.shapesCatalog) ||
+      !equal(debouncedAllData.shapesShowMoreIndex, original.shapesShowMoreIndex) ||
+      !equal(debouncedAllData.gallery, original.gallery) ||
+      !equal(debouncedAllData.deliveryOptions, original.deliveryOptions) ||
+      !equal(debouncedAllData.designOptions, original.designOptions);
     setHasChanges(changed);
   }, [debouncedAllData, isLoaded]);
 

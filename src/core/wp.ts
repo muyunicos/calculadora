@@ -18,7 +18,7 @@ declare global {
 const WP: WpStickerData = (typeof window !== 'undefined' && window.WP_STICKER_DATA) || {};
 
 export const ASSETS_URL = WP.assetsUrl || './assets'; // .../tema/assets
-export const CONFIG_URL = WP.configUrl || `${ASSETS_URL}/datos_config.json`;
+export const CONFIG_URL = WP.configUrl || `${ASSETS_URL}/datos_config_etag.php`;
 export const SAVE_URL = WP.saveUrl || `${ASSETS_URL}/guardar_datos.php`;
 // Solo un admin real de WP puede ver/editar el modo Admin.
 export const CAN_BE_ADMIN = !!WP.isAdmin;
