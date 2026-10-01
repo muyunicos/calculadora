@@ -25,8 +25,6 @@ calculadora/
 │   ├── css/                   # CSS compilado
 │   ├── js/                    # JS compilado
 │   └── galeria/               # Imágenes de ejemplo
-├── plugin/
-│   └── plugin-calculadora-admin-integration.php  # Integración Media Library WordPress
 ├── src/
 │   ├── core/                  # Lógica de negocio (funciones puras)
 │   │   ├── a4Layout.ts        # Cálculo de layout A4 para rectangulares
@@ -142,23 +140,32 @@ function mu_sticker_calculator_shortcode() {
 add_shortcode('mu_sticker_calculator', 'mu_sticker_calculator_shortcode');
 ```
 
-### 2. Plugin de Integración Media Library
+### 2. Media Library en el panel de galería
 
-Para habilitar la selección de imágenes mediante el modal nativo de WordPress, el panel
-de galería (`AdminGalleryPanel`) usa `window.wp.media`.
+El panel de galería (`AdminGalleryPanel`) y el editor de info extra (`InfoExtraEditor`)
+usan `window.wp.media` para abrir el modal nativo de WordPress.
 
-> ⚠️ **Este plugin no está versionado en este repo.** El archivo
-> `plugin-calculadora-admin-integration.php` vive solo en el servidor
-> (`wp-content/plugins/`). Si no está instalado, el botón de galería cae al fallback
-> de abrir el media uploader en una pestaña nueva.
+**No hace falta ningún plugin.** `wp_enqueue_media()` es una función del núcleo de
+WordPress, y hay que llamarla en el shortcode:
 
-Para instalarlo, subilo por FTP / Administrador de archivos a `wp-content/plugins/` y
-activálo desde el panel de WordPress.
+```php
+$is_admin = current_user_can( 'manage_options' );
+if ( $is_admin ) {
+    wp_enqueue_media();
+}
+```
 
-**Funciones del plugin:**
-- Carga los scripts de WordPress Media Library (`wp_enqueue_media`)
-- Disponible en el admin de WordPress y frontend para usuarios con permisos de admin
-- Incluye estilos necesarios para que el modal se visualice correctamente
+Va después de los `wp_enqueue_*`. El condicional es obligatorio: `wp_enqueue_media()`
+arrastra `wp-media`, Backbone, Underscore y jQuery UI (varios cientos de KB), y el botón
+de galería solo existe para admins. Sin el `if`, los clientes los descargan de más.
+
+> Nota histórica: antes esta sección describía un plugin
+> (`plugin-calculadora-admin-integration.php`) que no está en el repo ni instalado en el
+> servidor. **No hace falta**: la función del núcleo resuelve lo mismo.
+
+**Si no se llama**, el modal no abre y se cae al fallback: `AdminGalleryPanel` abre
+`/wp-admin/media-upload.php` en una pestaña nueva, e `InfoExtraEditor` muestra un
+`alert`.
 
 ### 3. Usar el Shortcode
 
@@ -402,15 +409,16 @@ wp_send_json_success();
 - La aplicación no se rompe por campos de imagen vacíos
 
 ### Modal de WordPress no se abre
+**Síntoma:** el botón "Galería" abre `/wp-admin/media-upload.php` en una pestaña nueva.
+
 **Causas:**
-- Plugin `plugin-calculadora-admin-integration.php` no activado
-- Usuario no tiene permisos de admin
-- `wp_enqueue_media()` no cargado correctamente
+- El shortcode no llama a `wp_enqueue_media()` (la causa más común: ver sección 2)
+- Usuario no tiene permisos de admin (`manage_options`)
 
 **Solución:**
-- Activar el plugin en WordPress
-- Verificar permisos de usuario (`manage_options`)
-- Inspeccionar consola para errores de JavaScript
+- Agregar `wp_enqueue_media()` dentro de `if ( $is_admin ) { ... }` en el shortcode
+- Verificar permisos del usuario (`manage_options`)
+- Inspeccionar la consola para errores de JavaScript
 
 ### Info adicional no se muestra
 **Comportamiento esperado:**
@@ -428,7 +436,6 @@ wp_send_json_success();
 3. `src/components/AdminGalleryPanel.tsx` - Botón galería con modal nativo
 4. `src/components/InfoExtraEditor.tsx` - Botón galería + modal nativo (sin autocompletado)
 5. `assets/datos_config.json` - Corrección de imagen vacía con URL completa
-6. `plugin/plugin-calculadora-admin-integration.php` - Plugin para Media Library (v1.1)
 
 ## Licencia
 

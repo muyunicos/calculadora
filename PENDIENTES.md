@@ -94,6 +94,34 @@ integración en algún repo para que no viva solo en producción.
 Una vez vaciados, borrar los archivos o agregar los patrones al `.gitignore` (hoy están
 trackeados a propósito para que las tareas no se pierdan).
 
+### 12. Media Library: no falta un plugin, falta llamar a `wp_enqueue_media()`
+Diagnóstico (verificado en producción el 2026-10-01): al tocar "Galería" en el admin
+se abre `/wp-admin/media-upload.php?post_id=0` en una pestaña nueva, o sea que se
+disparó el fallback y `window.wp.media` no está disponible.
+
+Causa raíz: **nadie llama a `wp_enqueue_media()`**. No hay ninguna llamada a esa función
+en el repo, ni en el shortcode, ni en el plugin de WooCommerce. `wp_enqueue_media()` es
+del **núcleo de WordPress**: alcanza con llamarla en el shortcode, con condicional de
+admin (sin el `if` los clientes descargan varios cientos de KB de Backbone/underscore/
+jQuery UI que no necesitan).
+
+El "plugin de Media Library" (`plugin-calculadora-admin-integration.php`) que describía
+el README **no existe** — ni en el repo ni instalado en el servidor. La referencia era
+histórica. README y el `alert` de `InfoExtraEditor` ya se corrigieron.
+
+**Fix pendiente (en el servidor, no versionado):** agregar al shortcode, después del
+`wp_localize_script`:
+
+```php
+if ( $is_admin ) {
+    wp_enqueue_media();
+}
+```
+
+**Detalle menor, no bloqueante:** el fallback abre `?post_id=0` porque el shortcode no
+pasa `productId` en `WP_STICKER_DATA`, y `AdminGalleryPanel.tsx:51` cae al `|| 0`.
+Funciona igual (abre el uploader), pero el `post_id` real sería más correcto.
+
 ### ~~11. `MIGRATION-GUIDE.md` — Cloudflare~~ ✅ RESUELTO (en este repo)
 La sección 2 quedó alineada con la infraestructura real:
 - CDN de Hostinger por subdominio, con bloqueo de país en el edge y TLS 1.3.
