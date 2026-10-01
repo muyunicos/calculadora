@@ -2,50 +2,55 @@
 
 > Lista de tareas para borrar cuando se vacíe. El deploy está en **CHECKLIST-DEPLOY.md**.
 
-## ✅ DEPLOY
+## ✅ DEPLOY — COMPLETADO 2026-10-01
 
-Ver **CHECKLIST-DEPLOY.md** en la raíz. Resumen: subir el endpoint, cambiar
-`configUrl` en el `functions.php` del servidor, subir el bundle recién después,
-purgar caché y verificar el `304`.
+Los pasos 1, 2, 3 y 12 están **resueltos y verificados en producción**:
 
-> Nota de infraestructura: la CDN ahora es **Hostinger por subdominio**, no Cloudflare.
-> Las verificaciones que usaban `cf-cache-status` no sirven; y la purga automática de
-> caché vía API de Cloudflare ya no está disponible (hay que purgar a mano).
-> El `MIGRATION-GUIDE.md` de este repo sigue nombrando a Cloudflare: queda como deuda
-> de documentación (ver punto 11).
+| # | Qué | Verificación |
+|---|---|---|
+| 1 | `configUrl` → `datos_config_etag.php` | Network muestra el `.php`, no el `.json` |
+| 2 | `datos_config_etag.php` subido al tema | `200` + `ETag` + `Cache-Control: max-age=60` |
+| 3 | Revalidación condicional | `curl` desde el repo: ETag coincidente → **`304`**, 0 bytes |
+| 12 | `wp_enqueue_media()` en el shortcode | El modal de galería abre sobre la página |
 
-## 🔴 BLOQUEANTES (hay que hacerlos sí o sí)
+Controles que confirman que el 304 es real y no un caché que miente:
+ETag **incorrecto** → `200` con los 8816 bytes; sin `If-None-Match` → `200`.
 
-### 1. Activar el ETag en producción — `functions.php` del tema hijo
-Este archivo **no está en este repo**. Mientras no se toque, todo el trabajo de
-caché es inerte:
+> Nota de infraestructura: la CDN es **Hostinger por subdominio**, no Cloudflare.
+> No existe `cf-cache-status` y la purga es manual (LiteSpeed + CDN).
 
-```php
-// ANTES (rompe el ETag)
-'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config.json',
+## 🔴 BLOQUEANTES
 
-// DESPUÉS
-'configUrl' => get_stylesheet_directory_uri() . '/assets/datos_config_etag.php',
-```
+### ~~1. Activar el ETag en producción~~ ✅ RESUELTO 2026-10-01
+`'configUrl' => $assets_url . '/datos_config_etag.php'` aplicado en el shortcode del
+servidor. Verificado en Network: el bundle pide el `.php`, no el `.json`.
 
-Motivo: en `src/core/wp.ts` la constante es
-`WP.configUrl || \`${ASSETS_URL}/datos_config_etag.php\`` — el valor inyectado por
-WordPress **siempre gana** sobre el fallback en código. Con el valor viejo, el
-frontend sigue pidiendo el `.json` crudo y el endpoint con ETag nunca se ejecuta.
+Recordatorio de por qué era necesario: en `src/core/wp.ts:21` la constante es
+`WP.configUrl || \`${ASSETS_URL}/datos_config_etag.php\``, y el valor inyectado por
+WordPress **siempre gana** sobre el fallback en código.
 
-### 2. Subir `assets/datos_config_etag.php` al servidor
-Va en `/generatepress-child/assets/`. Si el JS actualizado sube sin este archivo,
-la calculadora queda sin configuración y `useConfig` expone `loadError`
-(la pantalla de error de `App.tsx`).
+### ~~2. Subir `assets/datos_config_etag.php` al servidor~~ ✅ RESUELTO 2026-10-01
+En `/generatepress-child/assets/`. Verificado con `curl`:
+`200` + `ETag: W/"90a6538e..."` + `Cache-Control: public, max-age=60`.
 
-### 3. Verificar el `304 Not Modified` en el navegador
-DevTools → Network → recargar dos veces:
-- 1ª carga: `200` con el JSON.
-- 2ª carga: **`304`**.
+### ~~3. Verificar el `304 Not Modified`~~ ✅ RESUELTO 2026-10-01
+Verificado con `curl` desde el repo, no solo a ojo:
 
-Si sigue apareciendo `200`, el paso 1 no se aplicó o hay caché de LiteSpeed / CDN
-de Hostinger sirviendo la URL vieja. Considerar purgar caché en ambos.
-(El detalle completo está en **CHECKLIST-DEPLOY.md**.)
+| Prueba | Resultado |
+|---|---|
+| GET sin `If-None-Match` | `200`, 8816 bytes |
+| GET con ETag coincidente | **`304`**, 0 bytes |
+| GET con ETag **incorrecto** | `200`, 8816 bytes (control) |
+
+El control es lo importante: confirma que la revalidación funciona de verdad y no
+que un caché esté respondiendo 304 por inercia.
+
+> ⚠️ **Aprendido en este deploy:** subir la carpeta `assets/` completa pisa el
+> `datos_config.json` de producción, que es un archivo de datos vivos (lo edita el
+> admin vía `guardar_datos.php`). La copia del repo tiene meses y puede estar
+> desactualizada. **Subir archivo por archivo, nunca la carpeta.**
+> Pasó en este deploy: la copia local y la de producción coincidían (8816 bytes),
+> así que no hubo pérdida, pero fue por suerte.
 
 ## 🟡 LIMPIEZA / DOCS
 
@@ -94,23 +99,16 @@ integración en algún repo para que no viva solo en producción.
 Una vez vaciados, borrar los archivos o agregar los patrones al `.gitignore` (hoy están
 trackeados a propósito para que las tareas no se pierdan).
 
-### 12. Media Library: no falta un plugin, falta llamar a `wp_enqueue_media()`
-Diagnóstico (verificado en producción el 2026-10-01): al tocar "Galería" en el admin
-se abre `/wp-admin/media-upload.php?post_id=0` en una pestaña nueva, o sea que se
-disparó el fallback y `window.wp.media` no está disponible.
+### 12. ~~Media Library: faltaba `wp_enqueue_media()`~~ ✅ RESUELTO 2026-10-01
+Diagnóstico: el botón "Galería" caía al fallback (`/wp-admin/media-upload.php` en
+una pestaña nueva) porque `window.wp.media` no estaba cargado.
 
-Causa raíz: **nadie llama a `wp_enqueue_media()`**. No hay ninguna llamada a esa función
-en el repo, ni en el shortcode, ni en el plugin de WooCommerce. `wp_enqueue_media()` es
-del **núcleo de WordPress**: alcanza con llamarla en el shortcode, con condicional de
-admin (sin el `if` los clientes descargan varios cientos de KB de Backbone/underscore/
-jQuery UI que no necesitan).
+Causa raíz: **nadie llamaba a `wp_enqueue_media()`**. No había ninguna llamada en el
+repo, ni en el shortcode, ni en el plugin de WooCommerce. Es una función del núcleo
+de WordPress, así que no hace falta ningún plugin (el "plugin de Media Library" que
+describía el README no existe).
 
-El "plugin de Media Library" (`plugin-calculadora-admin-integration.php`) que describía
-el README **no existe** — ni en el repo ni instalado en el servidor. La referencia era
-histórica. README y el `alert` de `InfoExtraEditor` ya se corrigieron.
-
-**Fix pendiente (en el servidor, no versionado):** agregar al shortcode, después del
-`wp_localize_script`. Está en el **Paso 2b del CHECKLIST-DEPLOY.md**:
+Fix aplicado en el shortcode del servidor:
 
 ```php
 if ( $is_admin ) {
@@ -118,9 +116,17 @@ if ( $is_admin ) {
 }
 ```
 
+Verificado: el modal abre sobre la página y `window.wp.media` es `function`.
+El `if ( $is_admin )` evita que los clientes descargen varios cientos de KB de
+`wp-media`, Backbone, underscore y jQuery UI que no necesitan.
+
+> Nota de proceso: durante el deploy el snippet volvió a una versión anterior sin
+> estos cambios, y hubo que reaplicarlos. **Siempre verificar en Network que se pide
+> `datos_config_etag.php` y no `datos_config.json` antes de dar por hecho que guardó.**
+
 **Detalle menor, no bloqueante:** el fallback abre `?post_id=0` porque el shortcode no
 pasa `productId` en `WP_STICKER_DATA`, y `AdminGalleryPanel.tsx:51` cae al `|| 0`.
-Funciona igual (abre el uploader), pero el `post_id` real sería más correcto.
+Con `wp_enqueue_media()` aplicado el fallback ya no se usa, así que es cosmético.
 
 ### ~~11. `MIGRATION-GUIDE.md` — Cloudflare~~ ✅ RESUELTO (en este repo)
 La sección 2 quedó alineada con la infraestructura real:

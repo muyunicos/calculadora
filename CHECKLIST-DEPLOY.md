@@ -2,9 +2,25 @@
 
 > Deploy **manual** (FTP / Administrador de archivos de Hostinger) a `/generatepress-child/`.
 > Este repo no despliega: el push a GitHub no sube nada al servidor.
-> Ordenado por riesgo: cada paso deja el sitio en un estado funcional si se corta acá.
 >
-> Ramas: el `perf(cache)`/`refactor(cleanup)`/`build` ya están en `main`.
+> ✅ **Ejecutado y verificado el 2026-10-01.** Se conserva como referencia para el
+> próximo deploy y para saber qué se comprobó. Resultados al final.
+
+## 🛑 La regla más importante de este checklist
+
+**Nunca subir la carpeta `assets/` completa. Subir archivo por archivo.**
+
+`assets/datos_config.json` es un archivo de **datos vivos**: lo edita el admin desde el
+cotizador vía `guardar_datos.php`. La copia que está en el repo tiene meses y puede
+estar desactualizada. Subir la carpeta entera lo pisa y **se pierden los cambios de
+precios, materiales, formas e imágenes** sin aviso.
+
+En este deploy pasó: la copia local y la de producción coincidían (8816 bytes), así
+que no hubo pérdida. **Fue suerte, no diseño.**
+
+Durante este deploy, la advertencia estaba en la tabla de archivos ("no subir"), pero
+la instrucción natural de "subí los assets" es copiar la carpeta. Por eso está aquí,
+al principio, y no en una tabla al final.
 
 ## Contexto de infraestructura (verificado 2026-10-01)
 
@@ -144,3 +160,33 @@ Si algo falla, los cambios son independientes y se revierten por separado:
 - Quitar el `wp_enqueue_media()` → vuelve el fallback de abrir el uploader en otra
   pestaña. Nada más se rompe.
 - Volver a subir el bundle anterior si el problema fuera de los timers.
+
+## ✅ Resultado del deploy del 2026-10-01
+
+Todo verificado. La verificación del `304` se hizo con `curl` contra el servidor real,
+no a ojo en el navegador:
+
+| Comprobación | Resultado |
+|---|---|
+| Endpoint responde | `200` + `ETag: W/"90a6538e..."` + `Cache-Control: public, max-age=60` |
+| PHP del servidor | 8.5.4 |
+| GET sin `If-None-Match` | `200`, 8816 bytes |
+| GET con ETag coincidente | **`304`**, 0 bytes |
+| GET con ETag incorrecto (control) | `200`, 8816 bytes |
+| `datos_config.json` | 8816 bytes, idéntico a la copia del repo |
+| Bundle en producción | Contiene los fixes (mensaje de error + alert) |
+| Modal de galería | Abre sobre la página, `wp.media` es `function` |
+
+El **control con ETag incorrecto** es el que da confianza: si también devolviera
+`304`, el caching estaría mintiendo en lugar de revalidar.
+
+### Qué salió distinto de lo planificado
+
+- El snippet **volvió a una versión anterior** en medio del deploy, sin el
+  `configUrl` ni el `wp_enqueue_media()`. Hubo que reaplicarlo. La forma de detectarlo
+  fue mirar Network: si pide `datos_config.json`, el `configUrl` no se guardó.
+- Se subió la carpeta `assets/` completa (ver la advertencia al principio). Sin
+  consecuencias en este caso, pero fue el riesgo real del deploy.
+- El `?ver=` del bundle en producción es el `filemtime()` **en el servidor**, o sea
+  la hora de subida. Siempre es más reciente que el archivo local: no sirve para
+  comparar versiones. Para eso, comparar contenido.
