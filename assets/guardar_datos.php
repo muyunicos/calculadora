@@ -199,6 +199,52 @@ function mu_sticker_save_config($raw, $targetFile) {
         $clean_options[$key] = $options;
     }
 
+    // --- MOCKUPS DEL COTIZADOR (spec 037) ---
+    // Lista de definiciones {id, categoria, size?, fondo, hueco{x,y,w,h,rot},
+    // forma, visible}. Se valida lo minimo para que el paso de diseno no reciba
+    // un hueco vacio: id unico y no vacio, categoria y fondo no vacios, hueco con
+    // lados >= 1. El saneo fino (topes 0..300, formas conocidas) es el del
+    // cliente (`sanitizeMockups`); aca no se descarta nada en silencio: se rechaza.
+    $mockups = array();
+    if (isset($data['mockups'])) {
+        if (!mu_sticker_is_list($data['mockups'])) {
+            return mu_sticker_invalid('"mockups" debe ser una lista.');
+        }
+        $mockup_ids = array();
+        foreach ($data['mockups'] as $index => $mockup) {
+            if (!is_array($mockup)) {
+                return mu_sticker_invalid('mockups[' . $index . '] debe ser un objeto.');
+            }
+            $mid = isset($mockup['id']) && is_string($mockup['id']) ? trim($mockup['id']) : '';
+            if ($mid === '') {
+                return mu_sticker_invalid('mockups[' . $index . '] no tiene id.');
+            }
+            if (isset($mockup_ids[$mid])) {
+                return mu_sticker_invalid('mockups[' . $index . '] repite el id "' . $mid . '".');
+            }
+            $mockup_ids[$mid] = true;
+            $categoria = isset($mockup['categoria']) && is_string($mockup['categoria'])
+                ? trim($mockup['categoria']) : '';
+            if ($categoria === '') {
+                return mu_sticker_invalid('mockups[' . $index . '] no tiene categoria.');
+            }
+            $fondo = isset($mockup['fondo']) && is_string($mockup['fondo']) ? trim($mockup['fondo']) : '';
+            if ($fondo === '') {
+                return mu_sticker_invalid('mockups[' . $index . '] no tiene fondo.');
+            }
+            $hueco = isset($mockup['hueco']) && is_array($mockup['hueco']) ? $mockup['hueco'] : array();
+            $hw = isset($hueco['w']) ? (float) $hueco['w'] : 0;
+            $hh = isset($hueco['h']) ? (float) $hueco['h'] : 0;
+            if ($hw < 1 || $hh < 1) {
+                return mu_sticker_invalid('mockups[' . $index . '] tiene el hueco sin tamaño.');
+            }
+            $mockup['id'] = $mid;
+            $mockup['categoria'] = $categoria;
+            $mockup['fondo'] = $fondo;
+            $mockups[] = $mockup;
+        }
+    }
+
     // --- ARMADO DEL ARCHIVO ---
     $clean = array(
         'config' => $config,
@@ -231,6 +277,16 @@ function mu_sticker_save_config($raw, $targetFile) {
     }
     foreach ($clean_options as $key => $options) {
         $clean[$key] = $options;
+    }
+
+    if (isset($data['mockups'])) {
+        $clean['mockups'] = $mockups;
+    }
+    if (isset($data['tiraNombre']) && is_string($data['tiraNombre'])) {
+        $tira = trim($data['tiraNombre']);
+        if ($tira !== '') {
+            $clean['tiraNombre'] = mb_substr($tira, 0, 60);
+        }
     }
 
     $json = json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -124,6 +124,27 @@ class CalculadoraCartIntegration {
             ));
         }
 
+        // Spec 037: el DISENO viaja con la linea (original + receta). Solo ids y
+        // medidas: el arte NUNCA viaja compuesto (constitution §III del plugin).
+        $diseno = array();
+        if (isset($decoded_data['diseno']) && is_array($decoded_data['diseno'])) {
+            $d = $decoded_data['diseno'];
+            $d_id = isset($d['id']) ? strtolower(preg_replace('/[^a-f0-9]/', '', (string) $d['id'])) : '';
+            $d_item = isset($d['itemKey']) ? strtolower(preg_replace('/[^a-z0-9-]/', '', (string) $d['itemKey'])) : '';
+            $d_sid = isset($d['sid']) ? strtolower(preg_replace('/[^a-z0-9_-]/', '', (string) $d['sid'])) : '';
+            $d_receta = isset($d['receta']) ? strtolower(preg_replace('/[^a-f0-9]/', '', (string) $d['receta'])) : '';
+            if (preg_match('/^[a-f0-9]{12}$/', $d_id) && preg_match('/^cot-[a-z0-9]{8}$/', $d_item)) {
+                $diseno = array(
+                    'id' => $d_id,
+                    'itemKey' => $d_item,
+                    'sid' => substr($d_sid, 0, 64),
+                    'w' => max(1, min(3000, isset($d['w']) ? (int) $d['w'] : 0)),
+                    'h' => max(1, min(3000, isset($d['h']) ? (int) $d['h'] : 0)),
+                    'receta' => preg_match('/^[a-f0-9]{12}$/', $d_receta) ? $d_receta : '',
+                );
+            }
+        }
+
         // Solo se persisten datos de presentación ya saneados.
         $safe_data = array(
             'order_code' => $order_code,
@@ -135,6 +156,7 @@ class CalculadoraCartIntegration {
             'medida' => isset($decoded_data['medida']) ? sanitize_text_field((string) $decoded_data['medida']) : '',
             'quantity' => (int) $pricing['totalStickers'],
             'sheets' => (int) $pricing['sheets'],
+            'diseno' => $diseno,
         );
 
         $cart_item_key = WC()->cart->add_to_cart(
@@ -228,6 +250,15 @@ class CalculadoraCartIntegration {
             $item->add_meta_data('_calculator_price', $calculator_data['price'] ?? 0, true);
             $item->add_meta_data('_calculator_description', $calculator_data['description'] ?? '', true);
             $item->add_meta_data('_calculator_url', $calculator_data['cotizador_url'] ?? '', true);
+            // Spec 037: el plugin Personalizador PDF promueve el item del
+            // cotizador con ESTAS metas (`_mu_origen` decide que NO se entregue PDF).
+            if (!empty($calculator_data['diseno']) && is_array($calculator_data['diseno'])) {
+                $d = $calculator_data['diseno'];
+                $item->add_meta_data('_pmu_sid', (string) ($d['sid'] ?? ''), true);
+                $item->add_meta_data('_pmu_item_key', (string) ($d['itemKey'] ?? ''), true);
+                $item->add_meta_data('_mu_diseno_id', (string) ($d['id'] ?? ''), true);
+                $item->add_meta_data('_mu_origen', 'cotizador', true);
+            }
         }
     }
     

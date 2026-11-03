@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Package, ChevronUp, MessageCircle } from 'lucide-react';
-import type { Order, PriceResult } from '../types';
+import type { Order, PriceResult, Diseno } from '../types';
 import { useToast } from './ToastProvider';
 
 interface MobileSummaryBarProps {
@@ -14,6 +14,10 @@ interface MobileSummaryBarProps {
   orderCode?: string | null;
   // URL pública de la cotización (para el link "Editar" del carrito).
   shareUrl?: string;
+  /** Diseno del cotizador cargado (spec 037). */
+  diseno?: Diseno | null;
+  /** Subida del arte en curso: COMPRAR espera (FR-014). */
+  subiendo?: boolean;
 }
 
 const money = (n?: number) => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -66,6 +70,8 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
   sizeText, materialName, formatoLabel, designLabel,
   orderCode = null,
   shareUrl = '',
+  diseno = null,
+  subiendo = false,
 }) => {
   const isComplete = !!results;
   const { showToast } = useToast();
@@ -148,12 +154,16 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
                     formato: formatoLabel,
                     medida: `${order.shapeType} ${sizeText}`,
                     quantity: results.totalStickers,
-                    sheets: order.sheetsQty
+                    sheets: order.sheetsQty,
+                    // Spec 037: el diseno viaja con la linea (original + receta).
+                    diseno: diseno ?? undefined,
                   });
                 }}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                disabled={subiendo}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
               >
-                <Package className="w-4 h-4" /> COMPRAR
+                <Package className="w-4 h-4" />
+                {subiendo ? 'SUBIENDO...' : 'COMPRAR'}
               </button>
             ) : (
               <button onClick={scrollToSummary} className="cl-button-primary-large">

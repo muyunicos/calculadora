@@ -326,4 +326,82 @@ test('el servidor rechaza un material sin nombre y códigos duplicados', () => {
   assert.match(r2.body.error, /repetidos/);
 });
 
+// --- Spec 037: nucleo del mockup del cotizador (T011 + paridad I1) ---
+const { sizeToPx, gidPara, resolveMockupFor, tiraOrden, precioActualizado, descripcionAuto } =
+  loadModule('src/core/mockups.ts');
+const paridadCotizador = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'fixtures', 'cotizador-paridad.json'), 'utf8'),
+);
+
+test('paridad: sizeToPx y gidPara coinciden con el fixture del plugin', () => {
+  paridadCotizador.casos.forEach((caso) => {
+    assert.deepEqual(
+      sizeToPx(caso.size),
+      { w: caso.w, h: caso.h },
+      `${caso.categoria} ${caso.size}`,
+    );
+    assert.equal(gidPara(caso.categoria, caso.size), caso.gid, `${caso.categoria} ${caso.size}`);
+  });
+});
+
+test('sizeToPx acota el lienzo conservando el aspecto y rechaza basura', () => {
+  assert.deepEqual(sizeToPx('10x200'), { w: 150, h: 3000 });
+  assert.deepEqual(sizeToPx('6,0 cm'), { w: 709, h: 709 });
+  assert.deepEqual(sizeToPx(''), { w: 0, h: 0 });
+  assert.deepEqual(sizeToPx('sin medidas'), { w: 0, h: 0 });
+});
+
+test('resolveMockupFor: override por tamaño > categoría > null', () => {
+  const base = { fondo: 'fondo.webp', hueco: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, forma: 'auto' };
+  const mockups = [
+    { ...base, id: 'a', categoria: 'Circulares' },
+    { ...base, id: 'b', categoria: 'Circulares', size: '6,0 cm' },
+    { ...base, id: 'c', categoria: 'Formas', forma: 'rectangulo', visible: false },
+  ];
+  assert.equal(resolveMockupFor({ categoria: 'Circulares', size: '6 cm' }, mockups).id, 'b');
+  assert.equal(resolveMockupFor({ categoria: 'Circulares', size: '2,5 cm' }, mockups).id, 'a');
+  assert.equal(resolveMockupFor({ categoria: 'Formas' }, mockups), null);
+  assert.equal(resolveMockupFor({ categoria: 'Otra' }, mockups), null);
+});
+
+test('tiraOrden: favorito, orden manual y fecha (5 asserts)', () => {
+  const base = { origen: 'custom', titulo: 'x', favorito: false, orden: 0, creado: 0 };
+  const items = [
+    { ...base, key: 'custom:b', creado: 100 },
+    { ...base, key: 'custom:a', creado: 200 },
+    { ...base, key: 'custom:c', favorito: true, creado: 1 },
+    { ...base, key: 'custom:d', orden: 1, creado: 999 },
+  ];
+  const ordenados = items.slice().sort(tiraOrden).map((i) => i.key);
+  assert.equal(ordenados[0], 'custom:c');
+  assert.equal(ordenados[ordenados.length - 1], 'custom:d');
+  assert.ok(ordenados.indexOf('custom:a') < ordenados.indexOf('custom:b'));
+  assert.equal(tiraOrden(items[0], items[0]), 0);
+  assert.equal(items.slice().sort(tiraOrden).length, 4);
+});
+
+test('precioActualizado: avisa solo si el numero cambio (D7)', () => {
+  const actual = {
+    perUnit: 860, perUnitBase: 900, total: 193500,
+    totalStickers: 225, sheets: 15, savingsPct: 12,
+  };
+  assert.equal(precioActualizado({ final: 193500 }, actual), false);
+  assert.equal(precioActualizado({ final: 193500.4 }, actual), false);
+  assert.equal(precioActualizado({ final: 180000 }, actual), true);
+  assert.equal(precioActualizado(undefined, actual), false);
+  assert.equal(precioActualizado({ final: 100 }, null), false);
+});
+
+test('descripcionAuto arma material | forma tamano | formato | planchas', () => {
+  const texto = descripcionAuto({
+    material: 'Vinilo',
+    forma: 'Circulares',
+    tamano: '6,0 cm',
+    formato: 'Plancha Medio Corte',
+    planchas: 15,
+    unidades: 225,
+  });
+  assert.equal(texto, 'Vinilo | Circulares 6,0 cm | Plancha Medio Corte | 15 planchas (~225 u)');
+});
+
 console.log(`\n${passed} tests OK`);

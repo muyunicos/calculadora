@@ -5,6 +5,9 @@ import type {
   DesignOption,
   GalleryItem,
   Material,
+  MockupDef,
+  MockupForma,
+  MockupHueco,
   ShapeItem,
   ShapesCatalog,
   ShapesShowMoreIndex,
@@ -296,6 +299,88 @@ function sanitizeIndexRecord(
   return out;
 }
 
+/** Formas validas del hueco (v1 usa `rectangulo` para "Formas"). */
+const MOCKUP_FORMAS = ['auto', 'rectangulo', 'circulo', 'cuadrado', 'ovalo'] as const;
+
+/**
+ * Sanea las definiciones del mockup del cotizador (spec 037, T012).
+ *
+ * Criterio "repara y avisa" (el mismo del resto del archivo): si un mockup se
+ * puede reparar, se repara; si no (sin `id`, sin `categoria`, sin `fondo` o con el
+ * hueco de lado 0), se DESCARTA y se anota en `warnings` — nunca se publica un
+ * hueco que taparia el arte del comprador (FR-035).
+ *
+ * El hueco vive en el espacio LOGICO 300x300: `x/y` en `0..300` y `w/h` en
+ * `1..300` (un hueco mayor que el lienzo no es un encuadre, es un error de datos).
+ */
+function sanitizeMockups(raw: unknown, warnings: string[]): MockupDef[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    warnings.push('mockups no es una lista; se ignoró.');
+    return [];
+  }
+  const out: MockupDef[] = [];
+  const ids = new Set<string>();
+  raw.forEach((item, index) => {
+    const etiqueta = `mockups[${index}]`;
+    if (!isRecord(item)) {
+      warnings.push(`${etiqueta} no es un objeto; se descartó.`);
+      return;
+    }
+    const id = str(item.id).trim();
+    if (!id) {
+      warnings.push(`${etiqueta} no tiene id; se descartó.`);
+      return;
+    }
+    if (ids.has(id)) {
+      warnings.push(`${etiqueta} repite el id "${id}"; se descartó.`);
+      return;
+    }
+    const categoria = str(item.categoria).trim();
+    if (!categoria) {
+      warnings.push(`${etiqueta} ("${id}") no tiene categoria; se descartó.`);
+      return;
+    }
+    const fondo = str(item.fondo).trim();
+    if (!fondo) {
+      warnings.push(`${etiqueta} ("${id}") no tiene fondo; se descartó.`);
+      return;
+    }
+    if (item.visible === false) {
+      warnings.push(`${etiqueta} ("${id}") está oculto; no se publica.`);
+      return;
+    }
+    const huecoRaw = isRecord(item.hueco) ? item.hueco : {};
+    const hueco: MockupHueco = {
+      x: num(huecoRaw.x, 0, 0, 300),
+      y: num(huecoRaw.y, 0, 0, 300),
+      w: num(huecoRaw.w, 0, 0, 300),
+      h: num(huecoRaw.h, 0, 0, 300),
+      rot: num(huecoRaw.rot, 0, -360, 360),
+    };
+    if (hueco.w < 1 || hueco.h < 1) {
+      warnings.push(`${etiqueta} ("${id}") tiene el hueco sin tamaño; se descartó.`);
+      return;
+    }
+    const formaRaw = str(item.forma).trim().toLowerCase();
+    const forma = (MOCKUP_FORMAS as readonly string[]).includes(formaRaw)
+      ? (formaRaw as MockupForma)
+      : 'auto';
+    ids.add(id);
+    out.push({
+      id,
+      titulo: optionalStr(item.titulo)?.trim() || undefined,
+      categoria,
+      size: optionalStr(item.size)?.trim() || undefined,
+      fondo,
+      hueco,
+      forma,
+      visible: true,
+    });
+  });
+  return out;
+}
+
 /**
  * Valida y REPARA los datos de configuración. Solo falla si falta la estructura
  * mínima para poder calcular (config, materiales y al menos un tamaño).
@@ -343,6 +428,8 @@ export function validateAppData(raw: unknown): ValidationResult {
     gallery,
     deliveryOptions: sanitizeDeliveryOptions(raw.deliveryOptions, warnings),
     designOptions: sanitizeDesignOptions(raw.designOptions, warnings),
+    mockups: sanitizeMockups(raw.mockups, warnings),
+    tiraNombre: optionalStr(raw.tiraNombre)?.trim() || undefined,
   };
 
   const uniqueWarnings = Array.from(new Set(warnings)).slice(0, 25);

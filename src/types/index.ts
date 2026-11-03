@@ -154,9 +154,127 @@ export interface AppData {
   gallery?: GalleryItem[];
   deliveryOptions?: DeliveryOption[];
   designOptions?: DesignOption[];
+  // Spec 037: definiciones del mockup del cotizador (fondo + hueco por categoria,
+  // con override opcional por tamano). Las edita el admin; el plugin NO las guarda.
+  mockups?: MockupDef[];
+  // Nombre visible de la tira unificada (Anexo C de la spec 037).
+  tiraNombre?: string;
 }
 
 export type A4FitType = 'portrait' | 'landscape' | 'none';
+
+// ===== Spec 037: mockup del cotizador, diseno e ideas del comprador =====
+
+/** Forma del hueco. En v1 solo "Formas"/"A Medida" usan `rectangulo`. */
+export type MockupForma = 'auto' | 'rectangulo' | 'circulo' | 'cuadrado' | 'ovalo';
+
+/** Hueco del mockup en el espacio LOGICO 300x300 (no en px del sticker). */
+export interface MockupHueco {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot: number;
+}
+
+/**
+ * Definicion del mockup del cotizador (data-model 037): vive en
+ * `datos_config.json:mockups[]`, NO en el plugin (el plugin indexa por PDF y el
+ * cotizador no tiene PDF).
+ */
+export interface MockupDef {
+  id: string;
+  titulo?: string;
+  categoria: string;
+  /** Override por tamano: si esta, aplica solo a ese tamano de la categoria. */
+  size?: string;
+  /** URL del fondo (foto de escena); absoluta o relativa a los assets. */
+  fondo: string;
+  hueco: MockupHueco;
+  forma: MockupForma;
+  visible?: boolean;
+}
+
+/**
+ * Diseno del pedido: el ORIGINAL y su encuadre. El arte no viaja compuesto
+ * (constitution §III): el servidor lo compone con el original + la receta.
+ */
+export interface Diseno {
+  /** 12 hex del sha1 del contenido crudo (regla de la 035). */
+  id: string;
+  /** Item del cotizador (`cot-{8 hex}`). */
+  itemKey: string;
+  sid: string;
+  /** Pixeles del sticker (lienzo explicito de la receta). */
+  w: number;
+  h: number;
+  /** 12 hex de la receta v2 (`PMU_Sesion::receta_de`). */
+  receta: string;
+  /** URL del original (la devuelve el endpoint de subida). */
+  url?: string;
+}
+
+/** Foto del precio al momento de guardar la idea (D7). */
+export interface IdeaPrecio {
+  final: number;
+  perUnit: number;
+  total: number;
+  sheets: number;
+  stickers: number;
+  savingsPct: number;
+  ts: number;
+}
+
+/** Custom (idea guardada del comprador): `customs/{idea_id}/idea.json`. */
+export interface IdeaCustom {
+  version: 1;
+  id: string;
+  creado: number;
+  favorito: boolean;
+  orden: number;
+  titulo: string;
+  descripcion: string;
+  /** Codigo v1 del cotizador (lo valida el codec, no se parsea aca). */
+  order: string;
+  precio?: IdeaPrecio;
+  diseno: Diseno;
+  mockup: { id: string; w: number; h: number; mockupId: string; url?: string };
+  /** URL del snapshot servida por el endpoint (`op=imagen`). */
+  url?: string;
+  /** Causa visible cuando el snapshot no resuelve (`cotizador:mockup:ausente`). */
+  _causa?: string;
+}
+
+/** Estrella de un item que NO es un custom (se guarda en `favoritos.json`). */
+export interface FavoritoRef {
+  tipo: 'tienda' | 'historial';
+  ref: string;
+  creado: number;
+}
+
+/** Origen de una tarjeta de la tira unificada. */
+export type TiraOrigen = 'tienda' | 'custom' | 'historial';
+
+/**
+ * Tarjeta de la tira unificada (tienda + customs + historial con el MISMO
+ * formato). `key` es estable y unico en la tira (`tienda:{id}`, `custom:{idea}`,
+ * `historial:{order_id}`).
+ */
+export interface TiraItem {
+  key: string;
+  origen: TiraOrigen;
+  titulo: string;
+  descripcion?: string;
+  imagen?: string;
+  order?: string;
+  favorito: boolean;
+  orden: number;
+  creado: number;
+  idea?: IdeaCustom;
+  precio?: IdeaPrecio;
+  /** Precio recalculado con el catalogo vigente (D7); ausente si no se pudo. */
+  precioActual?: GalleryPricing | null;
+}
 
 export interface A4Layout {
   qty: number;

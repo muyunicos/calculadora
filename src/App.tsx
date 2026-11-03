@@ -7,7 +7,7 @@ import {
   Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
-import type { A4Layout, Config, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption } from './types';
+import type { A4Layout, Config, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption, Diseno, TiraItem } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
@@ -29,13 +29,19 @@ import { AdminTabs } from './components/AdminTabs';
 import { AdminCostsPanel } from './components/AdminCostsPanel';
 import MobileSummaryBar from './components/MobileSummaryBar';
 import MiniGallery from './components/MiniGallery';
+import TiraIdeas from './components/TiraIdeas';
+import DesignStep from './components/DesignStep';
+import { AdminMockupsPanel } from './components/AdminMockupsPanel';
+import { usePmuAssets } from './hooks/usePmuAssets';
+import { useClientIdeas } from './hooks/useClientIdeas';
+import { resolveMockupFor } from './core/mockups';
 import { SaveIndicator } from './components/SaveIndicator';
 import { infoBtnClass, resolveImage } from './utils/ui';
 
 const App = () => {
   const [isAdmin, setIsAdmin] = useState(CAN_BE_ADMIN);
   const [activeTab, setActiveTab] = useState<'calculator' | 'settings'>('calculator');
-  const [activeAdminTab, setActiveAdminTab] = useState<'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs'>('gallery');
+  const [activeAdminTab, setActiveAdminTab] = useState<'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs' | 'mockups'>('gallery');
   const [showMathDetail, setShowMathDetail] = useState(false);
   const [showAllMaterials, setShowAllMaterials] = useState(false);
   const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(1); // Paso 1 abierto por defecto
@@ -54,9 +60,35 @@ const App = () => {
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
   const {
     config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions,
+    mockups, tiraNombre,
     setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setMaterialsShowMoreIndex, setGallery, setDeliveryOptions, setDesignOptions,
+    setMockups,
     isLoaded, loadError, isSaving, saveError, hasChanges, saveConfig,
   } = useConfig(isAdmin);
+
+  // Spec 037: puente con el plugin (carga diferida) + ideas del comprador. Los
+  // hooks se llaman SIEMPRE (reglas de hooks); por dentro respetan el flag.
+  const pmuAssets = usePmuAssets();
+  const ideas = useClientIdeas(activeTab === 'calculator');
+  const [diseno, setDiseno] = useState<Diseno | null>(null);
+  // Subida del arte en curso: el boton COMPRAR espera a que termine (FR-014).
+  const [disenoSubiendo, setDisenoSubiendo] = useState(false);
+
+  const ideasListas = useRef(false);
+  useEffect(() => {
+    if (ideasListas.current || activeTab !== 'calculator') return;
+    ideasListas.current = true;
+    void ideas.listar();
+    void ideas.historial();
+  }, [activeTab, ideas]);
+
+  // El editor del admin usa el MISMO nucleo (`PMUMockup.componer`): se pide al
+  // abrir la pestana Mockups (spec 037, T009).
+  useEffect(() => {
+    if (activeTab === 'settings' && activeAdminTab === 'mockups') {
+      void pmuAssets.abrir();
+    }
+  }, [activeTab, activeAdminTab, pmuAssets]);
 
   const [order, setOrder] = useState<Order>(() => {
     // El código corto v1 necesita el catálogo y se aplica luego,
@@ -592,6 +624,19 @@ const App = () => {
     ? `${order.customRectW}x${order.customRectH}cm`
     : shapesCatalog?.[order.shapeType]?.[order.sizeIndex]?.size || '';
 
+  // --- Spec 037: mockup del cotizador para la seleccion actual ---
+  // "A Medida" vive en el catalogo de "Formas" (mismo criterio que ShapeSizeSelector).
+  const categoriaMockup = order.shapeType === 'A Medida' ? 'Formas' : order.shapeType;
+  const sizeMockup = order.shapeType === 'Rectangulares'
+    ? `${order.customRectW}x${order.customRectH} cm`
+    : sizeText;
+  const mockupActual = resolveMockupFor({ categoria: categoriaMockup, size: sizeMockup }, mockups);
+  const usarTira = (item: TiraItem) => {
+    if (item.order) loadOrderFromCode(item.order);
+    // Reusar un custom restaura tambien su encuadre (FR-022).
+    if (item.origen === 'custom' && item.idea) setDiseno(item.idea.diseno);
+  };
+
   // --- ESTADOS DE CARGA / ERROR ---
   if (!isLoaded) {
     return (
@@ -650,8 +695,25 @@ const App = () => {
         {/* CONTENIDO PRINCIPAL */}
         {activeTab === 'calculator' ? (
           <>
-          {/* Mini-galería de ejemplos (arriba): cargar un pedido al tocar una foto. */}
-          <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} />
+          {/* Tira unificada (spec 037): tienda + ideas del comprador + historial.
+              Sin puente se degrada a la galeria de la tienda (D9). */}
+          {ideas.disponible ? (
+            <TiraIdeas
+              titulo={tiraNombre.trim() || 'Ideas y favoritos'}
+              tienda={gallery}
+              ideas={ideas.ideas}
+              favoritos={ideas.favoritos}
+              pedidos={ideas.pedidos}
+              resolveImage={resolveImage}
+              getPricing={getGalleryPricing}
+              onUsar={usarTira}
+              onEstrella={(tipo, ref, valor) => { void ideas.favorito(tipo, ref, valor); }}
+              onBorrar={(ideaId) => { void ideas.borrar(ideaId); }}
+              className="mb-4"
+            />
+          ) : (
+            <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} />
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
@@ -717,6 +779,34 @@ const App = () => {
                 onManualComplexity={() => { complexityIsManual.current = true; }}
                 shouldScrollOnMount={shouldScrollOnMount}
               />
+
+              {/* Paso 4 (spec 037): Tu diseno. Opcional: el arte no bloquea la
+                  compra (constitution §I, Enmienda 4.1.0). */}
+              {pmuAssets.disponible && (
+                <section className="bg-white rounded-xl cl-shadow-sm border border-slate-200 p-4">
+                  <div className="flex items-baseline justify-between gap-2 mb-3">
+                    <h3 className="text-sm font-bold text-slate-800">Tu diseno</h3>
+                    <span className="text-xs text-slate-500">Opcional</span>
+                  </div>
+                  <DesignStep
+                    categoria={categoriaMockup}
+                    size={sizeMockup}
+                    forma={mockupActual?.forma}
+                    mockup={mockupActual}
+                    diseno={diseno}
+                    onDiseno={setDiseno}
+                    disponible={pmuAssets.disponible}
+                    assets={pmuAssets}
+                    onSubiendo={setDisenoSubiendo}
+                    onAbrir={() => { void pmuAssets.abrir(); }}
+                  />
+                  {ideas.error !== '' && (
+                    <p className="mt-2 text-xs text-amber-700" role="status">
+                      No pudimos leer tus ideas guardadas ({ideas.error}).
+                    </p>
+                  )}
+                </section>
+              )}
             </div>
 
             {/* COLUMNA DERECHA: RESULTADOS (Ticket) */}
@@ -739,6 +829,8 @@ const App = () => {
               setOrder={setOrder}
               deliveryOptions={deliveryOptions}
               designOptions={designOptions}
+              diseno={diseno}
+              subiendo={disenoSubiendo}
             />
             </div>
 
@@ -753,6 +845,8 @@ const App = () => {
             designLabel={designLabel}
             orderCode={orderCode}
             shareUrl={shareUrl}
+            diseno={diseno}
+            subiendo={disenoSubiendo}
           />
           </div>
           </>
@@ -825,6 +919,14 @@ const App = () => {
               <AdminCostsPanel
                 config={config}
                 handleConfigChange={handleConfigChange}
+              />
+            )}
+
+            {activeAdminTab === 'mockups' && (
+              <AdminMockupsPanel
+                mockups={mockups}
+                categorias={Object.keys(shapesCatalog)}
+                onChange={(lista) => setMockups(lista)}
               />
             )}
           </div>

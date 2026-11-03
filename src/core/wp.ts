@@ -11,11 +11,23 @@ interface WpStickerData {
   // inyecta, el guardado sigue funcionando con la cookie de sesión + capability.
   saveNonce?: string;
   productId?: number;
+  // Spec 037: puente con el plugin Personalizador PDF (el cotizador lo usa como
+  // proveedor de diseño). `baseUrl` es la URL de la carpeta del plugin; el resto
+  // son los endpoints que ya usan sus módulos (`PMU_TIENDA`).
+  pmu?: {
+    baseUrl?: string;
+    postUrl?: string;
+    ajaxUrl?: string;
+    nonce?: string;
+  };
 }
 
 declare global {
   interface Window {
     WP_STICKER_DATA?: WpStickerData;
+    // Objetos que inyecta el plugin cuando sus módulos se cargan en esta página.
+    PMU_TIENDA?: Record<string, unknown>;
+    PMU_COTIZADOR?: Record<string, unknown>;
   }
 }
 
@@ -33,3 +45,14 @@ export const CAN_BE_ADMIN = !!WP.isAdmin;
 
 // Número de WhatsApp del negocio (a futuro debería venir de la config).
 export const WHATSAPP_PHONE = '542235331311';
+// --- PUENTE CON EL PLUGIN PERSONALIZADOR PDF (spec 037) ---
+// El cotizador es un CONSUMIDOR declarado del plugin: sube el original del
+// comprador, compone el mockup 300x300 en el navegador y guarda sus ideas. Todos
+// los datos del puente los inyecta el tema; si faltan, el paso de diseno se
+// degrada (D9) y el cotizador sigue cotizando y comprando.
+export const PMU_BASE = WP.pmu?.baseUrl || '';
+export const PMU_POST = WP.pmu?.postUrl || '';
+export const PMU_AJAX = WP.pmu?.ajaxUrl || '';
+export const PMU_NONCE = WP.pmu?.nonce || '';
+/** Sin `baseUrl` o sin nonce no hay puente: el paso de diseno se oculta. */
+export const PMU_DISPONIBLE = !!(PMU_BASE && (PMU_POST || PMU_AJAX) && PMU_NONCE);

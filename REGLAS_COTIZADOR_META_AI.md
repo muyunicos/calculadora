@@ -216,4 +216,4 @@ Al presentar el precio al cliente:
 
 ---
 *Documento generado automáticamente desde datos_config.json por `scripts/generar-reglas.js`*
-*Última actualización: 3/8/2026*
+*Última actualización: 3/11/2026*

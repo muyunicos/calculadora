@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
-import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption } from '../types';
+import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption, Diseno } from '../types';
 import PriceTable from './PriceTable';
 import { useToast } from './ToastProvider';
 
@@ -24,6 +24,10 @@ interface OrderSummaryProps {
   setOrder: (order: Order | ((prev: Order) => Order)) => void;
   deliveryOptions?: DeliveryOption[];
   designOptions?: DesignOption[];
+  /** Diseno del cotizador cargado (spec 037): viaja con la linea del pedido. */
+  diseno?: Diseno | null;
+  /** Subida del arte en curso: COMPRAR espera (FR-014). */
+  subiendo?: boolean;
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -44,6 +48,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   setOrder,
   deliveryOptions = [],
   designOptions = [],
+  diseno = null,
+  subiendo = false,
 }) => {
   const { showToast } = useToast();
   return (
@@ -106,9 +112,27 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
           </div>
 
+          {diseno && (
+            <div className="relative z-10 flex items-center gap-2 mt-4 text-xs text-slate-300">
+              {diseno.url && (
+                <img
+                  src={diseno.url}
+                  alt="Tu diseno"
+                  className="w-10 h-10 rounded object-cover border border-white/20"
+                />
+              )}
+              <span>
+                <strong className="text-emerald-300">Diseno cargado</strong>
+                {' · '}{diseno.w}x{diseno.h} px
+              </span>
+            </div>
+          )}
+
           <div className="relative z-10 flex cl-gap-md mt-6">
             <button
+              disabled={subiendo}
               onClick={() => {
+                if (subiendo) return; // FR-014: no se compra con el arte subiendo
                 const addToCart = typeof window !== 'undefined' ? (window as any).addToCartFromCalculator : null;
                 if (typeof addToCart !== 'function') {
                   showToast('error', 'El carrito no está disponible en esta página. Probá desde el producto Cotizador.');
@@ -127,12 +151,16 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   formato: formatoLabel,
                   medida: `${order.shapeType} ${sizeText}`,
                   quantity: results.totalStickers,
-                  sheets: order.sheetsQty
+                  sheets: order.sheetsQty,
+                  // Spec 037: el diseno (original + receta) viaja con la linea; el
+                  // carrito guarda _mu_origen/_mu_diseno_id/_pmu_sid/_pmu_item_key.
+                  diseno: diseno ?? undefined,
                 });
               }}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md"
             >
-              <Package className="w-5 h-5" /> COMPRAR
+              <Package className="w-5 h-5" />
+              {subiendo ? 'SUBIENDO TU DISEÑO…' : 'COMPRAR'}
             </button>
             <a href={consultLink} target="_blank" rel="noopener noreferrer" className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-4 cl-rounded-md cl-transition-colors cl-shadow-lg shadow-green-900/50 cl-flex-center cl-gap-md">
               <img src="https://muyunicos.com/wp-content/uploads/2025/10/whatsapp.webp" alt="Contacto por WhatsApp" className="w-5 h-5" />

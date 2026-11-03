@@ -1,7 +1,7 @@
 import React from 'react';
-import { ImageIcon, Printer, LayoutDashboard, Palette, TrendingUp, Clock } from 'lucide-react';
+import { ImageIcon, Printer, LayoutDashboard, Palette, TrendingUp, Clock, Layers } from 'lucide-react';
 
-type AdminTab = 'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs';
+type AdminTab = 'gallery' | 'materials' | 'shapes' | 'delivery' | 'costs' | 'mockups';
 
 interface AdminTabsProps {
   activeTab: AdminTab;
@@ -14,6 +14,8 @@ const tabs: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: 'shapes', label: 'Formas y Tamaños', icon: LayoutDashboard },
   { id: 'delivery', label: 'Formato de Corte y Diseño', icon: Palette },
   { id: 'costs', label: 'Costos y Tiempos', icon: TrendingUp },
+  // Spec 037: fondo + hueco del mockup del cotizador, por categoria/tamano.
+  { id: 'mockups', label: 'Mockups', icon: Layers },
 ];
 
 export const AdminTabs: React.FC<AdminTabsProps> = ({ activeTab, setActiveTab }) => {
