@@ -1,14 +1,15 @@
 import React from 'react';
 import { Printer, Plus, Trash2, ArrowUp, ArrowDown, Scissors, Eye, EyeOff } from 'lucide-react';
 import type { Material, Order } from '../types';
+import { findMaterialCodeDuplicates } from '../utils/validation';
 import InfoExtraEditor from './InfoExtraEditor';
 
 interface AdminMaterialsPanelProps {
   materials: Material[];
   resolveImage: (src: string) => string;
   updateMaterial: (id: string, field: string, value: string | boolean) => void;
-  addMaterial: (orderSetter: (order: Order) => void) => void;
-  removeMaterial: (id: string, order: Order, orderSetter: (order: Order) => void) => void;
+  addMaterial: () => void;
+  removeMaterial: (id: string) => void;
   moveMaterial: (index: number, direction: -1 | 1) => void;
   order: Order;
   setOrder: (order: Order | ((prev: Order) => Order)) => void;
@@ -30,6 +31,7 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
   materialsShowMoreIndex,
   setMaterialsShowMoreIndex,
 }) => {
+  const duplicateCodes = findMaterialCodeDuplicates(materials);
   return (
     <div className="cl-card bg-white p-6">
       <div className="flex flex-col sm:flex-row cl-flex-between items-start sm:items-center cl-mb-lg cl-gap-md">
@@ -38,12 +40,19 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
             <Printer className="w-6 h-6 cl-text-primario" /> Base de Materiales
           </h2>
         </div>
-        <button onClick={() => addMaterial(setOrder)} className="flex items-center cl-gap-md cl-button-primary-small">
+        <button onClick={() => addMaterial()} className="flex items-center cl-gap-md cl-button-primary-small">
           <Plus className="w-4 h-4" /> Añadir Material
         </button>
       </div>
 
       <div className="space-y-6">
+        {duplicateCodes.length > 0 && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <strong>Hay códigos de material repetidos:</strong>{' '}
+            {duplicateCodes.map((group) => `#${group.code} (${group.items.join(' / ')})`).join(' · ')}.
+            Los links compartidos y la galería cargarían el material equivocado y el guardado se bloquea hasta corregirlo.
+          </div>
+        )}
         {materials.map((m, index) => (
           <div key={m.id} className={`border rounded-2xl overflow-hidden transition-shadow ${index < materialsShowMoreIndex ? 'border-slate-200 shadow-sm hover:shadow-md' : 'border-slate-300 opacity-60 bg-slate-100'}`}>
             {/* Línea divisoria "Ver más" */}
@@ -70,7 +79,7 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
                   {m.visible ?? true ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
                 <button 
-                  onClick={() => removeMaterial(m.id, order, setOrder)} 
+                  onClick={() => removeMaterial(m.id)} 
                   className={`
                     p-2 rounded-lg transition-colors
                     ${isDeleteMode 

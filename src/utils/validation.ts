@@ -2,6 +2,8 @@
  * Utilidades de validación para la interfaz de admin
  */
 
+import type { Material, ShapesCatalog } from '../types';
+
 export interface ValidationResult {
   isValid: boolean;
   message?: string;
@@ -92,3 +94,41 @@ export const validateUrl = (url: string): ValidationResult => {
     };
   }
 };
+
+// --- UNICIDAD DE CÓDIGOS ---
+// El código de pedido (v1.m11.s60...) identifica material y tamaño por `code`.
+// Si dos opciones comparten código, `decodeOrderCode` resuelve la primera y los
+// links/galería cargan la opción equivocada. El Admin no lo detectaba.
+export interface DuplicateCodeGroup {
+  code: number;
+  items: string[];
+}
+
+const groupByCode = (entries: Array<{ code?: number; label: string }>): DuplicateCodeGroup[] => {
+  const byCode = new Map<number, string[]>();
+  for (const entry of entries) {
+    if (entry.code === undefined || entry.code === null) continue;
+    const list = byCode.get(entry.code) ?? [];
+    list.push(entry.label);
+    byCode.set(entry.code, list);
+  }
+  return Array.from(byCode.entries())
+    .filter(([, labels]) => labels.length > 1)
+    .map(([code, labels]) => ({ code, items: labels }));
+};
+
+export const findMaterialCodeDuplicates = (materials: Material[]): DuplicateCodeGroup[] =>
+  groupByCode(materials.map((m) => ({ code: m.code, label: m.name })));
+
+export const findShapeCodeDuplicates = (shapesCatalog: ShapesCatalog): DuplicateCodeGroup[] =>
+  groupByCode(
+    Object.entries(shapesCatalog).flatMap(([category, items]) =>
+      items.map((item) => ({ code: item.code, label: `${category} ${item.size}` })),
+    ),
+  );
+
+/** Mensajes listos para mostrar/registrar (uno por grupo duplicado). */
+export const describeDuplicateCodes = (
+  groups: DuplicateCodeGroup[],
+  kind: 'material' | 'tamaño',
+): string[] => groups.map((g) => `${kind} ${g.code}: ${g.items.join(' / ')}`);

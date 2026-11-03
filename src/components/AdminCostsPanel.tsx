@@ -102,13 +102,8 @@ export const AdminCostsPanel: React.FC<AdminCostsPanelProps> = ({
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">Logística / Empaque</label>
               <input type="number" name="timeDelivery" value={config.timeDelivery} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 bg-slate-50" />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Armado en plancha</label>
-              <input type="number" name="timeDesignBasic" value={config.timeDesignBasic} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 bg-slate-50" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Diseño a Medida</label>
-              <input type="number" name="timeDesignCustom" value={config.timeDesignCustom} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 bg-slate-50" />
+            <div className="col-span-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              El tiempo de diseño se configura por opción en <strong>Admin → Formato de Corte y Diseño</strong> (minutos de diseño / pide minutos al cliente).
             </div>
           </div>
         </div>

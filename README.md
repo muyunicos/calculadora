@@ -228,10 +228,11 @@ El archivo `assets/datos_config.json` contiene toda la configuración editable d
 
 La aplicación implementa validación y normalización automática para evitar errores y rupturas:
 
-**Esquemas de validación (Zod):**
-- Campos de imagen en `gallery`, `materials`, `shapes`, `deliveryOptions`, `designOptions` son opcionales (los nombres técnicos de variables se mantienen por compatibilidad)
-- Valida estructura de datos al cargar desde servidor
-- Previene errores por campos faltantes o incorrectos
+**Saneamiento tolerante (`validateAppData`):**
+- **Solo falla si falta la estructura mínima** (`config`, `materials` y al menos un tamaño). Un campo inválido ya no deja la calculadora sin cargar para todos los clientes.
+- Los números se recortan a rangos (`NaN`/`Infinity`/`null` → valor seguro), los materiales/tamaños sin nombre se descartan con un warning y las fotos sin código quedan ocultas.
+- Los ids de formato/diseño son strings libres: el Admin puede agregar opciones nuevas sin romper el schema.
+- El **mismo saneador se usa al guardar**, así el Admin no puede persistir datos que rompan la próxima carga.
 
 **Normalización automática:**
 ```typescript
@@ -350,23 +351,31 @@ El código corto usa los `code` numéricos de materiales y tamaños, por lo que 
 
 Maneja:
 - **Carga**: Fetch de `datos_config.json` desde el servidor
-- **Validación**: Usa Zod para validar estructura de datos
-- **Normalización**: Aplica valores por defecto donde sea necesario
-- **Guardado**: Debounced POST a `guardar_datos.php` (solo admin)
+- **Saneamiento**: `validateAppData()` repara lo reparable y solo falla si falta la estructura mínima
+- **Normalización**: imagen por defecto de la galería (respeta el orden del archivo)
+- **Guardado**: POST a `guardar_datos.php` (solo admin) con saneo previo, detección de códigos duplicados y `X-WP-Nonce` si el shortcode lo inyecta
 
 ### Validación (`src/core/validation.ts`)
 
-**Esquemas Zod:**
-- `ConfigSchema`: Parámetros de configuración
-- `MaterialSchema`: Materiales del catálogo
-- `ShapeItemSchema`: Formas y tamaños
-- `GalleryItemSchema`: Items de galería de ejemplos
-- `DeliveryOptionSchema`: Opciones de formato de corte
-- `DesignOptionSchema`: Opciones de diseño
-
 **Funciones:**
-- `validateAppData()`: Valida estructura completa de datos
-- `normalizeAppData()`: Aplica valores por defecto (solo a gallery)
+- `validateAppData()`: valida + repara y devuelve `{ success, data, warnings }`
+- `sanitizeAppData`: alias usado antes de guardar (misma función)
+- `normalizeAppData()`: aplica la imagen por defecto a la galería
+
+**Reglas principales:**
+- `config`: números finitos recortados a rango (`wasteMargin` 0–100, `profitMargin` 0–1000, `weeklyHours` 0–168, etc.)
+- `materials`: requieren `id` y `name`; `code` es opcional (vacío = sin código)
+- `shapesCatalog`: cada ítem requiere `size`; categorías no-array se descartan
+- `gallery`: `order` puede estar vacío (la foto queda oculta); sin eso, guardar una foto nueva rompía la carga
+- `deliveryOptions` / `designOptions`: ids string libres, factores numéricos con fallback
+- Códigos duplicados: se detectan en `src/utils/validation.ts` y **bloquean el guardado** (el codec resolvería siempre el primero)
+
+### Tests
+
+`npm test` compila los módulos TS en memoria con esbuild y corre el núcleo:
+- saneador (incluye round-trip sanear→guardar→sanear), layout A4, codec y motor de precios
+- **paridad TS ↔ PHP**: compara el precio del frontend con el que recalcula el carrito (`tests/precio-paridad.php`)
+- **validación del guardado en PHP**: payload válido → 200, material sin nombre / códigos repetidos → 422 (`tests/guardar-paridad.php`)
 
 ## Estilos
 
@@ -460,13 +469,29 @@ wp_send_json_success();
 - Revisar `datos_config.json` para confirmar que haya `description` o `image`
 - `OptionInfoPanel` tiene lógica: `const hasInfo = !!option && (!!option.description || !!option.image)`
 
-## Archivos Modificados (Mejoras Recientes)
+## Correcciones recientes (2026-11)
 
-1. `src/core/validation.ts` - Esquemas flexibles y normalización (solo gallery)
-2. `src/hooks/useConfig.ts` - Integración de validación y normalización
-3. `src/components/AdminGalleryPanel.tsx` - Botón galería con modal nativo
-4. `src/components/InfoExtraEditor.tsx` - Botón galería + modal nativo (sin autocompletado)
-5. `assets/datos_config.json` - Corrección de imagen vacía con URL completa
+**Integridad de datos (P0)**
+- `validateAppData` ya no es un schema Zod “todo o nada”: repara lo reparable y solo falla si falta `config`/`materials`/tamaños.
+- El guardado sanea el payload antes del POST; `guardar_datos.php` valida el esquema, exige nonce si viene, bloquea códigos duplicados y guarda `datos_config.json.bak`.
+- Fotos nuevas sin código quedan ocultas en vez de romper la carga.
+- “Agregar Formato/Diseño” ahora persiste (ids string) y “Eliminar” ya no se revierte al recargar.
+
+**Checkout (P0)**
+- El carrito **recalcula el precio en el servidor** (`woocommerce-plugin/calculadora-pricing.php`) desde el código de pedido; ignora el `price` del navegador.
+- El plugin usa su propio objeto `muCalcCart` (ya no pisa `wc_add_to_cart_params` de WooCommerce), devuelve fragments y refresca el nonce si venció.
+- El código v1 incluye `c<complejidad>` para que el precio del carrito y el link compartido coincidan.
+
+**Funcionalidad (P1)**
+- “Ver más” de tamaños ya no oculta tamaños inaccesibles (bug real con `shapesShowMoreIndex` de producción).
+- La línea “Ver más” de materiales se persiste (`materialsShowMoreIndex`) y se usa en la vista cliente.
+- `InfoExtraEditor` crea un frame de Media Library por click: la imagen ya no se asigna al primer ítem.
+- URL: `replaceState` (no ensucia el historial), conserva otros query params, incluye medidas ajustadas y responde a Atrás/Adelante.
+- Se respeta la complejidad forzada del Admin; los tiempos de diseño salen de `designOptions[].designMinutes` y son editables.
+- Etiquetas de formato del Admin se usan en el resumen y en WhatsApp; imágenes relativas se resuelven contra `ASSETS_URL`.
+
+**Tests**
+- `npm test`: 20 casos (saneador + round-trip, A4, codec, precios, paridad TS↔PHP y validación del guardado PHP).
 
 ## Licencia
 

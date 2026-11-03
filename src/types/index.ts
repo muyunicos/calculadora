@@ -10,6 +10,9 @@ export interface Config {
   profitMargin: number;
   timeCustomerService: number;
   timeDelivery: number;
+  // DEPRECADOS: el tiempo de diseño real vive en `designOptions[].designMinutes`
+  // (editable en Admin > Formato y Diseño). Se conservan en el JSON por
+  // compatibilidad, pero ya no afectan el cálculo.
   timeDesignBasic: number;
   timeDesignCustom: number;
   galleryRefSheets: number;
@@ -54,8 +57,13 @@ export type ShapesCatalog = Record<string, ShapeItem[]>;
 // Índices de "Ver más" por categoría (define dónde mostrar la línea divisoria)
 export type ShapesShowMoreIndex = Record<string, number>;
 
-export type DeliveryFormat = 'sincorte' | 'individual' | 'plancha';
-export type DesignType = 'none' | 'basic' | 'custom';
+// Los ids de catálogo son estables ("sincorte", "individual", "plancha" /
+// "none", "basic", "custom"), pero el Admin puede agregar opciones nuevas con
+// ids propios. El `(string & {})` mantiene el autocompletado de los ids
+// conocidos sin cerrar el tipo: si se cierra a un enum, el schema de validación
+// rechaza las opciones nuevas y deja la calculadora sin cargar.
+export type DeliveryFormat = 'sincorte' | 'individual' | 'plancha' | (string & {});
+export type DesignType = 'none' | 'basic' | 'custom' | (string & {});
 
 // Opción de formato de entrega. El `id` es estable: define el cálculo de precio
 // (ver core/priceEngine) y el código de pedido compartible (ver core/orderCodec).
@@ -141,6 +149,8 @@ export interface AppData {
   materials: Material[];
   shapesCatalog: ShapesCatalog;
   shapesShowMoreIndex?: ShapesShowMoreIndex;
+  // Cuántos materiales se muestran antes de la línea "Ver más" (vista cliente).
+  materialsShowMoreIndex?: number;
   gallery?: GalleryItem[];
   deliveryOptions?: DeliveryOption[];
   designOptions?: DesignOption[];

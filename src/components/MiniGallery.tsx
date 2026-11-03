@@ -70,7 +70,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
 
   const isOpen = openIndex !== null;
   const visibleItems = items.filter((item) => item.visible !== false);
-  const current = isOpen ? visibleItems[openIndex] : null;
+  const current = isOpen ? (visibleItems[openIndex as number] ?? null) : null;
   const currentPricing = current ? getPricing(current.order, extractSheetsFromCode(current.order)) : null;
 
   const close = () => setOpenIndex(null);
@@ -92,9 +92,9 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [isOpen, items.length]);
+  }, [isOpen, visibleItems.length]);
 
-  if (items.length === 0) return null;
+  if (visibleItems.length === 0) return null;
 
   return (
     <div className="cl-card p-4">

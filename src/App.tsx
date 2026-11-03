@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useDebounce } from './hooks/useDebounce';
 import {
   Calculator, Package, Printer, Clock, TrendingUp,
@@ -7,7 +7,7 @@ import {
   Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
-import type { A4Layout, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption } from './types';
+import type { A4Layout, Config, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
@@ -41,7 +41,6 @@ const App = () => {
   const [activeStep, setActiveStep] = useState<0 | 1 | 2 | 3>(1); // Paso 1 abierto por defecto
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [expandedShapesCategory, setExpandedShapesCategory] = useState<string | null>(null);
-  const [materialsShowMoreIndex, setMaterialsShowMoreIndex] = useState(2);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   // Motor de info: opción con el panel "MÁS INFO" desplegado en cada paso (null =
   // ninguno; al colapsar se cae al hint de la opción seleccionada, si tiene info).
@@ -54,8 +53,8 @@ const App = () => {
   // --- PERSISTENCIA EN SERVIDOR (WordPress) ---
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
   const {
-    config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions,
-    setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setGallery, setDeliveryOptions, setDesignOptions,
+    config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions,
+    setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setMaterialsShowMoreIndex, setGallery, setDeliveryOptions, setDesignOptions,
     isLoaded, loadError, isSaving, saveError, hasChanges, saveConfig,
   } = useConfig(isAdmin);
 
@@ -86,82 +85,122 @@ const App = () => {
   // Aplica un código de pedido corto (v1) desde la URL una vez cargado el catálogo
   // (necesario para resolver los `code` de material/tamaño a forma+índice).
   const urlOrderApplied = useRef(false);
+  // El admin puede forzar la complejidad desde "Ajustes Manuales": ese valor se
+  // respeta durante la sesión (antes el auto-cálculo lo pisaba en cada cambio).
+  const complexityIsManual = useRef(false);
+
+  // Reutilizable para popstate (Atrás/Adelante del navegador).
+  const applyOrderCode = useCallback(
+    (code: string): boolean => {
+      if (!materials || !shapesCatalog) return false;
+      const decoded = decodeAnyOrder(code, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+      if (!decoded) return false;
+      complexityIsManual.current = false;
+      setOrder(decoded);
+      return true;
+    },
+    [materials, shapesCatalog, deliveryOptions, designOptions],
+  );
+
   useEffect(() => {
     if (urlOrderApplied.current || !materials || !shapesCatalog) return;
+    urlOrderApplied.current = true;
     if (typeof window === 'undefined') return;
     const urlOrder = new URLSearchParams(window.location.search).get('o');
     if (!urlOrder) return;
-    urlOrderApplied.current = true;
     const decoded = decodeAnyOrder(urlOrder, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
-    if (decoded) {
-      setOrder(decoded);
-      // Si el pedido está completo, hacer scroll al resumen
-      const missing = missingSelections(decoded, materials, shapesCatalog);
-      if (missing.length === 0) {
-        setTimeout(() => {
-          scrollToOrderSummary();
-        }, 200);
-      }
+    if (!decoded) {
+      console.warn('Código de pedido inválido en la URL:', urlOrder);
+      return;
     }
+    setOrder(decoded);
+    complexityIsManual.current = false;
+
+    // El paso inicial se decide con el pedido YA decodificado. Antes se evaluaba
+    // con el `order` viejo (los efectos corren en orden), así que un link
+    // completo abría el paso 1 en lugar del resumen.
+    const stillMissing = missingSelections(decoded, materials, shapesCatalog);
+    if (stillMissing.length === 0) {
+      setActiveStep(0);
+      setTimeout(() => scrollToOrderSummary(), 200);
+    } else if (!decoded.materialId) {
+      setActiveStep(1);
+    } else if (
+      !decoded.shapeType ||
+      (decoded.shapeType === 'Rectangulares' && (!decoded.customRectW || !decoded.customRectH))
+    ) {
+      setActiveStep(2);
+    } else {
+      setActiveStep(3);
+    }
+    setShouldScrollOnMount(true);
   }, [materials, shapesCatalog, deliveryOptions, designOptions]);
 
-  // Determinar paso inicial basado en opciones predefinidas
+  // Back/Forward del navegador: si la URL cambia, el pedido en pantalla debe
+  // seguirla. Sin esto, Atrás dejaba la UI y la URL desincronizadas.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !materials || !shapesCatalog) return;
+    const onPopState = () => {
+      const code = new URLSearchParams(window.location.search).get('o');
+      if (code) applyOrderCode(code);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [applyOrderCode, materials, shapesCatalog]);
+
+  // Sin código en la URL, el paso 1 queda abierto por defecto.
   const initialStepDetermined = useRef(false);
   useEffect(() => {
     if (initialStepDetermined.current || !materials || !shapesCatalog) return;
     initialStepDetermined.current = true;
-    
-    // Verificar si hay opciones predefinidas (desde URL)
-    const hasUrlOrder = typeof window !== 'undefined' && 
-      new URLSearchParams(window.location.search).get('o') !== null;
-    
-    if (hasUrlOrder) {
-      // Determinar qué paso abrir basado en las opciones actuales
-      if (!order.materialId) {
-        setActiveStep(1); // Paso 1: Material
-      } else if (!order.shapeType || (order.shapeType === 'Rectangulares' && !order.customRectW)) {
-        setActiveStep(2); // Paso 2: Forma y tamaño
-      } else if (!order.deliveryFormat || !order.designType || order.sheetsQty === 0) {
-        setActiveStep(3); // Paso 3: Detalles finales
-      } else {
-        setActiveStep(0); // Pedido completo, ninguno abierto
-      }
-      setShouldScrollOnMount(true); // Hacer scroll si hay opciones predefinidas
-    } else {
-      // Sin opciones predefinidas: paso 1 abierto, sin scroll
+    if (typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).get('o') === null) {
       setActiveStep(1);
       setShouldScrollOnMount(false);
     }
-  }, [materials, shapesCatalog, order]);
+  }, [materials, shapesCatalog]);
 
-  // --- ACTUALIZAR URL EN TIEMPO REAL CON PARÁMETROS DE PEDIDO ---
-  // OPTIMIZACIÓN: Usamos debounce para evitar actualizaciones excesivas del historial
-  // cuando el usuario hace cambios rápidos. La URL solo se actualiza cuando el usuario
-  // deja de cambiar opciones por 1000ms (aumentado de 500ms para reducir carga).
-  // Además, solo actualizamos cuando el pedido está completo para evitar operaciones innecesarias.
+  // --- ACTUALIZAR LA URL EN TIEMPO REAL (sin ensuciar el historial) ---
+  // Debounce: la URL se actualiza 1s después del último cambio.
+  // `replaceState`: antes se usaba pushState y cada cambio creaba una entrada de
+  // historial (Atrás quedaba inservible). Se conservan los demás query params y se
+  // incluyen las medidas ajustadas, igual que en el link compartido (antes la URL
+  // y el link describían medidas distintas en modo económico).
   const debouncedOrder = useDebounce(order, 1000);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !materials || !shapesCatalog) return;
-    
-    // Solo actualizar si el pedido está completo (todos los campos requeridos)
-    const isComplete = debouncedOrder.materialId && debouncedOrder.shapeType && 
+
+    const isComplete = debouncedOrder.materialId && debouncedOrder.shapeType &&
       (debouncedOrder.shapeType !== 'Rectangulares' ? debouncedOrder.sizeIndex >= 0 : (debouncedOrder.customRectW && debouncedOrder.customRectH)) &&
       debouncedOrder.deliveryFormat && debouncedOrder.designType && debouncedOrder.sheetsQty > 0;
-    
+
     if (!isComplete) return;
-    
+
     try {
-      // Generar código corto
-      const shortCode = encodeOrderCode(debouncedOrder, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
-      
-      if (shortCode) {
-        const newUrl = `${window.location.pathname}?o=${shortCode}`;
-        // Actualizar URL sin recargar la página
-        window.history.pushState({ path: newUrl }, '', newUrl);
+      const rectMath = debouncedOrder.shapeType === 'Rectangulares'
+        ? calcA4Layout(debouncedOrder.customRectW, debouncedOrder.customRectH, debouncedOrder.rectCalcMode || 'preciso')
+        : null;
+
+      const shortCode = encodeOrderCode(
+        debouncedOrder,
+        materials,
+        shapesCatalog,
+        deliveryOptions || [],
+        designOptions || [],
+        rectMath?.adjustedW,
+        rectMath?.adjustedH,
+      );
+      if (!shortCode) return;
+
+      const params = new URLSearchParams(window.location.search);
+      params.set('o', shortCode);
+      const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+      const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (newUrl !== currentUrl) {
+        window.history.replaceState({ path: newUrl }, '', newUrl);
       }
     } catch (error) {
-      // Si falla la generación del código, no actualizar la URL
       console.debug('No se pudo generar el código de pedido para la URL:', error);
     }
   }, [debouncedOrder, materials, shapesCatalog, deliveryOptions, designOptions]);
@@ -175,8 +214,10 @@ const App = () => {
   }, [order.customRectW, order.customRectH, order.shapeType, rectCalcMode]);
 
   // --- AUTO-AJUSTAR COMPLEJIDAD DEL CORTE AL CAMBIAR TAMAÑO/FORMA ---
+  // Si el admin forzó la complejidad ("Ajustes Manuales"), se respeta su valor
+  // durante la sesión. Antes el efecto la pisaba en cada cambio de forma/tamaño.
   useEffect(() => {
-    if (!shapesCatalog) return;
+    if (!shapesCatalog || complexityIsManual.current) return;
     const qtyStickersPerSheet = order.shapeType === 'Rectangulares'
       ? customRectMath.qty
       : (shapesCatalog[order.shapeType]?.[order.sizeIndex]?.qty || 0);
@@ -250,9 +291,19 @@ const App = () => {
     setConfig((prev) => {
       if (!prev) return prev;
       const val = type === 'checkbox' ? checked : parseFloat(value) || 0;
-      const next = { ...prev, [name]: val };
+      const next = { ...prev, [name]: val } as Config;
+      // Recorte de rangos: nunca se guarda un valor que luego no pueda cargarse
+      // (p. ej. profitMargin 5000 o weeklyHours > 168).
+      next.wasteMargin = Math.min(100, Math.max(0, Number(next.wasteMargin) || 0));
+      next.profitMargin = Math.min(1000, Math.max(0, Number(next.profitMargin) || 0));
+      next.weeklyHours = Math.min(168, Math.max(0, Number(next.weeklyHours) || 0));
+      next.galleryRefSheets = Math.min(1000, Math.max(1, Math.round(Number(next.galleryRefSheets) || 1)));
       if (next.calcSalaryMode && (name === 'monthlySalary' || name === 'weeklyHours' || name === 'calcSalaryMode')) {
-        next.hourlyRate = Math.round(next.monthlySalary / (next.weeklyHours * 4.33));
+        // Con weeklyHours = 0 esto daba Infinity -> JSON.stringify lo volvía null
+        // y la próxima carga fallaba. Ahora queda en 0.
+        next.hourlyRate = next.weeklyHours > 0
+          ? Math.round(next.monthlySalary / (next.weeklyHours * 4.33))
+          : 0;
       }
       return next;
     });
@@ -261,23 +312,22 @@ const App = () => {
   const updateMaterial = (id: string, field: string, value: string | boolean) =>
     setMaterials((prev) =>
       prev
-        ? prev.map((m) =>
-            m.id === id
-              ? {
-                  ...m,
-                  [field]:
-                    field === 'name' || field === 'description' || field === 'image'
-                      ? value
-                      : field === 'code'
-                        ? typeof value === 'string' ? parseInt(value, 10) || 0 : value
-                        : field === 'visible'
-                          ? value
-                          : typeof value === 'string'
-                            ? parseFloat(value) || 0
-                            : value,
-                }
-              : m,
-          )
+        ? prev.map((material) => {
+            if (material.id !== id) return material;
+            if (field === 'name' || field === 'description' || field === 'image') {
+              return { ...material, [field]: String(value) };
+            }
+            if (field === 'visible') return { ...material, visible: Boolean(value) };
+            if (field === 'code') {
+              // Vacío = sin código (no 0, que sería un código real y duplicable).
+              const raw = String(value).trim();
+              if (raw === '') return { ...material, code: undefined };
+              const parsed = parseInt(raw, 10);
+              return { ...material, code: Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined };
+            }
+            const parsed = parseFloat(String(value));
+            return { ...material, [field]: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 };
+          })
         : prev,
     );
 
@@ -288,14 +338,15 @@ const App = () => {
       const nextCode = Math.max(9, ...prev.map((m) => m.code ?? 0)) + 1;
       return [...prev, { id: newId, code: nextCode, name: 'Nuevo Material', sheetCost: 0, printTime: 2, inkCost: 0, printWear: 0, minCutTime: 1, maxCutTime: 5, cutWear: 0 }];
     });
-    setOrder((o) => ({ ...o, materialId: newId }));
+    // No se auto-selecciona: el material nuevo nace con todos los costos en 0 y
+    // cotizar con él daría un precio irreal. El admin lo edita y después lo elige.
   };
 
   const removeMaterial = (id: string) => {
     if (!materials || materials.length <= 1) return;
     const filtered = materials.filter((m) => m.id !== id);
     setMaterials(filtered);
-    if (order.materialId === id) setOrder({ ...order, materialId: filtered[0].id });
+    setOrder((prev) => (prev.materialId === id ? { ...prev, materialId: filtered[0].id } : prev));
   };
 
   const moveMaterial = (index: number, direction: -1 | 1) => {
@@ -312,12 +363,24 @@ const App = () => {
 
   const updateShapeCatalog = (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image' | 'visible', value: string | boolean) => {
     setShapesCatalog((prev) => {
-      if (!prev) return prev;
+      if (!prev || !prev[category]) return prev;
       return {
         ...prev,
-        [category]: prev[category].map((it, i) =>
-          i === index ? { ...it, [field]: field === 'size' || field === 'description' || field === 'image' ? value : field === 'visible' ? value : typeof value === 'string' ? parseInt(value, 10) || 0 : value } : it,
-        ),
+        [category]: prev[category].map((item, i) => {
+          if (i !== index) return item;
+          if (field === 'size' || field === 'description' || field === 'image') {
+            return { ...item, [field]: String(value) };
+          }
+          if (field === 'visible') return { ...item, visible: Boolean(value) };
+          if (field === 'code') {
+            const raw = String(value).trim();
+            if (raw === '') return { ...item, code: undefined };
+            const parsed = parseInt(raw, 10);
+            return { ...item, code: Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined };
+          }
+          const parsed = parseInt(String(value), 10);
+          return { ...item, [field]: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 };
+        }),
       };
     });
   };
@@ -332,80 +395,141 @@ const App = () => {
   };
 
   const removeShapeItem = (category: string, index: number) => {
-    if (!shapesCatalog) return;
-    const nc = { ...shapesCatalog, [category]: shapesCatalog[category].filter((_, i) => i !== index) };
-    setShapesCatalog(nc);
-    if (order.shapeType === category && order.sizeIndex >= nc[category].length) {
-      setOrder({ ...order, sizeIndex: Math.max(0, nc[category].length - 1) });
-    }
+    if (!shapesCatalog || !shapesCatalog[category]) return;
+    const remaining = shapesCatalog[category].filter((_, i) => i !== index);
+    setShapesCatalog((prev) =>
+      prev && prev[category] ? { ...prev, [category]: prev[category].filter((_, i) => i !== index) } : prev,
+    );
+    // Reindexar la selección: si se borró el tamaño elegido, queda sin elegir
+    // (no se cotiza un tamaño que el cliente nunca seleccionó).
+    setOrder((prev) => {
+      if (prev.shapeType !== category) return prev;
+      if (prev.sizeIndex === index) return { ...prev, sizeIndex: -1 };
+      if (prev.sizeIndex > index) return { ...prev, sizeIndex: prev.sizeIndex - 1 };
+      return prev;
+    });
   };
 
   const moveShapeItem = (category: string, index: number, direction: -1 | 1) => {
-    if (!shapesCatalog) return;
+    if (!shapesCatalog || !shapesCatalog[category]) return;
     const items = shapesCatalog[category];
-    if (direction === -1 && index > 0) {
-      const nc = [...items];
-      [nc[index - 1], nc[index]] = [nc[index], nc[index - 1]];
-      setShapesCatalog({ ...shapesCatalog, [category]: nc });
-    } else if (direction === 1 && index < items.length - 1) {
-      const nc = [...items];
-      [nc[index + 1], nc[index]] = [nc[index], nc[index + 1]];
-      setShapesCatalog({ ...shapesCatalog, [category]: nc });
-    }
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+
+    const next = [...items];
+    [next[index], next[target]] = [next[target], next[index]];
+    setShapesCatalog((prev) => (prev ? { ...prev, [category]: next } : prev));
+
+    // El tamaño seleccionado se mueve con la fila (antes el sizeIndex quedaba
+    // apuntando a otro tamaño después de reordenar).
+    setOrder((prev) => {
+      if (prev.shapeType !== category) return prev;
+      if (prev.sizeIndex === index) return { ...prev, sizeIndex: target };
+      if (prev.sizeIndex === target) return { ...prev, sizeIndex: index };
+      return prev;
+    });
   };
 
   // --- OPCIONES DE ENTREGA / DISEÑO (presentación editable; el id es estable) ---
-  const updateDeliveryOption = (id: DeliveryFormat, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible', value: string | boolean) =>
-    setDeliveryOptions((prev) => (prev ? prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)) : prev));
+  const updateDeliveryOption = (
+    id: DeliveryFormat,
+    field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'cutFactor' | 'cutWearFactor',
+    value: string | boolean,
+  ) =>
+    setDeliveryOptions((prev) =>
+      prev
+        ? prev.map((option) => {
+            if (option.id !== id) return option;
+            if (field === 'label' || field === 'subtitle' || field === 'description' || field === 'image') {
+              return { ...option, [field]: String(value) };
+            }
+            if (field === 'visible') return { ...option, visible: Boolean(value) };
+            const parsed = parseFloat(String(value));
+            return { ...option, [field]: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 };
+          })
+        : prev,
+    );
 
-  const updateDesignOption = (id: DesignType, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible', value: string | boolean) =>
-    setDesignOptions((prev) => (prev ? prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)) : prev));
+  const updateDesignOption = (
+    id: DesignType,
+    field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'designMinutes' | 'isCustomTime',
+    value: string | boolean,
+  ) =>
+    setDesignOptions((prev) =>
+      prev
+        ? prev.map((option) => {
+            if (option.id !== id) return option;
+            if (field === 'label' || field === 'subtitle' || field === 'description' || field === 'image') {
+              return { ...option, [field]: String(value) };
+            }
+            if (field === 'visible') {
+              // `visible` es la fuente de verdad; `customerVisible` se mantiene en
+              // sincronía para que el badge "solo admin" no quede desactualizado.
+              return { ...option, visible: Boolean(value), customerVisible: Boolean(value) };
+            }
+            if (field === 'isCustomTime') return { ...option, isCustomTime: Boolean(value) };
+            const parsed = parseFloat(String(value));
+            return { ...option, designMinutes: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 };
+          })
+        : prev,
+    );
 
   const addDeliveryOption = () => {
-    const newId = `custom_${Date.now()}` as DeliveryFormat;
-    const nextCode = Math.max(0, ...(deliveryOptions || []).map((o) => o.code ?? 0)) + 1;
-    setDeliveryOptions((prev) => [
-      ...(prev || []),
-      {
-        id: newId,
-        code: nextCode,
-        label: 'Nuevo Formato',
-        subtitle: '',
-        description: '',
-        image: '',
-        cutFactor: 1,
-        cutWearFactor: 1,
-        visible: true,
-      },
-    ]);
+    const newId = `formato_${Date.now()}`;
+    setDeliveryOptions((prev) => {
+      const current = prev || [];
+      const nextCode = Math.max(0, ...current.map((o) => o.code ?? 0)) + 1;
+      return [
+        ...current,
+        {
+          id: newId,
+          code: nextCode,
+          label: 'Nuevo Formato',
+          subtitle: '',
+          description: '',
+          image: '',
+          cutFactor: 1,
+          cutWearFactor: 1,
+          visible: true,
+        },
+      ];
+    });
   };
 
   const addDesignOption = () => {
-    const newId = `custom_${Date.now()}` as DesignType;
-    const nextCode = Math.max(0, ...(designOptions || []).map((o) => o.code ?? 0)) + 1;
-    setDesignOptions((prev) => [
-      ...(prev || []),
-      {
-        id: newId,
-        code: nextCode,
-        label: 'Nueva Opción',
-        subtitle: '',
-        description: '',
-        image: '',
-        designMinutes: 0,
-        isCustomTime: false,
-        customerVisible: true,
-        visible: true,
-      },
-    ]);
+    const newId = `diseno_${Date.now()}`;
+    setDesignOptions((prev) => {
+      const current = prev || [];
+      const nextCode = Math.max(0, ...current.map((o) => o.code ?? 0)) + 1;
+      return [
+        ...current,
+        {
+          id: newId,
+          code: nextCode,
+          label: 'Nueva Opción',
+          subtitle: '',
+          description: '',
+          image: '',
+          designMinutes: 0,
+          isCustomTime: false,
+          customerVisible: true,
+          visible: true,
+        },
+      ];
+    });
   };
 
+  // Nunca se puede quedar sin opciones: el pedido no podría completarse.
   const removeDeliveryOption = (id: DeliveryFormat) => {
-    setDeliveryOptions((prev) => (prev ? prev.filter((o) => o.id !== id) : prev));
+    if ((deliveryOptions || []).length <= 1) return;
+    setDeliveryOptions((prev) => (prev && prev.length > 1 ? prev.filter((o) => o.id !== id) : prev));
+    setOrder((prev) => (prev.deliveryFormat === id ? { ...prev, deliveryFormat: '' } : prev));
   };
 
   const removeDesignOption = (id: DesignType) => {
-    setDesignOptions((prev) => (prev ? prev.filter((o) => o.id !== id) : prev));
+    if ((designOptions || []).length <= 1) return;
+    setDesignOptions((prev) => (prev && prev.length > 1 ? prev.filter((o) => o.id !== id) : prev));
+    setOrder((prev) => (prev.designType === id ? { ...prev, designType: '' } : prev));
   };
 
   const setShowMoreIndex = (category: string, index: number) => {
@@ -421,13 +545,10 @@ const App = () => {
   // --- GALERÍA ---
   // Carga el pedido de una foto en la calculadora (requiere catálogo cargado).
   const loadOrderFromCode = (code: string) => {
-    if (!materials || !shapesCatalog) return;
-    const decoded = decodeAnyOrder(code, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
-    if (!decoded) {
+    if (!applyOrderCode(code)) {
       console.warn('Código de pedido inválido en la galería:', code);
       return;
     }
-    setOrder(decoded);
     setActiveTab('calculator');
     // Cambiar al paso 3 y dejar que el scroll automático del componente funcione
     setActiveStep(3);
@@ -437,7 +558,12 @@ const App = () => {
     setGallery((prev) => prev.map((g) => (g.id === id ? { ...g, [field]: value } : g)));
 
   const addGalleryItem = () =>
-    setGallery((prev) => [...prev, { id: `g${Date.now()}`, image: '', title: '', caption: '', order: '' }]);
+    setGallery((prev) => [
+      ...prev,
+      // Sin código de pedido no puede cargar nada: nace oculta (el saneador
+      // también la oculta si se guarda así) y el admin la activa al completarla.
+      { id: `g${Date.now()}`, image: '', title: '', caption: '', order: '', visible: false },
+    ]);
 
   // Precio marketinero de una foto (1 plancha vs. máximo). Requiere catálogo cargado.
   const getGalleryPricing = (code: string, displaySheets?: number) => {
@@ -482,10 +608,11 @@ const App = () => {
         <AlertTriangle className="w-10 h-10 text-amber-500" />
         <h2 className="text-lg font-bold text-slate-800">No se pudo cargar la configuración</h2>
         <p className="text-sm text-slate-500 max-w-md">
-          No se pudo leer la configuración desde <code className="bg-slate-100 px-1 rounded">datos_config_etag.php</code>
-          {loadError ? ` Detalle: ${loadError}.` : ''} Verificá que ese archivo esté subido al servidor y que
-          <code className="bg-slate-100 px-1 rounded">datos_config.json</code> tenga la estructura esperada
-          (config, materials, shapesCatalog).
+          No se pudo leer la configuración desde el endpoint (por defecto{' '}
+          <code className="bg-slate-100 px-1 rounded">datos_config_etag.php</code>)
+          {loadError ? ` Detalle: ${loadError}.` : '.'} Verificá que el endpoint esté subido al servidor y que
+          <code className="bg-slate-100 px-1 rounded">datos_config.json</code> tenga la estructura mínima
+          (config, materials y shapesCatalog con al menos un tamaño).
         </p>
       </div>
     );
@@ -497,9 +624,9 @@ const App = () => {
   const missing = missingSelections(order, materials, shapesCatalog);
 
   const shareUrl = materials && shapesCatalog && deliveryOptions && designOptions ? buildShareUrl(order, materials, shapesCatalog, deliveryOptions, designOptions, customRectMath.adjustedW, customRectMath.adjustedH) : '';
-  const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl);
+  const wpMessage = buildWhatsappMessage(order, results, sizeText, shareUrl, false, formatoLabel);
   const whatsappLink = buildWhatsappLink(wpMessage);
-  const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl);
+  const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl, formatoLabel);
   const consultLink = buildWhatsappLink(consultMessage);
   const orderCode = materials && shapesCatalog && deliveryOptions && designOptions ? encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions, customRectMath.adjustedW, customRectMath.adjustedH) : null;
 
@@ -534,6 +661,7 @@ const App = () => {
               {/* Paso 1: Material */}
               <MaterialSelector
                 materials={materials}
+                materialsShowMoreIndex={materialsShowMoreIndex ?? 2}
                 materialId={order.materialId}
                 selectMaterial={selectMaterial}
                 showAllMaterials={showAllMaterials}
@@ -586,6 +714,7 @@ const App = () => {
                 activeStep={activeStep}
                 onStepOpen={handleStep3Open}
                 onNavigateToNext={handleNavigateToNext}
+                onManualComplexity={() => { complexityIsManual.current = true; }}
                 shouldScrollOnMount={shouldScrollOnMount}
               />
             </div>
@@ -605,6 +734,7 @@ const App = () => {
               sizeText={sizeText}
               formatoLabel={formatoLabel}
               orderCode={orderCode}
+              shareUrl={shareUrl}
               consultLink={consultLink}
               setOrder={setOrder}
               deliveryOptions={deliveryOptions}
@@ -622,6 +752,7 @@ const App = () => {
             formatoLabel={formatoLabel}
             designLabel={designLabel}
             orderCode={orderCode}
+            shareUrl={shareUrl}
           />
           </div>
           </>
@@ -655,7 +786,7 @@ const App = () => {
                 order={order}
                 setOrder={setOrder}
                 isDeleteMode={isDeleteMode}
-                materialsShowMoreIndex={materialsShowMoreIndex}
+                materialsShowMoreIndex={materialsShowMoreIndex ?? 2}
                 setMaterialsShowMoreIndex={setMaterialsShowMoreIndex}
               />
             )}

@@ -1,82 +1,236 @@
 <?php
 /**
- * Endpoint de guardado de la configuracion de la Calculadora de Stickers.
+ * Endpoint de guardado de la configuración de la Calculadora de Stickers.
  *
- * El frontend (admin) hace POST con JSON { config, materials, shapesCatalog } y
- * este script lo persiste en datos_config.json, en el mismo directorio.
+ * El frontend (admin) hace POST con JSON { config, materials, shapesCatalog,
+ * shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions,
+ * designOptions } y este script lo persiste en datos_config.json.
  *
- * Seguridad: el archivo queda accesible directo en /assets/guardar_datos.php, por
- * eso bootstrapea WordPress y exige capacidad de admin (manage_options). El cookie
- * de sesion viaja porque el fetch del front es del mismo dominio.
+ * Seguridad:
+ * - Bootstrapea WordPress y exige capacidad de admin (manage_options).
+ * - Si el frontend manda `X-WP-Nonce`, se verifica (acción mu-sticker-save).
+ * - Valida el esquema: un archivo inválido deja la calculadora sin cargar para
+ *   TODOS los clientes, así que acá no se escribe cualquier cosa.
+ * - Guarda un backup del archivo anterior antes de reemplazarlo.
  *
- * La logica de validacion y escritura vive en mu_sticker_save_config() para poder
- * testearla sin WordPress (define MU_STICKER_TEST antes de incluir este archivo).
+ * La lógica vive en mu_sticker_save_config() para poder testearla sin
+ * WordPress (definir MU_STICKER_TEST antes de incluir este archivo).
  */
 
+/** true si $value es una lista JSON (índices 0..n-1). */
+function mu_sticker_is_list($value) {
+    return is_array($value) && array_values($value) === $value;
+}
+
+/** Respuesta de error de validación. */
+function mu_sticker_invalid($message) {
+    return array(422, array('ok' => false, 'error' => $message));
+}
+
+/** Códigos repetidos (el codec resolvería siempre el primero). */
+function mu_sticker_duplicate_codes($items, $label_key) {
+    $by_code = array();
+    foreach ($items as $item) {
+        if (!is_array($item) || !isset($item['code']) || !is_numeric($item['code'])) {
+            continue;
+        }
+        $code = (int) $item['code'];
+        $label = isset($item[$label_key]) && is_string($item[$label_key]) ? $item[$label_key] : ('#' . $code);
+        if (!isset($by_code[$code])) {
+            $by_code[$code] = array();
+        }
+        $by_code[$code][] = $label;
+    }
+    $duplicates = array();
+    foreach ($by_code as $code => $labels) {
+        if (count($labels) > 1) {
+            $duplicates[] = $code . ' (' . implode(' / ', $labels) . ')';
+        }
+    }
+    return $duplicates;
+}
+
 /**
- * Valida el payload y lo escribe de forma atomica en $targetFile.
+ * Valida el payload y lo escribe de forma atómica en $targetFile.
  *
  * @param string $raw        Cuerpo crudo del request (JSON).
  * @param string $targetFile Ruta absoluta del datos_config.json a escribir.
- * @return array{0:int,1:array} [codigoHttp, cuerpoRespuesta]
+ * @return array{0:int,1:array} [código HTTP, cuerpo de respuesta]
  */
 function mu_sticker_save_config($raw, $targetFile) {
     if ($raw === '' || $raw === false || $raw === null) {
-        return array(400, array('ok' => false, 'error' => 'Cuerpo vacio.'));
+        return array(400, array('ok' => false, 'error' => 'Cuerpo vacío.'));
     }
 
     $data = json_decode($raw, true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-        return array(400, array('ok' => false, 'error' => 'JSON invalido.'));
+        return array(400, array('ok' => false, 'error' => 'JSON inválido.'));
     }
 
-    // Estructura esperada: { config: object, materials: array, shapesCatalog: object, shapesShowMoreIndex?: object, gallery?: array }.
+    // --- ESTRUCTURA MÍNIMA ---
     if (!isset($data['config']) || !is_array($data['config'])) {
-        return array(422, array('ok' => false, 'error' => 'Falta "config".'));
+        return mu_sticker_invalid('Falta "config".');
     }
-    if (!isset($data['materials']) || !is_array($data['materials']) || array_values($data['materials']) !== $data['materials']) {
-        return array(422, array('ok' => false, 'error' => '"materials" debe ser una lista.'));
+    if (!isset($data['materials']) || !mu_sticker_is_list($data['materials'])) {
+        return mu_sticker_invalid('"materials" debe ser una lista.');
     }
     if (!isset($data['shapesCatalog']) || !is_array($data['shapesCatalog'])) {
-        return array(422, array('ok' => false, 'error' => 'Falta "shapesCatalog".'));
+        return mu_sticker_invalid('Falta "shapesCatalog".');
     }
 
-    // Persistimos solo las claves conocidas para no guardar basura extra.
+    // --- CONFIG: numéricos finitos ---
+    $config = $data['config'];
+    $numeric_keys = array(
+        'monthlySalary', 'weeklyHours', 'hourlyRate', 'packagingCost', 'wasteMargin',
+        'profitMargin', 'timeCustomerService', 'timeDelivery', 'timeDesignBasic',
+        'timeDesignCustom', 'galleryRefSheets',
+    );
+    foreach ($numeric_keys as $key) {
+        if (!array_key_exists($key, $config)) {
+            continue;
+        }
+        if (!is_numeric($config[$key]) || !is_finite((float) $config[$key])) {
+            return mu_sticker_invalid('config.' . $key . ' debe ser un número válido.');
+        }
+        $config[$key] = (float) $config[$key];
+    }
+    if (isset($config['calcSalaryMode'])) {
+        $config['calcSalaryMode'] = (bool) $config['calcSalaryMode'];
+    }
+
+    // --- MATERIALES ---
+    $materials = array();
+    foreach (array_values($data['materials']) as $index => $material) {
+        if (!is_array($material)) {
+            return mu_sticker_invalid('materials[' . $index . '] debe ser un objeto.');
+        }
+        if (!isset($material['id']) || !is_string($material['id']) || trim($material['id']) === '') {
+            return mu_sticker_invalid('materials[' . $index . '] no tiene id.');
+        }
+        if (!isset($material['name']) || !is_string($material['name']) || trim($material['name']) === '') {
+            return mu_sticker_invalid('materials[' . $index . '] no tiene nombre.');
+        }
+        $material['name'] = trim($material['name']);
+        $materials[] = $material;
+    }
+    if (count($materials) === 0) {
+        return mu_sticker_invalid('No hay ningún material válido.');
+    }
+    $duplicate_materials = mu_sticker_duplicate_codes($materials, 'name');
+    if (!empty($duplicate_materials)) {
+        return mu_sticker_invalid('Códigos de material repetidos: ' . implode('; ', $duplicate_materials) . '.');
+    }
+
+    // --- CATÁLOGO DE FORMAS ---
+    $catalog = array();
+    $flat_sizes = array();
+    foreach ($data['shapesCatalog'] as $category => $items) {
+        if (!is_string($category) || !mu_sticker_is_list($items)) {
+            return mu_sticker_invalid('shapesCatalog.' . $category . ' debe ser una lista.');
+        }
+        $clean_items = array();
+        foreach ($items as $index => $item) {
+            if (!is_array($item)) {
+                return mu_sticker_invalid('shapesCatalog.' . $category . '[' . $index . '] debe ser un objeto.');
+            }
+            if (!isset($item['size']) || !is_string($item['size']) || trim($item['size']) === '') {
+                return mu_sticker_invalid('shapesCatalog.' . $category . '[' . $index . '] no tiene tamaño.');
+            }
+            $item['size'] = trim($item['size']);
+            $clean_items[] = $item;
+            $flat_sizes[] = array(
+                'code' => isset($item['code']) ? $item['code'] : null,
+                'size' => $category . ' ' . $item['size'],
+            );
+        }
+        $catalog[$category] = $clean_items;
+    }
+    $duplicate_sizes = mu_sticker_duplicate_codes($flat_sizes, 'size');
+    if (!empty($duplicate_sizes)) {
+        return mu_sticker_invalid('Códigos de tamaño repetidos: ' . implode('; ', $duplicate_sizes) . '.');
+    }
+
+    // --- GALERÍA ---
+    $gallery = array();
+    if (isset($data['gallery'])) {
+        if (!mu_sticker_is_list($data['gallery'])) {
+            return mu_sticker_invalid('"gallery" debe ser una lista.');
+        }
+        foreach ($data['gallery'] as $index => $item) {
+            if (!is_array($item)) {
+                return mu_sticker_invalid('gallery[' . $index . '] debe ser un objeto.');
+            }
+            if (!isset($item['id']) || !is_string($item['id']) || trim($item['id']) === '') {
+                return mu_sticker_invalid('gallery[' . $index . '] no tiene id.');
+            }
+            $item['order'] = isset($item['order']) && is_string($item['order']) ? trim($item['order']) : '';
+            // Una foto sin código no puede cargar nada: se guarda oculta.
+            $item['visible'] = $item['order'] !== '' ? (isset($item['visible']) ? (bool) $item['visible'] : true) : false;
+            $gallery[] = $item;
+        }
+    }
+
+    // --- FORMATOS DE ENTREGA / TIPOS DE DISEÑO ---
+    // Los ids son strings libres (el Admin puede crear opciones nuevas); se exige
+    // id + título no vacíos.
+    $options_keys = array('deliveryOptions', 'designOptions');
+    $clean_options = array();
+    foreach ($options_keys as $key) {
+        if (!isset($data[$key])) {
+            continue;
+        }
+        if (!mu_sticker_is_list($data[$key])) {
+            return mu_sticker_invalid('"' . $key . '" debe ser una lista.');
+        }
+        $options = array();
+        foreach ($data[$key] as $index => $option) {
+            if (!is_array($option)) {
+                return mu_sticker_invalid($key . '[' . $index . '] debe ser un objeto.');
+            }
+            if (!isset($option['id']) || !is_string($option['id']) || trim($option['id']) === '') {
+                return mu_sticker_invalid($key . '[' . $index . '] no tiene id.');
+            }
+            if (!isset($option['label']) || !is_string($option['label']) || trim($option['label']) === '') {
+                return mu_sticker_invalid($key . '[' . $index . '] no tiene título.');
+            }
+            $option['label'] = trim($option['label']);
+            $options[] = $option;
+        }
+        $clean_options[$key] = $options;
+    }
+
+    // --- ARMADO DEL ARCHIVO ---
     $clean = array(
-        'config'        => $data['config'],
-        'materials'     => array_values($data['materials']),
-        'shapesCatalog' => $data['shapesCatalog'],
+        'config' => $config,
+        'materials' => $materials,
+        'shapesCatalog' => $catalog,
     );
 
-    // Incluir shapesShowMoreIndex si está presente y válido
     if (isset($data['shapesShowMoreIndex']) && is_array($data['shapesShowMoreIndex'])) {
-        $validatedIndex = array();
+        $validated_index = array();
         foreach ($data['shapesShowMoreIndex'] as $category => $idx) {
-            if (is_string($category) && is_numeric($idx)) {
+            if (is_string($category) && is_numeric($idx) && isset($catalog[$category])) {
                 $idx = intval($idx);
-                // Validar que el índice esté en rango [0, cantidad de items en la categoría]
-                $categorySize = isset($data['shapesCatalog'][$category]) ? count($data['shapesCatalog'][$category]) : 0;
-                if ($idx >= 0 && $idx <= $categorySize) {
-                    $validatedIndex[$category] = $idx;
+                if ($idx >= 0 && $idx <= count($catalog[$category])) {
+                    $validated_index[$category] = $idx;
                 }
             }
         }
-        if (!empty($validatedIndex)) {
-            $clean['shapesShowMoreIndex'] = $validatedIndex;
+        if (!empty($validated_index)) {
+            $clean['shapesShowMoreIndex'] = $validated_index;
         }
     }
 
-    // Incluir gallery si está presente
-    if (isset($data['gallery']) && is_array($data['gallery'])) {
-        $clean['gallery'] = $data['gallery'];
+    if (isset($data['materialsShowMoreIndex']) && is_numeric($data['materialsShowMoreIndex'])) {
+        $materials_index = intval($data['materialsShowMoreIndex']);
+        $clean['materialsShowMoreIndex'] = max(0, min(count($materials), $materials_index));
     }
 
-    // Presentación editable de formatos de entrega y tipos de diseño.
-    if (isset($data['deliveryOptions']) && is_array($data['deliveryOptions']) && array_values($data['deliveryOptions']) === $data['deliveryOptions']) {
-        $clean['deliveryOptions'] = $data['deliveryOptions'];
+    if (isset($data['gallery'])) {
+        $clean['gallery'] = $gallery;
     }
-    if (isset($data['designOptions']) && is_array($data['designOptions']) && array_values($data['designOptions']) === $data['designOptions']) {
-        $clean['designOptions'] = $data['designOptions'];
+    foreach ($clean_options as $key => $options) {
+        $clean[$key] = $options;
     }
 
     $json = json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -89,10 +243,17 @@ function mu_sticker_save_config($raw, $targetFile) {
         return array(500, array('ok' => false, 'error' => 'El archivo de config no es escribible.'));
     }
 
-    // Escritura atomica: archivo temporal + rename en el mismo directorio.
+    // Backup del archivo vigente antes de reemplazarlo.
+    if (file_exists($targetFile)) {
+        @copy($targetFile, $targetFile . '.bak');
+    }
+
+    // Escritura atómica: archivo temporal + rename en el mismo directorio.
     $tmp = tempnam($dir, 'cfg_');
     if ($tmp === false || file_put_contents($tmp, $json, LOCK_EX) === false) {
-        if ($tmp !== false) { @unlink($tmp); }
+        if ($tmp !== false) {
+            @unlink($tmp);
+        }
         return array(500, array('ok' => false, 'error' => 'No se pudo escribir el archivo temporal.'));
     }
     if (!rename($tmp, $targetFile)) {
@@ -118,22 +279,23 @@ function mu_sticker_find_wp_load($start) {
         }
         $parent = dirname($dir);
         if ($parent === $dir) {
-            break; // Llegamos a la raiz del filesystem.
+            break; // Llegamos a la raíz del filesystem.
         }
         $dir = $parent;
     }
     return null;
 }
 
-// --- EJECUCION ---
+// --- EJECUCIÓN ---
 // Se omite cuando el archivo se incluye en un test (MU_STICKER_TEST definido).
 if (!defined('MU_STICKER_TEST')) {
 
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
-        echo json_encode(array('ok' => false, 'error' => 'Metodo no permitido.'));
+        echo json_encode(array('ok' => false, 'error' => 'Método no permitido.'));
         exit;
     }
 
@@ -149,6 +311,18 @@ if (!defined('MU_STICKER_TEST')) {
         http_response_code(403);
         echo json_encode(array('ok' => false, 'error' => 'No autorizado.'));
         exit;
+    }
+
+    // CSRF: si el frontend manda X-WP-Nonce, tiene que ser válido. El shortcode
+    // puede inyectar `saveNonce` en WP_STICKER_DATA; mientras no lo haga, la
+    // protección sigue siendo la cookie de sesión + capability de admin.
+    if (isset($_SERVER['HTTP_X_WP_NONCE'])) {
+        $nonce = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_WP_NONCE']));
+        if (!wp_verify_nonce($nonce, 'mu-sticker-save')) {
+            http_response_code(403);
+            echo json_encode(array('ok' => false, 'error' => 'Nonce inválido.'));
+            exit;
+        }
     }
 
     list($code, $body) = mu_sticker_save_config(

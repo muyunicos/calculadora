@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, ImageIcon, Eye, EyeOff, Upload } from 'lucide-react';
 import type { GalleryItem, Order } from '../types';
+import { PRODUCT_ID } from '../core/wp';
+import { useToast } from './ToastProvider';
 
 interface AdminGalleryPanelProps {
   gallery: GalleryItem[];
@@ -8,7 +10,7 @@ interface AdminGalleryPanelProps {
   updateGalleryItem: (id: string, field: keyof GalleryItem, value: string | boolean) => void;
   addGalleryItem: () => void;
   removeGalleryItem: (id: string) => void;
-  captureCurrentOrder: (id: string, order: Order) => boolean;
+  captureCurrentOrder: (id: string) => boolean;
   order: Order;
   isDeleteMode?: boolean;
 }
@@ -23,6 +25,7 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
   order,
   isDeleteMode = false,
 }) => {
+  const { showToast } = useToast();
   // Función para abrir la galería de WordPress
   const openWordPressMediaLibrary = (galleryItemId: string) => {
     // Verificar si estamos en el entorno de WordPress y si wp.media está disponible
@@ -37,7 +40,9 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
       });
 
       mediaUploader.on('select', () => {
-        const attachment = mediaUploader.state().get('selection').first().toJSON();
+        const selection = mediaUploader.state().get('selection').first();
+        if (!selection) return;
+        const attachment = selection.toJSON();
         if (attachment && attachment.url) {
           // Usar la URL de tamaño completo o la URL del tamaño seleccionado
           const imageUrl = attachment.sizes && attachment.sizes.full ? attachment.sizes.full.url : attachment.url;
@@ -48,7 +53,7 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
       mediaUploader.open();
     } else {
       // Fallback: abrir el media uploader de WordPress en una nueva ventana
-      const mediaUrl = '/wp-admin/media-upload.php?post_id=' + (typeof window !== 'undefined' ? (window as any).WP_STICKER_DATA?.productId || 0 : 0);
+      const mediaUrl = '/wp-admin/media-upload.php?post_id=' + PRODUCT_ID;
       if (typeof window !== 'undefined') {
         window.open(mediaUrl, '_blank', 'width=800,height=600');
       }
@@ -106,13 +111,28 @@ export const AdminGalleryPanel: React.FC<AdminGalleryPanelProps> = ({
                   <label className="block text-xs font-semibold text-slate-500 mb-1">Código de pedido</label>
                   <div className="flex gap-2">
                     <input type="text" value={g.order} onChange={(e) => updateGalleryItem(g.id, 'order', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono transition-all" placeholder="v1.m11.s201.q25.f2.d0" />
-                    <button onClick={() => captureCurrentOrder(g.id, order)} className="text-xs whitespace-nowrap bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-lg hover:text-blue-600 hover:border-blue-400 transition-colors" title="Volcar el pedido configurado en el Cotizador">Usar pedido actual</button>
+                    <button onClick={() => {
+                      if (captureCurrentOrder(g.id)) {
+                        showToast('success', 'Código de pedido actualizado');
+                        // Una foto nueva nace oculta: al capturar el pedido ya se
+                        // puede mostrar en la vista cliente.
+                        if (g.visible === false) updateGalleryItem(g.id, 'visible', true);
+                      } else {
+                        showToast('error', 'Completá material, forma/tamaño y cantidad en el Cotizador para capturar el pedido.');
+                      }
+                    }} className="text-xs whitespace-nowrap bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-lg hover:text-blue-600 hover:border-blue-400 transition-colors" title="Volcar el pedido configurado en el Cotizador">Usar pedido actual</button>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
                 <button
-                  onClick={() => updateGalleryItem(g.id, 'visible', !(g.visible ?? true))}
+                  onClick={() => {
+                    if (!g.order) {
+                      showToast('error', 'Cargá un código de pedido antes de mostrar la foto.');
+                      return;
+                    }
+                    updateGalleryItem(g.id, 'visible', !(g.visible ?? true));
+                  }}
                   className={`p-2 rounded-lg transition-colors ${g.visible ?? true ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}
                   title={g.visible ?? true ? 'Ocultar foto' : 'Mostrar foto'}
                 >

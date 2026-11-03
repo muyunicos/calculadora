@@ -11,6 +11,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Motor de precios server-side (port de src/core/priceEngine.ts).
+// El archivo tiene que subirse junto al plugin: si falta, el AJAX del carrito
+// responde un error claro en lugar de un fatal.
+$mu_calc_pricing_file = plugin_dir_path(__FILE__) . 'calculadora-pricing.php';
+if (file_exists($mu_calc_pricing_file)) {
+    require_once $mu_calc_pricing_file;
+}
+
 class CalculadoraCartIntegration {
     
     private $target_product_id = 27859; // ID del producto Cotizador
@@ -22,6 +30,10 @@ class CalculadoraCartIntegration {
         // Endpoint AJAX personalizado para agregar al carrito
         add_action('wp_ajax_calculator_add_to_cart', array($this, 'calculator_add_to_cart_ajax'));
         add_action('wp_ajax_nopriv_calculator_add_to_cart', array($this, 'calculator_add_to_cart_ajax'));
+
+        // Refresco de nonce (la página puede venir cacheada y el nonce vence).
+        add_action('wp_ajax_mu_calc_cart_nonce', array($this, 'refresh_nonce_ajax'));
+        add_action('wp_ajax_nopriv_mu_calc_cart_nonce', array($this, 'refresh_nonce_ajax'));
         
         // Modificar precio del item en el carrito
         add_action('woocommerce_before_calculate_totals', array($this, 'set_calculator_item_price'), 10, 1);
@@ -56,15 +68,15 @@ class CalculadoraCartIntegration {
                 true
             );
             
-            // Generar nonce
-            $nonce = wp_create_nonce('calculator-add-to-cart');
-            
-            // Localizar datos de WooCommerce
-            wp_localize_script('calculadora-cart-integration', 'wc_add_to_cart_params', array(
+            // Nonce propio (24 h). OJO: NO se debe reutilizar el nombre
+            // `wc_add_to_cart_params`: WooCommerce localiza ese mismo objeto y
+            // pisarlo rompe su add-to-cart AJAX en producto/carrito.
+            wp_localize_script('calculadora-cart-integration', 'muCalcCart', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'cart_url' => wc_get_cart_url(),
                 'product_id' => $this->target_product_id,
-                'nonce' => $nonce
+                'nonce' => wp_create_nonce('calculator-add-to-cart'),
+                'nonce_action' => 'mu_calc_cart_nonce',
             ));
         }
     }
@@ -74,47 +86,91 @@ class CalculadoraCartIntegration {
      */
     public function calculator_add_to_cart_ajax() {
         // Verificar nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'calculator-add-to-cart')) {
-            wp_send_json_error(array('error' => 'Invalid nonce'));
+        $nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
+        if (!wp_verify_nonce($nonce, 'calculator-add-to-cart')) {
+            wp_send_json_error(array('error' => 'Invalid nonce', 'code' => 'invalid_nonce'));
         }
-        
+
         $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-        $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
-        $calculator_data = isset($_POST['calculator_data']) ? $_POST['calculator_data'] : '';
-        
+        $quantity = isset($_POST['quantity']) ? max(1, intval($_POST['quantity'])) : 1;
+        $calculator_data = isset($_POST['calculator_data']) ? wp_unslash($_POST['calculator_data']) : '';
+
         // Verificar que sea el producto correcto
         if ($product_id !== $this->target_product_id) {
             wp_send_json_error(array('error' => 'Invalid product ID'));
         }
-        
-        // Validar que sea JSON válido antes de procesar
-        $decoded_data = json_decode(stripslashes($calculator_data), true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_send_json_error(array('error' => 'Invalid JSON data: ' . json_last_error_msg()));
+
+        $decoded_data = json_decode($calculator_data, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded_data)) {
+            wp_send_json_error(array('error' => 'Invalid JSON data'));
         }
-        
-        // Agregar al carrito
+
+        // --- PRECIO RECALCULADO EN EL SERVIDOR ---
+        // El `price` que manda el navegador se IGNORA: cualquiera podría enviar
+        // price=1. Se recalcula a partir del código de pedido y datos_config.json.
+        $order_code = isset($decoded_data['order_code']) ? sanitize_text_field((string) $decoded_data['order_code']) : '';
+        if ($order_code === '') {
+            wp_send_json_error(array('error' => 'Falta el código de pedido.'));
+        }
+
+        if (!function_exists('mu_calc_price_from_code')) {
+            wp_send_json_error(array('error' => 'Falta calculadora-pricing.php en la carpeta del plugin.'));
+        }
+
+        $pricing = mu_calc_price_from_code($order_code);
+        if ($pricing === null) {
+            wp_send_json_error(array(
+                'error' => 'No se pudo recalcular el precio del pedido. Verificá la configuración y el código de pedido.',
+            ));
+        }
+
+        // Solo se persisten datos de presentación ya saneados.
+        $safe_data = array(
+            'order_code' => $order_code,
+            'price' => $pricing['price'],
+            'description' => isset($decoded_data['description']) ? sanitize_text_field((string) $decoded_data['description']) : '',
+            'cotizador_url' => isset($decoded_data['cotizador_url']) ? esc_url_raw((string) $decoded_data['cotizador_url']) : '',
+            'material' => isset($decoded_data['material']) ? sanitize_text_field((string) $decoded_data['material']) : '',
+            'formato' => isset($decoded_data['formato']) ? sanitize_text_field((string) $decoded_data['formato']) : '',
+            'medida' => isset($decoded_data['medida']) ? sanitize_text_field((string) $decoded_data['medida']) : '',
+            'quantity' => (int) $pricing['totalStickers'],
+            'sheets' => (int) $pricing['sheets'],
+        );
+
         $cart_item_key = WC()->cart->add_to_cart(
             $product_id,
             $quantity,
             0, // variation ID
             array(), // variation data
-            array(
-                'calculator_data' => $decoded_data
-            )
+            array('calculator_data' => $safe_data)
         );
-        
-        if (is_wp_error($cart_item_key)) {
-            wp_send_json_error(array('error' => $cart_item_key->get_error_message()));
+
+        if (is_wp_error($cart_item_key) || !$cart_item_key) {
+            $message = is_wp_error($cart_item_key) ? $cart_item_key->get_error_message() : 'No se pudo agregar al carrito.';
+            wp_send_json_error(array('error' => $message));
         }
-        
-        // Obtener datos del carrito para la respuesta
-        $cart = WC()->cart;
-        $fragments = WC()->cart->get_cart();
-        
+
+        // Fragments para que WooCommerce refresque el mini-carrito (antes se
+        // disparaba `added_to_cart` con fragments undefined).
+        ob_start();
+        woocommerce_mini_cart();
+        $mini_cart = ob_get_clean();
+
         wp_send_json_success(array(
             'cart_hash' => WC()->cart->get_cart_hash(),
-            'cart_url' => wc_get_cart_url()
+            'cart_url' => wc_get_cart_url(),
+            'fragments' => apply_filters('woocommerce_add_to_cart_fragments', array(
+                'div.widget_shopping_cart_content' => '<div class="widget_shopping_cart_content">' . $mini_cart . '</div>',
+            )),
+        ));
+    }
+
+    /**
+     * Devuelve un nonce fresco (la página puede venir de caché y el nonce vence).
+     */
+    public function refresh_nonce_ajax() {
+        wp_send_json_success(array(
+            'nonce' => wp_create_nonce('calculator-add-to-cart'),
         ));
     }
     
@@ -127,9 +183,11 @@ class CalculadoraCartIntegration {
         }
         
         foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
-            // Buscar el precio en calculator_data
-            if (isset($cart_item['calculator_data']['price']) && $cart_item['calculator_data']['price'] > 0) {
-                $cart_item['data']->set_price($cart_item['calculator_data']['price']);
+            // El precio guardado lo calculó el SERVIDOR al agregar al carrito
+            // (nunca viene del navegador); se valida antes de aplicarlo.
+            $price = isset($cart_item['calculator_data']['price']) ? $cart_item['calculator_data']['price'] : null;
+            if (is_numeric($price) && is_finite((float) $price) && (float) $price > 0 && isset($cart_item['data'])) {
+                $cart_item['data']->set_price((float) $price);
             }
         }
     }

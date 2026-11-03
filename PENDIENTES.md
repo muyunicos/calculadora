@@ -2,6 +2,39 @@
 
 > Lista de tareas para borrar cuando se vacíe. El deploy está en **CHECKLIST-DEPLOY.md**.
 
+## ✅ CORREGIDO 2026-11 (revisión completa)
+
+### Datos / Admin
+- El saneador (`src/core/validation.ts`) ya no es “todo o nada”: repara y avisa; solo falla si falta `config`, `materials` o tamaños.
+- El guardado sanea antes del POST. Antes, “Añadir foto” + “Guardar” (o borrar el nombre de un material) dejaba la calculadora caída **para todos** en la próxima carga.
+- `hourlyRate` ya no puede ser `Infinity`/`null` (semanal 0 h).
+- Fotos sin código quedan ocultas en vez de romper la carga.
+- “Agregar Formato/Diseño” persiste (ids string) y “Eliminar” ya no se revierte.
+- Códigos repetidos de material/tamaño: banner en el Admin y **guardado bloqueado**.
+- El control “Línea Ver más” de materiales ahora se persiste (`materialsShowMoreIndex`) y se usa en la vista cliente.
+
+### Motor de precios
+- Fórmula defensiva: sin `NaN`/`Infinity`, precios redondeados a centavos, sin cotizar pedidos de 0 unidades.
+- El tiempo de diseño sale de `designOptions[].designMinutes` (editable en Admin > Formato y Diseño).
+- `calcA4Layout` sin ramas muertas; el ajuste económico nunca achica el sticker.
+- El código v1 incluye `c<complejidad>` para paridad exacta con el carrito y los links compartidos.
+
+### Carrito / WooCommerce
+- El precio se **recalcula en el servidor** (`woocommerce-plugin/calculadora-pricing.php`); se ignora el precio del navegador.
+- El plugin usa `muCalcCart` (no pisa `wc_add_to_cart_params`), devuelve fragments y refresca el nonce vencido.
+- `cart-integration.js` reintenta una vez con nonce nuevo y no inyecta HTML desde el servidor.
+
+### Tests
+- `npm test`: 20 casos (saneador + round-trip, A4, codec, precios, paridad TS↔PHP y validación del guardado PHP).
+
+### Deploy de esta revisión (pendiente)
+1. `npm run build` y subir `assets/js/calculadora_stickers.js` + `assets/css/calculadora_stickers.css` (archivo por archivo).
+2. Subir `assets/guardar_datos.php` y `assets/datos_config_etag.php`.
+3. Verificar que el directorio `assets/` permite crear `datos_config.json.bak`.
+4. **Plugin**: subir `calculadora-pricing.php` en la **misma carpeta** que `plugin-calculadora-cart-integration.php` (si falta, el AJAX del carrito devuelve un error claro). Subir también `plugin-calculadora-cart-integration.php` y `cart-integration.js`.
+5. Probar: guardar en Admin → recargar (no debe caer), link `?o=` (mismo precio), COMPRAR (precio del ticket = precio del carrito).
+6. Opcional (shortcode en el servidor): inyectar `saveNonce` y `productId` en `WP_STICKER_DATA` para habilitar el nonce de guardado y el fallback de la Media Library.
+
 ## ✅ DEPLOY — COMPLETADO 2026-10-01
 
 Los pasos 1, 2, 3 y 12 están **resueltos y verificados en producción**:

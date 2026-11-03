@@ -7,6 +7,10 @@ interface WpStickerData {
   assetsUrl?: string;
   configUrl?: string;
   saveUrl?: string;
+  // Nonce de WordPress para el guardado (wp_create_nonce). Si el shortcode no lo
+  // inyecta, el guardado sigue funcionando con la cookie de sesión + capability.
+  saveNonce?: string;
+  productId?: number;
 }
 
 declare global {
@@ -20,6 +24,10 @@ const WP: WpStickerData = (typeof window !== 'undefined' && window.WP_STICKER_DA
 export const ASSETS_URL = WP.assetsUrl || './assets'; // .../tema/assets
 export const CONFIG_URL = WP.configUrl || `${ASSETS_URL}/datos_config_etag.php`;
 export const SAVE_URL = WP.saveUrl || `${ASSETS_URL}/guardar_datos.php`;
+// Nonce opcional para el POST de guardado (si el shortcode lo inyecta).
+export const SAVE_NONCE = WP.saveNonce || '';
+// ID del producto "Cotizador" (usado por el fallback de la Media Library).
+export const PRODUCT_ID = Number(WP.productId) || 0;
 // Solo un admin real de WP puede ver/editar el modo Admin.
 export const CAN_BE_ADMIN = !!WP.isAdmin;
 

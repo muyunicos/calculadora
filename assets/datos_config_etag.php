@@ -23,15 +23,41 @@ if (!file_exists($configFile)) {
 
 // Generar ETag basado en el contenido del archivo
 $etag = md5_file($configFile);
+$lastModified = @filemtime($configFile);
 
 // Configurar headers de caché
 header("ETag: \"$etag\"");
-header("Cache-Control: public, max-age=60"); // 1 minuto de caché
+header('Cache-Control: public, max-age=60'); // 1 minuto de caché
 header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+if ($lastModified !== false) {
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
+}
 
-// Validar If-None-Match del cliente para ver si tiene la versión más reciente
-if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && 
-    trim($_SERVER['HTTP_IF_NONE_MATCH'], '"') === $etag) {
+// Validación condicional del If-None-Match.
+// Soporta ETags débiles (W/"hash"), listas separadas por coma y el comodín "*".
+// Antes se comparaba el string exacto: un ETag débil o una lista devolvían 200
+// aunque el contenido no hubiera cambiado.
+$ifNoneMatch = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim($_SERVER['HTTP_IF_NONE_MATCH']) : '';
+$notModified = false;
+if ($ifNoneMatch !== '') {
+    foreach (explode(',', $ifNoneMatch) as $candidate) {
+        $candidate = trim($candidate);
+        if ($candidate === '*') {
+            $notModified = true;
+            break;
+        }
+        if (strncmp($candidate, 'W/', 2) === 0) {
+            $candidate = substr($candidate, 2);
+        }
+        if (trim($candidate, '"') === $etag) {
+            $notModified = true;
+            break;
+        }
+    }
+}
+
+if ($notModified) {
     // El cliente ya tiene la versión más reciente
     http_response_code(304);
     exit;

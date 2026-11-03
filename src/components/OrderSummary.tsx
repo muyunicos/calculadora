@@ -2,6 +2,7 @@ import React from 'react';
 import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption } from '../types';
 import PriceTable from './PriceTable';
+import { useToast } from './ToastProvider';
 
 interface OrderSummaryProps {
   order: Order;
@@ -17,6 +18,9 @@ interface OrderSummaryProps {
   formatoLabel: string;
   orderCode: string | null;
   consultLink: string;
+  // URL pública del pedido (misma que se comparte por WhatsApp). Se manda al
+  // carrito para que "Editar" vuelva a esta cotización, sin hardcodear dominio.
+  shareUrl?: string;
   setOrder: (order: Order | ((prev: Order) => Order)) => void;
   deliveryOptions?: DeliveryOption[];
   designOptions?: DesignOption[];
@@ -36,10 +40,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   formatoLabel,
   orderCode,
   consultLink,
+  shareUrl = '',
   setOrder,
   deliveryOptions = [],
   designOptions = [],
 }) => {
+  const { showToast } = useToast();
   return (
     <div id="order-summary" className="lg:col-span-5 relative">
       <div className="sticky top-6 space-y-6">
@@ -72,7 +78,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
             <div className="cl-flex-between  pb-3">
               <span className="text-slate-300 font-medium">Formato:</span>
-              <span className="text-white text-sm font-semibold">{order.deliveryFormat === 'sincorte' ? 'Sin Cortar' : (order.deliveryFormat === 'individual' ? 'Troquel Individual' : 'Planchas (Medio corte)')}</span>
+              <span className="text-white text-sm font-semibold">{formatoLabel || 'A definir'}</span>
             </div>
             <div className="cl-flex-col  pb-3">
               <div className="cl-flex-between">
@@ -103,17 +109,26 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="relative z-10 flex cl-gap-md mt-6">
             <button
               onClick={() => {
-                if (results?.finalPrice && typeof window !== 'undefined' && (window as any).addToCartFromCalculator) {
-                  (window as any).addToCartFromCalculator({
-                    price: results.finalPrice,
-                    orderCode: orderCode,
-                    material: results?.activeMaterial?.name,
-                    formato: formatoLabel,
-                    medida: `${order.shapeType} ${sizeText}`,
-                    quantity: results?.totalStickers,
-                    sheets: order.sheetsQty
-                  });
+                const addToCart = typeof window !== 'undefined' ? (window as any).addToCartFromCalculator : null;
+                if (typeof addToCart !== 'function') {
+                  showToast('error', 'El carrito no está disponible en esta página. Probá desde el producto Cotizador.');
+                  return;
                 }
+                if (!orderCode) {
+                  showToast('error', 'Falta el código del pedido. Revisá que el material y el tamaño tengan código asignado.');
+                  return;
+                }
+                if (!results?.finalPrice) return;
+                addToCart({
+                  price: results.finalPrice,
+                  orderCode,
+                  cotizadorUrl: shareUrl,
+                  material: results.activeMaterial?.name,
+                  formato: formatoLabel,
+                  medida: `${order.shapeType} ${sizeText}`,
+                  quantity: results.totalStickers,
+                  sheets: order.sheetsQty
+                });
               }}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md"
             >

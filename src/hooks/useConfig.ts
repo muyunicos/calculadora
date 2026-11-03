@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import equal from 'fast-deep-equal';
 import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, ShapesCatalog, ShapesShowMoreIndex } from '../types';
-import { CONFIG_URL, SAVE_URL } from '../core/wp';
+import { CONFIG_URL, SAVE_URL, SAVE_NONCE } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
-import { validateAppData, normalizeAppData } from '../core/validation';
+import { validateAppData, normalizeAppData, sanitizeAppData } from '../core/validation';
 import { useToast } from '../components/ToastProvider';
 import { useDebounce } from './useDebounce';
+import { findMaterialCodeDuplicates, findShapeCodeDuplicates, describeDuplicateCodes } from '../utils/validation';
 
 export interface UseConfigResult {
   config: Config | null;
   materials: Material[] | null;
   shapesCatalog: ShapesCatalog | null;
   shapesShowMoreIndex: ShapesShowMoreIndex | null;
+  materialsShowMoreIndex: number | null;
   gallery: GalleryItem[];
   deliveryOptions: DeliveryOption[] | null;
   designOptions: DesignOption[] | null;
@@ -19,6 +21,7 @@ export interface UseConfigResult {
   setMaterials: React.Dispatch<React.SetStateAction<Material[] | null>>;
   setShapesCatalog: React.Dispatch<React.SetStateAction<ShapesCatalog | null>>;
   setShapesShowMoreIndex: React.Dispatch<React.SetStateAction<ShapesShowMoreIndex | null>>;
+  setMaterialsShowMoreIndex: React.Dispatch<React.SetStateAction<number | null>>;
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
   setDeliveryOptions: React.Dispatch<React.SetStateAction<DeliveryOption[] | null>>;
   setDesignOptions: React.Dispatch<React.SetStateAction<DesignOption[] | null>>;
@@ -40,6 +43,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [materials, setMaterials] = useState<Material[] | null>(null);
   const [shapesCatalog, setShapesCatalog] = useState<ShapesCatalog | null>(null);
   const [shapesShowMoreIndex, setShapesShowMoreIndex] = useState<ShapesShowMoreIndex | null>(null);
+  const [materialsShowMoreIndex, setMaterialsShowMoreIndex] = useState<number | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOption[] | null>(null);
   const [designOptions, setDesignOptions] = useState<DesignOption[] | null>(null);
@@ -57,18 +61,15 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     materials: Material[] | null;
     shapesCatalog: ShapesCatalog | null;
     shapesShowMoreIndex: ShapesShowMoreIndex | null;
+    materialsShowMoreIndex: number | null;
     gallery: GalleryItem[];
     deliveryOptions: DeliveryOption[] | null;
     designOptions: DesignOption[] | null;
   } | null>(null);
 
   // --- FUNCIÓN DE CARGA REUTILIZABLE ---
-  // Se extrae para poder re-cargar la config cuando la página vuelve a ser
-  // visible después de un periodo de inactividad (evita errores de JSON por
-  // respuestas stale del servidor/CDN).
-  const loadConfig = useCallback(async (isReload = false) => {
+  const loadConfig = useCallback(async () => {
     setLoadError(null);
-    if (isReload) setIsLoaded(false);
     try {
       const res = await fetch(CONFIG_URL, { cache: 'no-cache' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -80,22 +81,26 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         throw new Error('El servidor no devolvió JSON (posible página de error o sesión expirada).');
       }
       const data = await res.json();
-      // Validar datos con Zod
+      // Validar + REPARAR. Solo falla si falta la estructura mínima.
       const validation = validateAppData(data);
       if (!validation.success) {
         throw new Error(validation.error);
       }
-      const validated = validation.data;
-      // Normalizar datos: asignar valores por defecto para campos vacíos
-      const normalized = normalizeAppData(validated);
+      if (validation.warnings.length > 0) {
+        console.warn('Config reparada automáticamente:\n- ' + validation.warnings.join('\n- '));
+      }
+      const normalized = normalizeAppData(validation.data);
       const resolvedDelivery = resolveDeliveryOptions(normalized.deliveryOptions);
       const resolvedDesign = resolveDesignOptions(normalized.designOptions);
       const resolvedGallery = Array.isArray(normalized.gallery) ? normalized.gallery as GalleryItem[] : [];
+      const resolvedMaterialsShowMore =
+        normalized.materialsShowMoreIndex ?? Math.min(2, normalized.materials.length);
 
       setConfig(normalized.config);
       setMaterials(normalized.materials);
       setShapesCatalog(normalized.shapesCatalog);
       setShapesShowMoreIndex(normalized.shapesShowMoreIndex || {});
+      setMaterialsShowMoreIndex(resolvedMaterialsShowMore);
       setGallery(resolvedGallery);
       setDeliveryOptions(resolvedDelivery);
       setDesignOptions(resolvedDesign);
@@ -107,6 +112,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         materials: normalized.materials,
         shapesCatalog: normalized.shapesCatalog,
         shapesShowMoreIndex: normalized.shapesShowMoreIndex || {},
+        materialsShowMoreIndex: resolvedMaterialsShowMore,
         gallery: resolvedGallery,
         deliveryOptions: resolvedDelivery,
         designOptions: resolvedDesign,
@@ -131,8 +137,8 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   // OPTIMIZACIÓN: Usamos un solo debounce para todos los datos en lugar de 7 debounces separados.
   // Esto reduce de 7 timers a 1 solo timer, ahorrando recursos significativamente.
   const allData = useMemo(() => ({
-    config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions
-  }), [config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions]);
+    config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions
+  }), [config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions]);
   
   const debouncedAllData = useDebounce(allData, 800);
 
@@ -144,6 +150,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       !equal(debouncedAllData.materials, original.materials) ||
       !equal(debouncedAllData.shapesCatalog, original.shapesCatalog) ||
       !equal(debouncedAllData.shapesShowMoreIndex, original.shapesShowMoreIndex) ||
+      !equal(debouncedAllData.materialsShowMoreIndex, original.materialsShowMoreIndex) ||
       !equal(debouncedAllData.gallery, original.gallery) ||
       !equal(debouncedAllData.deliveryOptions, original.deliveryOptions) ||
       !equal(debouncedAllData.designOptions, original.designOptions);
@@ -154,30 +161,97 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   // Solo se ejecuta cuando el admin toca el botón. No hay autoguardado.
   const saveConfig = useCallback(async () => {
     if (!isAdmin) return;
-    if (!config || !materials || !shapesCatalog) return;
+    if (!config || !materials || !shapesCatalog) {
+      showToast('error', 'La configuración todavía no terminó de cargar.');
+      return;
+    }
     if (isSaving) return;
 
+    // Se sanea ANTES de enviar: lo que se escribe en el servidor tiene que poder
+    // volver a leerse. Así el Admin no puede dejar la calculadora caída.
+    const duplicateCodes = [
+      ...describeDuplicateCodes(findMaterialCodeDuplicates(materials), 'material'),
+      ...describeDuplicateCodes(findShapeCodeDuplicates(shapesCatalog), 'tamaño'),
+    ];
+    if (duplicateCodes.length > 0) {
+      const message = `No se guardó: hay códigos repetidos (${duplicateCodes.join('; ')}). Los links y la galería cargarían la opción equivocada.`;
+      setSaveError(message);
+      showToast('error', message, 8000);
+      return;
+    }
+
+    const sanitized = sanitizeAppData({
+      config,
+      materials,
+      shapesCatalog,
+      shapesShowMoreIndex,
+      materialsShowMoreIndex: materialsShowMoreIndex ?? undefined,
+      gallery,
+      deliveryOptions,
+      designOptions,
+    });
+    if (!sanitized.success) {
+      setSaveError(sanitized.error);
+      showToast('error', `No se guardó: ${sanitized.error}`);
+      return;
+    }
+    if (sanitized.warnings.length > 0) {
+      console.warn('Datos corregidos al guardar:\n- ' + sanitized.warnings.join('\n- '));
+    }
+
+    const payload = normalizeAppData(sanitized.data);
     setIsSaving(true);
     setSaveError(null);
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (SAVE_NONCE) headers['X-WP-Nonce'] = SAVE_NONCE;
+
       const res = await fetch(SAVE_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions }),
+        credentials: 'same-origin', // la cookie de sesión de WP viaja siempre
+        headers,
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      showToast('success', 'Cambios guardados correctamente');
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !body || body.ok !== true) {
+        throw new Error(body?.error || `HTTP ${res.status}`);
+      }
+
+      const savedDelivery = resolveDeliveryOptions(payload.deliveryOptions);
+      const savedDesign = resolveDesignOptions(payload.designOptions);
+      const savedGallery = payload.gallery || [];
+      const savedMaterialsShowMore =
+        payload.materialsShowMoreIndex ?? Math.min(2, payload.materials.length);
+
+      // Reflejar en la UI exactamente lo que quedó guardado (si el saneador
+      // corrigió algo, el estado y el archivo no pueden divergir).
+      setConfig(payload.config);
+      setMaterials(payload.materials);
+      setShapesCatalog(payload.shapesCatalog);
+      setShapesShowMoreIndex(payload.shapesShowMoreIndex || {});
+      setMaterialsShowMoreIndex(savedMaterialsShowMore);
+      setGallery(savedGallery);
+      setDeliveryOptions(savedDelivery);
+      setDesignOptions(savedDesign);
+
       // Actualizar la snapshot para que hasChanges vuelva a false.
       originalDataRef.current = {
-        config,
-        materials,
-        shapesCatalog,
-        shapesShowMoreIndex,
-        gallery,
-        deliveryOptions,
-        designOptions,
+        config: payload.config,
+        materials: payload.materials,
+        shapesCatalog: payload.shapesCatalog,
+        shapesShowMoreIndex: payload.shapesShowMoreIndex || {},
+        materialsShowMoreIndex: savedMaterialsShowMore,
+        gallery: savedGallery,
+        deliveryOptions: savedDelivery,
+        designOptions: savedDesign,
       };
       setHasChanges(false);
+      showToast(
+        'success',
+        sanitized.warnings.length > 0
+          ? 'Cambios guardados (se corrigieron datos inválidos)'
+          : 'Cambios guardados correctamente',
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
       console.error('No se pudo guardar la config en el servidor', err);
@@ -186,13 +260,17 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     } finally {
       setIsSaving(false);
     }
-  }, [isAdmin, config, materials, shapesCatalog, shapesShowMoreIndex, gallery, deliveryOptions, designOptions, isSaving, showToast]);
+  }, [
+    isAdmin, config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex,
+    gallery, deliveryOptions, designOptions, isSaving, showToast,
+  ]);
 
   return {
     config,
     materials,
     shapesCatalog,
     shapesShowMoreIndex,
+    materialsShowMoreIndex,
     gallery,
     deliveryOptions,
     designOptions,
@@ -200,6 +278,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     setMaterials,
     setShapesCatalog,
     setShapesShowMoreIndex,
+    setMaterialsShowMoreIndex,
     setGallery,
     setDeliveryOptions,
     setDesignOptions,

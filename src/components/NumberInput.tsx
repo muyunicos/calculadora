@@ -48,6 +48,19 @@ export const NumberInput: React.FC<NumberInputProps> = ({
     onChange(inputValue);
   };
 
+  // Al salir del campo se recorta al rango: antes se podía dejar 0 (o negativo)
+  // en campos con min=1 y el pedido quedaba incompleto sin explicación.
+  const handleBlur = () => {
+    const parsed = parseFloat(String(value));
+    if (!Number.isFinite(parsed)) {
+      onChange(String(min));
+      return;
+    }
+    const upper = max ?? Number.MAX_SAFE_INTEGER;
+    const clamped = Math.min(upper, Math.max(min, parsed));
+    if (clamped !== parsed) onChange(String(clamped));
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -76,6 +89,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         step={step}
         value={value}
         onChange={handleInputChange}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         className={`cl-input-number text-center p-0 ${className}`}

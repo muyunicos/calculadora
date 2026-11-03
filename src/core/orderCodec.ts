@@ -15,14 +15,24 @@ export const ORDER_CODE_VERSION = 'v1';
 
 const RECT_CATEGORY = 'Rectangulares';
 
-const numToCode = (v: number | string): string => String(v).replace('.', ',');
-const codeToNum = (v: string): string => v.replace(',', '.');
+const round1 = (value: number): number => Math.round((value + Number.EPSILON) * 10) / 10;
 
-// Redondea a 5mm (0.5cm)
-const roundTo5mm = (cm: number): number => {
-  const mm = cm * 10;
-  const rounded = Math.round(mm / 5) * 5;
-  return rounded / 10;
+// Límites de medidas de un pedido rectangular (cm). Evita que un link
+// manipulado (`?o=v1.m11.r300x20...`) genere un pedido de 0 unidades.
+const MIN_RECT_CM = 2;
+const MAX_RECT_CM = 100;
+
+/** Parsea "53x50" (mm) -> { w, h } en cm. null si no es un rectángulo válido. */
+const parseRectDims = (raw: string): { w: number; h: number } | null => {
+  const [rawW, rawH] = raw.split('x');
+  if (!rawW || !rawH) return null;
+  const mmW = Number(rawW);
+  const mmH = Number(rawH);
+  if (!Number.isFinite(mmW) || !Number.isFinite(mmH) || mmW <= 0 || mmH <= 0) return null;
+  const w = mmW / 10;
+  const h = mmH / 10;
+  if (w < MIN_RECT_CM || h < MIN_RECT_CM || w > MAX_RECT_CM || h > MAX_RECT_CM) return null;
+  return { w: round1(w), h: round1(h) };
 };
 
 // Devuelve null si el pedido no puede representarse (p.ej. material/tamaño sin code).
@@ -64,6 +74,12 @@ export function encodeOrderCode(
   if (order.sheetsQty && order.sheetsQty >= 1) {
     parts.push(`q${order.sheetsQty}`);
   }
+
+  // Complejidad efectiva del corte: el servidor la necesita para recalcular el
+  // precio del carrito (y un link compartido reproduce el mismo precio aunque
+  // el admin haya forzado la complejidad).
+  const complexity = Math.max(1, Math.min(10, Math.round(Number(order.complexity) || 1)));
+  parts.push(`c${complexity}`);
   
   if (deliveryOptions) {
     const deliveryOption = deliveryOptions?.find((o) => o.id === order.deliveryFormat);
@@ -76,7 +92,10 @@ export function encodeOrderCode(
     const designOption = designOptions?.find((o) => o.id === order.designType);
     if (designOption) {
       parts.push(`d${designOption.code}`);
-      if (designOption.isCustomTime) parts.push(`t${order.customDesignTime}`);
+      if (designOption.isCustomTime) {
+        const minutes = Math.max(0, Math.min(600, Math.round(Number(order.customDesignTime) || 0)));
+        parts.push(`t${minutes}`);
+      }
     }
   }
 
@@ -123,16 +142,15 @@ export function decodeOrderCode(
         break;
       }
       case 's': {
-        // Check if it's a rectangular shape in 'preciso' mode (mm format)
-        const [w, h] = val.split('x');
-        if (w && h && !isNaN(Number(w)) && !isNaN(Number(h))) {
-          // It's a rectangular shape in mm (preciso mode)
+        // Puede ser un rectangular en modo "preciso" (mm: "203x271") o el
+        // código de un tamaño del catálogo ("60").
+        const dims = parseRectDims(val);
+        if (dims) {
           order.shapeType = RECT_CATEGORY;
           order.rectCalcMode = 'preciso';
-          order.customRectW = String(Number(w) / 10);
-          order.customRectH = String(Number(h) / 10);
+          order.customRectW = String(dims.w);
+          order.customRectH = String(dims.h);
         } else {
-          // It's a shape from catalog
           let resolved = false;
           for (const [category, items] of Object.entries(shapesCatalog)) {
             const idx = items.findIndex((it) => String(it.code) === val);
@@ -148,39 +166,54 @@ export function decodeOrderCode(
         break;
       }
       case 'r': {
-        const [w, h] = val.split('x');
-        if (!w || !h) return null;
+        const dims = parseRectDims(val);
+        if (!dims) return null;
         order.shapeType = RECT_CATEGORY;
-        // Always in mm (economico mode)
+        // Siempre en mm (modo económico)
         order.rectCalcMode = 'economico';
-        order.customRectW = String(Number(w) / 10);
-        order.customRectH = String(Number(h) / 10);
+        order.customRectW = String(dims.w);
+        order.customRectH = String(dims.h);
         break;
       }
-      case 'q':
-        order.sheetsQty = parseInt(val, 10) || 0;
+      case 'q': {
+        const qty = parseInt(val, 10);
+        if (!Number.isFinite(qty) || qty < 1 || qty > 10000) return null;
+        order.sheetsQty = qty;
         break;
+      }
+      case 'c': {
+        const level = parseInt(val, 10);
+        if (!Number.isFinite(level)) return null;
+        order.complexity = Math.max(1, Math.min(10, level));
+        break;
+      }
       case 'f': {
-        if (deliveryOptions) {
-          const deliveryOption = deliveryOptions?.find((o) => o.code === parseInt(val, 10));
-          if (deliveryOption) {
-            order.deliveryFormat = deliveryOption.id;
-          }
+        const code = parseInt(val, 10);
+        if (!Number.isFinite(code)) return null;
+        if (deliveryOptions && deliveryOptions.length > 0) {
+          const deliveryOption = deliveryOptions.find((o) => o.code === code);
+          // Código inexistente: no cargar un pedido a medias con el formato vacío.
+          if (!deliveryOption) return null;
+          order.deliveryFormat = deliveryOption.id;
         }
         break;
       }
       case 'd': {
-        if (designOptions) {
-          const designOption = designOptions?.find((o) => o.code === parseInt(val, 10));
-          if (designOption) {
-            order.designType = designOption.id;
-          }
+        const code = parseInt(val, 10);
+        if (!Number.isFinite(code)) return null;
+        if (designOptions && designOptions.length > 0) {
+          const designOption = designOptions.find((o) => o.code === code);
+          if (!designOption) return null;
+          order.designType = designOption.id;
         }
         break;
       }
-      case 't':
-        order.customDesignTime = parseInt(val, 10) || 45;
+      case 't': {
+        const minutes = parseInt(val, 10);
+        if (!Number.isFinite(minutes)) return null;
+        order.customDesignTime = Math.max(0, Math.min(600, minutes));
         break;
+      }
       default:
         break;
     }

@@ -25,23 +25,26 @@ const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 const { config, materials, shapesCatalog, deliveryOptions, designOptions } = data;
 
 // ─── Mini motor de precios (espejo de src/core/priceEngine.ts) ─────────
-function calcA4Layout(rawW, rawH) {
+function calcA4Layout(rawW, rawH, mode = 'preciso') {
   const w = parseFloat(String(rawW));
   const h = parseFloat(String(rawH));
-  if (!w || !h || w <= 0 || h <= 0) return { qty: 0 };
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return { qty: 0 };
 
-  const finalW = Math.max(2, w);
-  const finalH = Math.max(2, h);
-  const rectWmm = finalW * 10;
-  const rectHmm = finalH * 10;
+  // Mismas dimensiones utiles que src/core/a4Layout.ts.
+  // preciso: A4 menos margenes (203x271). economico: A4 completa (210x297) y se
+  // permite estirar cada sticker hasta 5 mm para repartir el espacio.
+  const sheets = {
+    preciso: { width: 203, height: 271 },
+    economico: { width: 210, height: 297 },
+  };
+  const sheet = sheets[mode] || sheets.preciso;
 
-  // Modo preciso: 203×271mm
-  const baseSheetWmm = 203;
-  const baseSheetHmm = 271;
+  const rectWmm = Math.max(2, w) * 10;
+  const rectHmm = Math.max(2, h) * 10;
 
   const orientations = [
-    { sheetW: baseSheetWmm, sheetH: baseSheetHmm },
-    { sheetW: baseSheetHmm, sheetH: baseSheetWmm },
+    { sheetW: sheet.width, sheetH: sheet.height },
+    { sheetW: sheet.height, sheetH: sheet.width },
   ];
 
   let bestQty = 0;
@@ -54,7 +57,6 @@ function calcA4Layout(rawW, rawH) {
   }
   return { qty: bestQty };
 }
-
 function autoComplexity(qty) {
   return Math.max(1, Math.min(10, Math.ceil(qty / 10)));
 }
@@ -74,7 +76,7 @@ function calcularPrecio(order) {
   // 1. Cantidades
   let qtyPerSheet;
   if (order.shapeType === 'Rectangulares') {
-    qtyPerSheet = calcA4Layout(order.customRectW, order.customRectH).qty;
+    qtyPerSheet = calcA4Layout(order.customRectW, order.customRectH, order.rectCalcMode || 'preciso').qty;
   } else {
     qtyPerSheet = shapesCatalog[order.shapeType]?.[order.sizeIndex]?.qty || 0;
   }

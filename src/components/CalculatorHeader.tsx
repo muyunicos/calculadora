@@ -65,27 +65,25 @@ export const CalculatorHeader: React.FC<CalculatorHeaderProps> = ({
         )}
 
         {isAdmin && (
-          <div className="flex items-center gap-3">
-            {activeTab === 'settings' && (
-              <>
-                <SaveIndicator 
-                  status={isSaving ? 'saving' : saveError ? 'error' : hasChanges ? 'dirty' : 'saved'} 
-                />
-                <button
-                  onClick={onSave}
-                  disabled={isSaving || !hasChanges}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                    isSaving || !hasChanges
-                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
-                  }`}
-                  title={hasChanges ? 'Guardar cambios en el servidor' : 'No hay cambios para guardar'}
-                >
-                  <Save className="w-4 h-4" />
-                  {isSaving ? 'Guardando...' : 'Guardar'}
-                </button>
-              </>
-            )}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* El guardado está disponible en ambas pestañas: hay ajustes
+                editables en el Cotizador (complejidad, tiempo de diseño, galería). */}
+            <SaveIndicator
+              status={isSaving ? 'saving' : saveError ? 'error' : hasChanges ? 'dirty' : 'idle'}
+            />
+            <button
+              onClick={onSave}
+              disabled={isSaving || !hasChanges}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                isSaving || !hasChanges
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
+              }`}
+              title={hasChanges ? 'Guardar cambios en el servidor' : 'No hay cambios para guardar'}
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Guardando...' : 'Guardar'}
+            </button>
             <div className="flex bg-slate-100 p-1 rounded-lg">
               <button onClick={() => setActiveTab('calculator')} className={`px-4 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'calculator' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}>
                 <Calculator className="w-4 h-4" /> Cotizador

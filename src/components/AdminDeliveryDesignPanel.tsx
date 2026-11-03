@@ -7,8 +7,8 @@ interface AdminDeliveryDesignPanelProps {
   deliveryOptions: DeliveryOption[];
   designOptions: DesignOption[];
   resolveImage: (src: string) => string;
-  updateDeliveryOption: (id: DeliveryFormat, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible', value: string | boolean) => void;
-  updateDesignOption: (id: DesignType, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible', value: string | boolean) => void;
+  updateDeliveryOption: (id: DeliveryFormat, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'cutFactor' | 'cutWearFactor', value: string | boolean) => void;
+  updateDesignOption: (id: DesignType, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'designMinutes' | 'isCustomTime', value: string | boolean) => void;
   addDeliveryOption: () => void;
   addDesignOption: () => void;
   removeDeliveryOption: (id: DeliveryFormat) => void;
@@ -89,6 +89,32 @@ export const AdminDeliveryDesignPanel: React.FC<AdminDeliveryDesignPanelProps> =
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Subtítulo</label>
                     <input type="text" value={opt.subtitle ?? ''} onChange={(e) => updateDeliveryOption(opt.id, 'subtitle', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all" placeholder="Texto secundario de la tarjeta" />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Tiempo de corte (×)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={opt.cutFactor}
+                        onChange={(e) => updateDeliveryOption(opt.id, 'cutFactor', e.target.value)}
+                        className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all"
+                        title="Multiplicador del tiempo de corte (0 = sin corte, 1 = plancha, 2 = individual)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Desgaste de corte (×)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={opt.cutWearFactor}
+                        onChange={(e) => updateDeliveryOption(opt.id, 'cutWearFactor', e.target.value)}
+                        className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all"
+                        title="Multiplicador del desgaste de cuchilla (0 = sin corte)"
+                      />
+                    </div>
+                  </div>
                   <InfoExtraEditor
                     description={opt.description}
                     image={opt.image}
@@ -138,6 +164,30 @@ export const AdminDeliveryDesignPanel: React.FC<AdminDeliveryDesignPanelProps> =
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Subtítulo</label>
                     <input type="text" value={opt.subtitle ?? ''} onChange={(e) => updateDesignOption(opt.id, 'subtitle', e.target.value)} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all" placeholder="Texto secundario de la tarjeta" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600 mb-1">Minutos de diseño</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={opt.designMinutes ?? 0}
+                        disabled={opt.isCustomTime}
+                        onChange={(e) => updateDesignOption(opt.id, 'designMinutes', e.target.value)}
+                        className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                        title="Minutos fijos que suma esta opción al costo de mano de obra"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg p-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={opt.isCustomTime}
+                        onChange={(e) => updateDesignOption(opt.id, 'isCustomTime', e.target.checked)}
+                        className="accent-blue-600 w-4 h-4"
+                      />
+                      Pide minutos al cliente
+                    </label>
                   </div>
                   <InfoExtraEditor
                     description={opt.description}

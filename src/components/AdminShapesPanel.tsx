@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, ArrowUp, ArrowDown, Trash2, Eye, EyeOff } from 'lucide-react';
 import type { ShapesCatalog, ShapesShowMoreIndex, Order } from '../types';
+import { findShapeCodeDuplicates } from '../utils/validation';
 import InfoExtraEditor from './InfoExtraEditor';
 
 interface AdminShapesPanelProps {
@@ -9,7 +10,7 @@ interface AdminShapesPanelProps {
   resolveImage: (src: string) => string;
   updateShapeCatalog: (category: string, index: number, field: 'size' | 'qty' | 'code' | 'description' | 'image' | 'visible', value: string | boolean) => void;
   addShapeItem: (category: string) => void;
-  removeShapeItem: (category: string, index: number, order: Order, orderSetter: (order: Order) => void) => void;
+  removeShapeItem: (category: string, index: number) => void;
   moveShapeItem: (category: string, index: number, direction: -1 | 1) => void;
   setShowMoreIndex: (category: string, index: number) => void;
   order: Order;
@@ -30,6 +31,7 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
   setOrder,
   isDeleteMode = false,
 }) => {
+  const duplicateCodes = findShapeCodeDuplicates(shapesCatalog);
   return (
     <div className="cl-card bg-white p-6">
       <h2 className="text-xl font-bold text-slate-800 flex items-center cl-gap-md border-b border-slate-100 pb-4 cl-mb-lg">
@@ -38,6 +40,13 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
       <p className="text-sm text-slate-500 mb-6">Administra las opciones predefinidas y la cantidad de stickers que entran por hoja A4. Rectangulares se calcula automáticamente. El <strong>código</strong> es un número estable y único que identifica el tamaño en los links compartibles y la galería (no lo reutilices). Cada tamaño puede tener una descripción e imagen opcional.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {duplicateCodes.length > 0 && (
+          <div className="md:col-span-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <strong>Hay códigos de tamaño repetidos:</strong>{' '}
+            {duplicateCodes.map((group) => `#${group.code} (${group.items.join(' / ')})`).join(' · ')}.
+            El código identifica forma+tamaño en los links y la galería: con duplicados se carga el tamaño equivocado y el guardado se bloquea.
+          </div>
+        )}
         {Object.keys(shapesCatalog).map((category) => {
           const showMoreIdx = shapesShowMoreIndex?.[category] ?? shapesCatalog[category].length;
           // Display name mapping
@@ -76,7 +85,7 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
                           {item.visible ?? true ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
                         <button 
-                          onClick={() => removeShapeItem(category, idx, order, setOrder)} 
+                          onClick={() => removeShapeItem(category, idx)} 
                           className={`
                             p-2 transition-colors
                             ${isDeleteMode 

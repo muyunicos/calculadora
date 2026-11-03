@@ -59,26 +59,26 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
   const validateAndAdjustValue = (value: string, field: 'customRectW' | 'customRectH'): string => {
     const numValue = parseFloat(value);
     const { sheetW, sheetH } = getSheetLimits();
-    
+
     // Validar mínimo
     if (numValue < 2 || isNaN(numValue)) {
       return '2';
     }
-    
+
     // Validar máximo según el otro campo
     const otherField = field === 'customRectW' ? 'customRectH' : 'customRectW';
     const otherValue = order[otherField];
     const otherNum = otherValue ? parseFloat(String(otherValue)) : 0;
-    
+
     let maxForField = sheetH;
     if (otherNum > sheetW) {
       maxForField = sheetW;
     }
-    
+
     if (numValue > maxForField && Math.abs(numValue - maxForField) > 0.01) {
       return String(maxForField);
     }
-    
+
     return value;
   };
 
@@ -89,26 +89,27 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
   // Determinar si el paso está completado
   const isStepComplete = !!order.shapeType && (
-    order.shapeType === 'Rectangulares' 
+    order.shapeType === 'Rectangulares'
       ? !!order.customRectW && !!order.customRectH
       : order.sizeIndex >= 0
   );
 
   const isOpen = activeStep === 2;
   const isDone = isStepComplete;
-  const hasScrolledRef = React.useRef(false);
+  // Solo se suprime el scroll en el PRIMER render (mount).
+  // Antes se usaba `hasScrolledRef` como "ya scrolleé alguna vez", así que la
+  // primera apertura del paso (al tocar "Continuar") no bajaba hasta el
+  // contenido y había que volver a tocar el paso para que scrolleara.
+  const isFirstRenderRef = React.useRef(true);
 
-  // Scroll automático cuando se abre este paso (respetando flag de scroll inicial)
+  // Scroll automático cuando se abre este paso.
   React.useEffect(() => {
-    if (isOpen && stepRef.current) {
-      // Si no debe hacer scroll en el mount inicial y aún no ha scrolleado, evitar scroll
-      if (!shouldScrollOnMount && !hasScrolledRef.current) {
-        hasScrolledRef.current = true;
-        return;
-      }
-      // Permitir scroll en casos normales o cuando shouldScrollOnMount es true
-      stepRef.current.scrollTo();
-    }
+    const isFirstRender = isFirstRenderRef.current;
+    isFirstRenderRef.current = false;
+    if (!isOpen || !stepRef.current) return;
+    // En el mount inicial no se scrollea salvo que vengamos de un link `?o=`.
+    if (isFirstRender && !shouldScrollOnMount) return;
+    stepRef.current.scrollTo();
   }, [isOpen, shouldScrollOnMount]);
 
   // Manejador para seleccionar forma/tamaño y avanzar al paso 3
@@ -133,7 +134,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
     if (w > 0 || h > 0) {
       const { sheetW, sheetH } = getSheetLimits();
-      
+
       // Ajustar valores si exceden los límites del nuevo modo
       let newW = order.customRectW;
       let newH = order.customRectH;
@@ -212,7 +213,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
             <div className="cl-bg-blue-50 cl-p-md cl-rounded-xl cl-border-sm flex flex-col sm:flex-row items-start cl-gap-md mt-4">
               <div className="flex-1">
                 <div className="text-sm font-bold text-blue-900">Calculador A4 Inteligente</div>
-                
+
                 {/* Toggle de modo */}
                 <div className="mt-2 flex items-center gap-2">
                   <button
@@ -244,7 +245,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                       ) : (
                         <div>
                           En modo Económico{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {customRectMath.adjustedW?.toFixed(1).replace('.', ',')}x{customRectMath.adjustedH?.toFixed(1).replace('.', ',')}cm por plancha.
-                          <div className="mt-1 text-blue-600">Cada sticker tiene un margen blanco de 5mm.</div>
+                          <div className="mt-1 text-blue-600">Se ajusta hasta 5 mm para aprovechar la hoja (no es un margen blanco).</div>
                         </div>
                       )}
                     </>
@@ -265,15 +266,15 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                       }}
                     >
                       <div className="absolute top-1 left-2 text-[8px] text-slate-400 font-bold uppercase">Hoja A4</div>
-                      
+
                       {/* Línea guía - contenedor del espacio disponible según modo */}
                       <div
                         className="relative flex items-center justify-center border-2"
                         style={{
-                          width: customRectMath.sheetRotated 
+                          width: customRectMath.sheetRotated
                             ? (rectCalcMode === 'preciso' ? '113px' : '128px')
                             : (rectCalcMode === 'preciso' ? '85px' : '88px'),
-                          height: customRectMath.sheetRotated 
+                          height: customRectMath.sheetRotated
                             ? (rectCalcMode === 'preciso' ? '85px' : '88px')
                             : (rectCalcMode === 'preciso' ? '113px' : '128px'),
                           borderColor: rectCalcMode === 'preciso' ? '#94a3b8' : '#cbd5e1',
@@ -318,9 +319,9 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
               const isHidden = originalIdx >= showMoreIdx && expandedShapesCategory !== order.shapeType;
               if (isHidden) return null;
 
-              const shapeIndex = Object.keys(shapesCatalog).indexOf(order.shapeType) + 1;
-              const imageFileName = `2_${shapeIndex}_${originalIdx + 1}.png`;
-              const imagePath = resolveImage(imageFileName);
+              // Solo se muestra imagen si el tamaño tiene una cargada. Antes se
+              // generaba "2_x_y.png", que en /cotizador/ daba 404 siempre.
+              const imagePath = s.image ? resolveImage(s.image) : '';
 
               const hasInfo = !!(s.description || s.image);
               return (
@@ -329,12 +330,14 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                     className={`w-full h-full cl-option-card flex flex-col items-center justify-center min-h-[110px] sm:min-h-[100px] text-center p-3 sm:p-4 ${order.sizeIndex === originalIdx ? 'cl-option-card-selected' : ''} active:scale-95 transition-transform`}>
 
                     <div className="w-12 h-12 cl-mb-sm flex items-center justify-center opacity-80">
-                      <img
-                        src={imagePath}
-                        alt={s.size}
-                        className="w-full h-full object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
+                      {imagePath && (
+                        <img
+                          src={imagePath}
+                          alt={s.size}
+                          className="w-full h-full object-contain"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
                       <div className={`absolute -z-10 w-8 h-8 cl-border-md border-slate-200 border-dashed ${order.shapeType === 'Circulares' ? 'cl-rounded-full' : order.shapeType === 'A Medida' ? 'cl-star-shape' : 'cl-rounded-full'}`}></div>
                     </div>
 
@@ -359,20 +362,23 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
             })()}
           </div>
 
-          {/* Botón "Ver más" si hay tamaños ocultos */}
+          {/* Botón "Ver más" si hay tamaños visibles por debajo de la línea */}
           {(() => {
-            const catalog = shapesCatalog[order.shapeType];
-            const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog?.length ?? 0;
-            const visibleCount = catalog ? catalog.filter((s) => s.visible !== false).length : 0;
-            const hasHidden = showMoreIdx < (catalog?.length ?? 0) && visibleCount < (catalog?.length ?? 0);
+            const catalog = shapesCatalog[order.shapeType] || [];
+            const showMoreIdx = shapesShowMoreIndex?.[order.shapeType] ?? catalog.length;
+            // Cuenta los tamaños que el cliente no ve por la línea "Ver más".
+            // Antes se exigía además que hubiera tamaños con visible=false, así
+            // que con todos visibles el botón no aparecía y los tamaños de abajo
+            // quedaban inaccesibles (bug real con los datos de producción).
+            const hiddenByLine = catalog.filter((s, idx) => s.visible !== false && idx >= showMoreIdx).length;
             return (
-              hasHidden && (
+              hiddenByLine > 0 && (
                 <button
                   onClick={() => setExpandedShapesCategory(expandedShapesCategory === order.shapeType ? null : order.shapeType)}
                   className="w-full py-3 sm:py-2.5 cl-rounded-xl cl-border-sm text-slate-600 font-semibold text-sm hover:bg-slate-50 cl-transition-colors flex items-center justify-center cl-gap-md active:bg-slate-100"
                 >
                   {expandedShapesCategory === order.shapeType ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  {expandedShapesCategory === order.shapeType ? 'Ocultar tamaños' : `Ver más (${(catalog?.length ?? 0) - showMoreIdx})`}
+                  {expandedShapesCategory === order.shapeType ? 'Ocultar tamaños' : `Ver más (${hiddenByLine})`}
                 </button>
               )
             );
@@ -401,8 +407,8 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
       )}
 
       <div className="mt-6 flex justify-end">
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={onNavigateToNext}
           disabled={!isStepComplete}
           className="cl-button-primary-small disabled:opacity-50 disabled:cursor-not-allowed"

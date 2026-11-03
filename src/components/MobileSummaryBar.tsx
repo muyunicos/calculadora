@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Package, ChevronUp, MessageCircle } from 'lucide-react';
 import type { Order, PriceResult } from '../types';
+import { useToast } from './ToastProvider';
 
 interface MobileSummaryBarProps {
   order: Order;
@@ -11,6 +12,8 @@ interface MobileSummaryBarProps {
   formatoLabel: string;
   designLabel: string;
   orderCode?: string | null;
+  // URL pública de la cotización (para el link "Editar" del carrito).
+  shareUrl?: string;
 }
 
 const money = (n?: number) => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -62,8 +65,10 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
   order, results, missing,
   sizeText, materialName, formatoLabel, designLabel,
   orderCode = null,
+  shareUrl = '',
 }) => {
   const isComplete = !!results;
+  const { showToast } = useToast();
   const [isVisible, setIsVisible] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollToSummary = useScrollToSummary();
@@ -125,17 +130,26 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
             {isComplete ? (
               <button
                 onClick={() => {
-                  if (results?.finalPrice && typeof window !== 'undefined' && (window as any).addToCartFromCalculator) {
-                    (window as any).addToCartFromCalculator({
-                      price: results.finalPrice,
-                      orderCode: orderCode,
-                      material: materialName,
-                      formato: formatoLabel,
-                      medida: `${order.shapeType} ${sizeText}`,
-                      quantity: results?.totalStickers,
-                      sheets: order.sheetsQty
-                    });
+                  const addToCart = typeof window !== 'undefined' ? (window as any).addToCartFromCalculator : null;
+                  if (typeof addToCart !== 'function') {
+                    showToast('error', 'El carrito no está disponible en esta página. Probá desde el producto Cotizador.');
+                    return;
                   }
+                  if (!orderCode) {
+                    showToast('error', 'Falta el código del pedido. Revisá que el material y el tamaño tengan código asignado.');
+                    return;
+                  }
+                  if (!results?.finalPrice) return;
+                  addToCart({
+                    price: results.finalPrice,
+                    orderCode,
+                    cotizadorUrl: shareUrl,
+                    material: materialName,
+                    formato: formatoLabel,
+                    medida: `${order.shapeType} ${sizeText}`,
+                    quantity: results.totalStickers,
+                    sheets: order.sheetsQty
+                  });
                 }}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
               >

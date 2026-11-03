@@ -21,6 +21,9 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timerRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Contador para evitar ids repetidos: `Date.now()` puede dar el mismo ms en
+  // dos toasts seguidos y se pisaban timer/clave.
+  const toastCounter = useRef(0);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -33,7 +36,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const showToast = useCallback((type: ToastType, message: string, duration = 3000) => {
-    const id = Date.now().toString();
+    const id = `${Date.now()}-${(toastCounter.current += 1)}`;
     const newToast: Toast = { id, type, message, duration };
 
     setToasts((prev) => [...prev, newToast]);

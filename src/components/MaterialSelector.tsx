@@ -6,6 +6,10 @@ import OptionInfoPanel from './OptionInfoPanel';
 
 interface MaterialSelectorProps {
   materials: Material[];
+  // Cuántos materiales se ven antes de la línea "Ver más" (configurable y
+  // persistido en Admin > Materiales). Antes estaba hardcodeado en 2 acá y el
+  // control del Admin no tenía efecto.
+  materialsShowMoreIndex: number;
   materialId: string;
   showAllMaterials: boolean;
   expandedMaterialId: string | null;
@@ -22,6 +26,7 @@ interface MaterialSelectorProps {
 
 export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
   materials,
+  materialsShowMoreIndex,
   materialId,
   showAllMaterials,
   expandedMaterialId,
@@ -37,21 +42,28 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
   const materialName = materials?.find((m) => m.id === materialId)?.name ?? '';
+  // Se filtra ANTES de cortar: si los primeros materiales están ocultos, no
+  // tienen que consumir los lugares visibles.
+  const visibleMaterials = materials.filter((m) => m.visible !== false);
+  const limit = Math.max(0, Math.min(Math.floor(materialsShowMoreIndex), visibleMaterials.length));
+  const shownMaterials = showAllMaterials ? visibleMaterials : visibleMaterials.slice(0, limit);
+  const hiddenMaterials = Math.max(0, visibleMaterials.length - limit);
   const isOpen = activeStep === 1;
   const isDone = !!materialId;
-  const hasScrolledRef = React.useRef(false);
+  // Solo se suprime el scroll en el PRIMER render (mount).
+  // Antes se usaba `hasScrolledRef` como "ya scrolleé alguna vez", así que la
+  // primera apertura del paso (al tocar "Continuar") no bajaba hasta el
+  // contenido y había que volver a tocar el paso para que scrolleara.
+  const isFirstRenderRef = React.useRef(true);
 
-  // Scroll automático cuando se abre este paso (respetando flag de scroll inicial)
+  // Scroll automático cuando se abre este paso.
   React.useEffect(() => {
-    if (isOpen && stepRef.current) {
-      // Si no debe hacer scroll en el mount inicial y aún no ha scrolleado, evitar scroll
-      if (!shouldScrollOnMount && !hasScrolledRef.current) {
-        hasScrolledRef.current = true;
-        return;
-      }
-      // Permitir scroll en casos normales o cuando shouldScrollOnMount es true
-      stepRef.current.scrollTo();
-    }
+    const isFirstRender = isFirstRenderRef.current;
+    isFirstRenderRef.current = false;
+    if (!isOpen || !stepRef.current) return;
+    // En el mount inicial no se scrollea salvo que vengamos de un link `?o=`.
+    if (isFirstRender && !shouldScrollOnMount) return;
+    stepRef.current.scrollTo();
   }, [isOpen, shouldScrollOnMount]);
 
   return (
@@ -66,7 +78,7 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
     >
       <p className="text-sm text-slate-500 mb-4">Tocá la <Info className="inline w-3.5 h-3.5 -mt-0.5" /> para conocer más sobre cada material.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {(showAllMaterials ? materials : materials.slice(0, 2)).filter((m) => m.visible !== false).map((m) => {
+        {shownMaterials.map((m) => {
           const selected = materialId === m.id;
           return (
             <div key={m.id} className="relative">
@@ -110,19 +122,19 @@ export const MaterialSelector: React.FC<MaterialSelectorProps> = ({
         );
       })()}
 
-      {materials.length > 2 && (
+      {hiddenMaterials > 0 && (
         <button
           onClick={() => setShowAllMaterials(!showAllMaterials)}
           className="mt-4 w-full py-3 sm:py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 active:bg-slate-100"
         >
           {showAllMaterials ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${materials.length - 2})`}
+          {showAllMaterials ? 'Ocultar materiales extra' : `Ver más opciones (${hiddenMaterials})`}
         </button>
       )}
 
       <div className="mt-6 flex justify-end">
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={onNavigateToNext}
           disabled={!materialId}
           className="cl-button-primary-small disabled:opacity-50 disabled:cursor-not-allowed"

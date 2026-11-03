@@ -74,21 +74,28 @@ export const DEFAULT_DESIGN_OPTIONS: DesignOption[] = [
   },
 ];
 
-// Completa una lista de opciones provista por el servidor con las que falten
-// (por `id`), preservando el orden/edición del admin y garantizando que siempre
-// existan todas las opciones estables que el motor de precios necesita.
-function mergeById<T extends { id: string }>(provided: T[] | undefined, defaults: T[]): T[] {
-  if (!provided || provided.length === 0) return defaults;
-  const byId = new Map(provided.map((o) => [o.id, o]));
-  const merged = provided.filter((o) => defaults.some((d) => d.id === o.id));
-  for (const d of defaults) {
-    if (!byId.has(d.id)) merged.push(d);
+// Devuelve las opciones del archivo tal como las dejó el admin (respetando
+// altas, bajas y ediciones). Los defaults SOLO se usan cuando el archivo no trae
+// la clave (deploys viejos) o viene vacío.
+//
+// Antes esta función "re-mergeaba" los defaults por id, lo que tenía dos efectos
+// no deseados: (1) eliminar una opción desde el Admin no se persistía nunca, y
+// (2) cualquier opción nueva (id propio) se descartaba en la siguiente carga.
+function resolveOptions<T extends { id: string }>(provided: T[] | undefined, defaults: T[]): T[] {
+  if (!Array.isArray(provided) || provided.length === 0) return defaults;
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const option of provided) {
+    if (!option || typeof option.id !== 'string' || option.id === '') continue;
+    if (seen.has(option.id)) continue; // ids duplicados: gana el primero
+    seen.add(option.id);
+    out.push(option);
   }
-  return merged.length > 0 ? merged : defaults;
+  return out.length > 0 ? out : defaults;
 }
 
 export const resolveDeliveryOptions = (provided?: DeliveryOption[]): DeliveryOption[] =>
-  mergeById(provided, DEFAULT_DELIVERY_OPTIONS);
+  resolveOptions(provided, DEFAULT_DELIVERY_OPTIONS);
 
 export const resolveDesignOptions = (provided?: DesignOption[]): DesignOption[] =>
-  mergeById(provided, DEFAULT_DESIGN_OPTIONS);
+  resolveOptions(provided, DEFAULT_DESIGN_OPTIONS);

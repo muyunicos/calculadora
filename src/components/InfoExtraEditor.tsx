@@ -31,45 +31,44 @@ const InfoExtraEditor: React.FC<InfoExtraEditorProps> = ({
 
   // Función para abrir la galería de WordPress con modal nativo
   const openWordPressMediaLibrary = () => {
-    // Verificar si estamos en el entorno de WordPress y si wp.media está disponible
-    if (typeof window !== 'undefined' && (window as any).wp && (window as any).wp.media) {
-      const wp = (window as any).wp;
-
-      // Si el frame ya existe, solo abrirlo
-      if (wp.media.frames.calculadoraInfoFrame) {
-        wp.media.frames.calculadoraInfoFrame.open();
-        return;
-      }
-
-      // Crear un nuevo media frame
-      wp.media.frames.calculadoraInfoFrame = wp.media({
-        title: 'Seleccionar imagen',
-        button: {
-          text: 'Usar esta imagen'
-        },
-        multiple: false, // Permitir solo una imagen
-        library: {
-          type: 'image'
-        }
-      });
-
-      // Cuando se selecciona una imagen
-      wp.media.frames.calculadoraInfoFrame.on('select', function() {
-        const attachment = wp.media.frames.calculadoraInfoFrame.state().get('selection').first().toJSON();
-
-        if (attachment && attachment.url) {
-          // Usar la URL de tamaño completo o la URL del tamaño seleccionado
-          const imageUrl = attachment.sizes && attachment.sizes.full ? attachment.sizes.full.url : attachment.url;
-          onChange('image', imageUrl);
-        }
-      });
-
-      // Abrir el modal
-      wp.media.frames.calculadoraInfoFrame.open();
-    } else {
+    if (typeof window === 'undefined' || !(window as any).wp || !(window as any).wp.media) {
       // wp_enqueue_media() no se llamó en el shortcode: la Media Library no está cargada.
       alert('La galería de WordPress no está disponible. Verificá que el shortcode llame a wp_enqueue_media() para el usuario admin.');
+      return;
     }
+
+    const wp = (window as any).wp;
+
+    // Se crea un frame NUEVO por click. Antes se reutilizaba
+    // `wp.media.frames.calculadoraInfoFrame`: el handler 'select' quedaba atado
+    // al onChange del PRIMER editor que abrió el modal, así que la imagen se
+    // guardaba en la opción equivocada.
+    const frame = wp.media({
+      title: 'Seleccionar imagen',
+      button: {
+        text: 'Usar esta imagen'
+      },
+      multiple: false, // Permitir solo una imagen
+      library: {
+        type: 'image'
+      }
+    });
+
+    // Cuando se selecciona una imagen
+    frame.on('select', function() {
+      const selection = frame.state().get('selection').first();
+      if (!selection) return;
+      const attachment = selection.toJSON();
+
+      if (attachment && attachment.url) {
+        // Usar la URL de tamaño completo o la URL del tamaño seleccionado
+        const imageUrl = attachment.sizes && attachment.sizes.full ? attachment.sizes.full.url : attachment.url;
+        onChange('image', imageUrl);
+      }
+    });
+
+    // Abrir el modal
+    frame.open();
   };
 
   if (!open && !hasContent) {

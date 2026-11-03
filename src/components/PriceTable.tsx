@@ -42,7 +42,7 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
         savingsPct,
       };
     });
-  }, [order, config, materials, shapesCatalog]);
+  }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
   // Si no entra ningún sticker por hoja, no tiene sentido mostrar la tabla.
   const hasStickers = rows.some((r) => r.totalStickers > 0);

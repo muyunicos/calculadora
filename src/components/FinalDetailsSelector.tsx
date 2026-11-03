@@ -22,6 +22,8 @@ interface FinalDetailsSelectorProps {
   activeStep: 0 | 1 | 2 | 3;
   onStepOpen?: () => void;
   onNavigateToNext?: () => void;
+  // Avisa a App que el admin forzó la complejidad (para que el auto-cálculo no la pise).
+  onManualComplexity?: () => void;
   shouldScrollOnMount: boolean;
 }
 
@@ -42,6 +44,7 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
   activeStep,
   onStepOpen,
   onNavigateToNext,
+  onManualComplexity,
   shouldScrollOnMount,
 }) => {
   const stepRef = React.useRef<StepSectionRef>(null);
@@ -53,19 +56,20 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
 
   const isOpen = activeStep === 3;
   const isDone = isStepComplete; // Paso 3 no tiene siguiente, pero muestra completado cuando está listo
-  const hasScrolledRef = React.useRef(false);
+  // Solo se suprime el scroll en el PRIMER render (mount).
+  // Antes se usaba `hasScrolledRef` como "ya scrolleé alguna vez", así que la
+  // primera apertura del paso (al tocar "Continuar") no bajaba hasta el
+  // contenido y había que volver a tocar el paso para que scrolleara.
+  const isFirstRenderRef = React.useRef(true);
 
-  // Scroll automático cuando se abre este paso (respetando flag de scroll inicial)
+  // Scroll automático cuando se abre este paso.
   React.useEffect(() => {
-    if (isOpen && stepRef.current) {
-      // Si no debe hacer scroll en el mount inicial y aún no ha scrolleado, evitar scroll
-      if (!shouldScrollOnMount && !hasScrolledRef.current) {
-        hasScrolledRef.current = true;
-        return;
-      }
-      // Permitir scroll en casos normales o cuando shouldScrollOnMount es true
-      stepRef.current.scrollTo();
-    }
+    const isFirstRender = isFirstRenderRef.current;
+    isFirstRenderRef.current = false;
+    if (!isOpen || !stepRef.current) return;
+    // En el mount inicial no se scrollea salvo que vengamos de un link `?o=`.
+    if (isFirstRender && !shouldScrollOnMount) return;
+    stepRef.current.scrollTo();
   }, [isOpen, shouldScrollOnMount]);
 
   return (
@@ -196,9 +200,16 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Otra:</label>
             <NumberInput
               value={order.sheetsQty || ''}
-              onChange={(value) => setOrder({ ...order, sheetsQty: parseInt(value) || 0 })}
+              onChange={(value) => {
+                const parsed = parseInt(value, 10);
+                setOrder((prev) => ({
+                  ...prev,
+                  sheetsQty: Number.isFinite(parsed) && parsed > 0 ? Math.min(1000, parsed) : 0,
+                }));
+              }}
               step={1}
               min={1}
+              max={1000}
               className="font-bold text-lg"
             />
           </div>
@@ -232,15 +243,36 @@ export const FinalDetailsSelector: React.FC<FinalDetailsSelectorProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 cl-mb-md">Afecta el tiempo de corte estimado: ~{results?.baseCutTime?.toFixed(1)} min/plancha.</p>
-              <input type="range" min="1" max="10" value={order.complexity} onChange={(e) => setOrder({ ...order, complexity: parseInt(e.target.value) })} className="cl-input-range" />
+              <input type="range" min="1" max="10" value={order.complexity} onChange={(e) => {
+                onManualComplexity?.();
+                setOrder((prev) => ({ ...prev, complexity: parseInt(e.target.value, 10) }));
+              }} className="cl-input-range" />
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm">
               <label className="block text-sm font-bold text-slate-700 mb-2">Forzar Tiempo de Diseño Personalizado</label>
-              <select value={order.designType} onChange={(e) => setOrder({ ...order, designType: e.target.value as Order['designType'], ...(e.target.value === 'custom' ? { customDesignTime: config.timeDesignCustom } : {}) })} className="cl-select">
-                <option value="none">Sin costo (+0 min)</option>
-                <option value="basic">Armado en plancha (+{config.timeDesignBasic} min)</option>
-                <option value="custom">A medida (+{order.customDesignTime} min)</option>
+              <select
+                value={order.designType}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  const option = designOptions.find((o) => o.id === id);
+                  setOrder((prev) => ({
+                    ...prev,
+                    designType: id,
+                    // La opción "a medida" pide minutos al cliente: se parte del
+                    // valor por defecto de la opción, no de un config paralelo.
+                    ...(option?.isCustomTime
+                      ? { customDesignTime: prev.customDesignTime || option.designMinutes || 0 }
+                      : {}),
+                  }));
+                }}
+                className="cl-select"
+              >
+                {designOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label} (+{option.isCustomTime ? order.customDesignTime : (option.designMinutes ?? 0)} min)
+                  </option>
+                ))}
               </select>
 
               {order.designType === 'custom' && (

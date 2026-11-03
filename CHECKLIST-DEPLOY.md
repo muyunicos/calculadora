@@ -6,6 +6,26 @@
 > ✅ **Ejecutado y verificado el 2026-10-01.** Se conserva como referencia para el
 > próximo deploy y para saber qué se comprobó. Resultados al final.
 
+## 🆕 Revisión 2026-11 — archivos a subir
+
+| Archivo | Por qué |
+|---|---|
+| `assets/js/calculadora_stickers.js` | Frontend corregido (saneador, URL, Admin, precios). **Regenerar con `npm run build`.** |
+| `assets/css/calculadora_stickers.css` | Clases nuevas del Admin (banners de códigos duplicados). Se genera con el mismo build. |
+| `assets/guardar_datos.php` | Valida esquema, nonce opcional, bloquea códigos duplicados y guarda `.bak`. |
+| `assets/datos_config_etag.php` | Soporta ETag débil/listas y manda `Last-Modified`. |
+| `woocommerce-plugin/calculadora-pricing.php` | **NUEVO**. Motor de precios PHP con el que el carrito recalcula el precio. |
+| `woocommerce-plugin/plugin-calculadora-cart-integration.php` | Usa `muCalcCart`, recalcula precio, devuelve fragments, refresca nonce. |
+| `woocommerce-plugin/cart-integration.js` | Reintento de nonce, sin HTML inyectado, fragments reales. |
+
+> El plugin vive solo en el servidor (`wp-content/plugins/`). `calculadora-pricing.php`
+> debe quedar en **la misma carpeta** que el plugin; si falta, el AJAX del carrito
+> devuelve un error claro (no un fatal).
+>
+> El directorio `assets/` tiene que permitir crear `datos_config.json.bak`.
+>
+> `assets/datos_config.json` **no se sube** (regla de siempre).
+
 ## 🛑 La regla más importante de este checklist
 
 **Nunca subir la carpeta `assets/` completa. Subir archivo por archivo.**
