@@ -20,6 +20,36 @@ export type MuOpcionesVisor = {
   alCerrar?: () => void;
 };
 
+export type MuItemColeccion = {
+  url: string;
+  thumb?: string;
+  etiqueta?: string;
+  precio?: { valor: number; anterior?: number };
+};
+
+export type MuOpcionesColeccion = {
+  items: MuItemColeccion[];
+  layout?: 'fila' | 'grilla';
+  preset?: string;
+  slots?: Record<string, boolean>;
+  tamano?: string | { ancho: number; alto: number };
+  navegable?: boolean;
+  activo?: number;
+  onAbrir: (indice: number) => void;
+};
+
+/**
+ * Monta la TIRA con el motor del tema (`MU.coleccion`, ambito 1). Devuelve false si el
+ * motor no esta (dependencia blanda: queda la tira propia del componente).
+ */
+export function montarColeccion(el: HTMLElement | null, opciones: MuOpcionesColeccion): boolean {
+  const mu = motorGaleria();
+  if (!el || !mu || typeof mu.coleccion !== 'function') return false;
+  el.innerHTML = '';
+  mu.coleccion(el, opciones as Record<string, unknown>);
+  return true;
+}
+
 /** El motor del tema, solo si expone `visor` (dependencia blanda). */
 export function motorGaleria(): Window['MU'] | null {
   if (typeof window === 'undefined') return null;

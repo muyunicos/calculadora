@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Images, X, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react';
 import type { GalleryItem, GalleryPricing } from '../types';
-import { abrirVisor, cerrarVisor, metaDeItem, motorGaleria } from '../core/muGaleria';
+import { abrirVisor, cerrarVisor, metaDeItem, montarColeccion, motorGaleria } from '../core/muGaleria';
 
 interface MiniGalleryProps {
   items: GalleryItem[];
@@ -68,6 +68,10 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
 // que no sabe qué elegir.
 const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, getPricing }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  // Tira del MOTOR DEL TEMA (spec 019/020): `MU.coleccion` la pinta con el tema del
+  // contenedor; sin motor (tema ausente) queda la tira propia de abajo.
+  const tiraRef = useRef<HTMLDivElement | null>(null);
+  const [motor, setMotor] = useState(false);
 
   const isOpen = openIndex !== null;
   const visibleItems = items.filter((item) => item.visible !== false);
@@ -126,16 +130,45 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
     };
   }, [isOpen, visibleItems.length]);
 
+  // Monta (o re-monta) la tira del motor cuando cambia la lista de ideas.
+  const firmaTira = visibleItems.map((it) => it.id).join('|');
+  useEffect(() => {
+    const el = tiraRef.current;
+    if (!el) return;
+    const datos = visibleItems.map((it) => {
+      const p = getPricing(it.order, extractSheetsFromCode(it.order));
+      return {
+        url: resolveImage(it.image),
+        thumb: resolveImage(it.image),
+        etiqueta: it.title || it.caption || '',
+        precio: p ? { valor: p.perUnit, anterior: p.perUnitBase } : undefined,
+      };
+    });
+    setMotor(
+      montarColeccion(el, {
+        items: datos,
+        layout: 'fila',
+        navegable: true,
+        preset: 'producto',
+        slots: { titulo: false, etiqueta: true, precio: true },
+        tamano: { ancho: 136, alto: 104 },
+        onAbrir: (i: number) => abrir(i),
+      })
+    );
+    // `firmaTira` es la dependencia REAL: `visibleItems` es un array nuevo en cada render.
+  }, [firmaTira]);
+
   if (visibleItems.length === 0) return null;
 
   return (
-    <div className="cl-card p-4">
+    <div className="cl-card p-4" data-mu-tema="cotizador">
       <div className="flex items-center gap-2">
         <Images className="w-5 h-5 text-blue-600" />
         <h4 className="font-bold text-slate-800 m-0">Ideas (opcional)</h4>
       </div>
       <p className="text-sm text-slate-500 mb-4">Podés elegir una base para personalizar a tu gusto.</p>
-      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+      <div ref={tiraRef} className={motor ? 'mu-gal-tira-cotizador' : 'hidden'} />
+      <div className={motor ? 'hidden' : 'flex gap-3 overflow-x-auto pb-1 -mx-1 px-1'}>
         {visibleItems.map((item, idx) => {
           const label = item.title || item.caption;
           const displaySheets = extractSheetsFromCode(item.order);
