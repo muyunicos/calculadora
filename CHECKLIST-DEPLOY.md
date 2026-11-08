@@ -1,5 +1,31 @@
 # CHECKLIST DE DEPLOY — Calculadora de stickers
 
+> ## ⚠️ FLUJO VIGENTE (2026-11-08, spec 020 D8): el deploy lo hace el REPO DEL TEMA
+>
+> Los assets del cotizador **ya no se copian al servidor por FTP/panel**. Ahora viven en
+> el repo **`muyunicos`** (`assets/js/calculadora_stickers.js`, `assets/css/…`,
+> `assets/datos_config_etag.php`, `assets/guardar_datos.php`) y los despliega el webhook
+> del tema. Copiarlos a mano **rompe el deploy**: deja archivos *untracked* y el
+> `git pull` aborta con
+> `error: The following untracked working tree files would be overwritten by merge`.
+> (Pasó el 2026-11-08: el tema no se actualizó y la calculadora desapareció del sitio.)
+>
+> **Flujo correcto:**
+> 1. `npm run build:js && npm run build:css` (genera el bundle y el CSS).
+> 2. `npm run pub:tema` → copia los 4 artefactos al repo `muyunicos/assets` y verifica
+>    **SHA256**. `datos_config.json` **no** se publica: es dato del admin (servidor).
+> 3. `git add/commit` **en el repo del tema** (el deploy sube solo lo versionado).
+> 4. Implementar en Hostinger + purgar caché (LiteSpeed/CDN) + Ctrl+F5.
+> 5. Puerta: `node tests/cotizador-assets.js` en el repo del tema
+>    (`COTIZADOR ASSETS OK (8 checks)`): avisa si el tema quedó con una versión distinta.
+>
+> Si alguna vez aparece el error de *untracked*: **apartar** esos archivos
+> (`mv assets/js/calculadora_stickers.js .pmu-backup-…/`) y volver a implementar. **Nunca**
+> tocar `assets/datos_config.json`.
+>
+> Lo que sigue abajo es el **histórico** del deploy manual (2026-10), se conserva como
+> referencia de qué se comprobaba; **no** es el procedimiento.
+
 > Deploy **manual** (FTP / Administrador de archivos de Hostinger) a `/generatepress-child/`.
 > Este repo no despliega: el push a GitHub no sube nada al servidor.
 >

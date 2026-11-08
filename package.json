@@ -11,6 +11,7 @@
     "build": "npm run build:js && npm run build:css",
     "typecheck": "tsc --noEmit",
     "test": "node tests/core.test.js",
+    "pub:tema": "pwsh -NoProfile -File scripts/publicar-tema.ps1",
     "reglas": "node scripts/generar-reglas.js"
   },
   "dependencies": {
