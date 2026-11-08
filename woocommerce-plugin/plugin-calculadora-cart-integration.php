@@ -78,6 +78,12 @@ class CalculadoraCartIntegration {
                 'nonce' => wp_create_nonce('calculator-add-to-cart'),
                 'nonce_action' => 'mu_calc_cart_nonce',
             ));
+
+            // Spec 019 (D26): el motor de galeria/visor vive en el TEMA; se encola solo
+            // si esta (dependencia BLANDA). Sin tema, la calculadora usa sus componentes.
+            if (function_exists('mu_galeria_encolar')) {
+                mu_galeria_encolar();
+            }
         }
     }
     

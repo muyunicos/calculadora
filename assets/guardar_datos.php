@@ -199,52 +199,55 @@ function mu_sticker_save_config($raw, $targetFile) {
         $clean_options[$key] = $options;
     }
 
-    // --- MOCKUPS DEL COTIZADOR (spec 037) ---
-    // Lista de definiciones {id, categoria, size?, fondo, hueco{x,y,w,h,rot},
-    // forma, visible}. Se valida lo minimo para que el paso de diseno no reciba
-    // un hueco vacio: id unico y no vacio, categoria y fondo no vacios, hueco con
-    // lados >= 1. El saneo fino (topes 0..300, formas conocidas) es el del
-    // cliente (`sanitizeMockups`); aca no se descarta nada en silencio: se rechaza.
-    $mockups = array();
-    if (isset($data['mockups'])) {
-        if (!mu_sticker_is_list($data['mockups'])) {
-            return mu_sticker_invalid('"mockups" debe ser una lista.');
+// --- PLANTILLAS DEL COTIZADOR (spec 037, Enmienda v2) ---
+    // {id, titulo, categoria, pdf, rango{minX,maxX,minY,maxY}, visible, orden}.
+    // `pdf` es el slug de un PDF importado; vacio = solo imagen procesada (sin
+    // PDF de produccion). El mockup (capas/envolturas) NO vive aca: es del PDF.
+    $plantillas = array();
+    if (isset($data['plantillas'])) {
+        if (!mu_sticker_is_list($data['plantillas'])) {
+            return mu_sticker_invalid('"plantillas" debe ser una lista.');
         }
-        $mockup_ids = array();
-        foreach ($data['mockups'] as $index => $mockup) {
-            if (!is_array($mockup)) {
-                return mu_sticker_invalid('mockups[' . $index . '] debe ser un objeto.');
+        $plantilla_ids = array();
+        foreach ($data['plantillas'] as $index => $plantilla) {
+            if (!is_array($plantilla)) {
+                return mu_sticker_invalid('plantillas[' . $index . '] debe ser un objeto.');
             }
-            $mid = isset($mockup['id']) && is_string($mockup['id']) ? trim($mockup['id']) : '';
-            if ($mid === '') {
-                return mu_sticker_invalid('mockups[' . $index . '] no tiene id.');
+            $pid = isset($plantilla['id']) && is_string($plantilla['id']) ? trim($plantilla['id']) : '';
+            if ($pid === '') {
+                return mu_sticker_invalid('plantillas[' . $index . '] no tiene id.');
             }
-            if (isset($mockup_ids[$mid])) {
-                return mu_sticker_invalid('mockups[' . $index . '] repite el id "' . $mid . '".');
+            if (isset($plantilla_ids[$pid])) {
+                return mu_sticker_invalid('plantillas[' . $index . '] repite el id "' . $pid . '".');
             }
-            $mockup_ids[$mid] = true;
-            $categoria = isset($mockup['categoria']) && is_string($mockup['categoria'])
-                ? trim($mockup['categoria']) : '';
+            $plantilla_ids[$pid] = true;
+            $categoria = isset($plantilla['categoria']) && is_string($plantilla['categoria'])
+                ? trim($plantilla['categoria']) : '';
             if ($categoria === '') {
-                return mu_sticker_invalid('mockups[' . $index . '] no tiene categoria.');
+                return mu_sticker_invalid('plantillas[' . $index . '] no tiene categoria.');
             }
-            $fondo = isset($mockup['fondo']) && is_string($mockup['fondo']) ? trim($mockup['fondo']) : '';
-            if ($fondo === '') {
-                return mu_sticker_invalid('mockups[' . $index . '] no tiene fondo.');
+            $pdf = isset($plantilla['pdf']) && is_string($plantilla['pdf'])
+                ? strtolower(trim($plantilla['pdf'])) : '';
+            $pdf = preg_replace('/\.pdf$/', '', $pdf);
+            $pdf = preg_replace('/[^a-z0-9_-]/', '', (string) $pdf);
+            $plantilla['id'] = $pid;
+            $plantilla['categoria'] = $categoria;
+            $plantilla['pdf'] = (string) $pdf;
+            if (isset($plantilla['rango']) && is_array($plantilla['rango'])) {
+                $rg = $plantilla['rango'];
+                $minX = (float) ($rg['minX'] ?? 0);
+                $maxX = (float) ($rg['maxX'] ?? 0);
+                $minY = (float) ($rg['minY'] ?? 0);
+                $maxY = (float) ($rg['maxY'] ?? 0);
+                if ($maxX > 0 && $maxY > 0 && $minX <= $maxX && $minY <= $maxY) {
+                    $plantilla['rango'] = array('minX' => $minX, 'maxX' => $maxX, 'minY' => $minY, 'maxY' => $maxY);
+                } else {
+                    unset($plantilla['rango']); // rango incoherente: se guarda sin rango
+                }
             }
-            $hueco = isset($mockup['hueco']) && is_array($mockup['hueco']) ? $mockup['hueco'] : array();
-            $hw = isset($hueco['w']) ? (float) $hueco['w'] : 0;
-            $hh = isset($hueco['h']) ? (float) $hueco['h'] : 0;
-            if ($hw < 1 || $hh < 1) {
-                return mu_sticker_invalid('mockups[' . $index . '] tiene el hueco sin tamaño.');
-            }
-            $mockup['id'] = $mid;
-            $mockup['categoria'] = $categoria;
-            $mockup['fondo'] = $fondo;
-            $mockups[] = $mockup;
+            $plantillas[] = $plantilla;
         }
     }
-
     // --- ARMADO DEL ARCHIVO ---
     $clean = array(
         'config' => $config,
@@ -279,8 +282,8 @@ function mu_sticker_save_config($raw, $targetFile) {
         $clean[$key] = $options;
     }
 
-    if (isset($data['mockups'])) {
-        $clean['mockups'] = $mockups;
+    if (isset($data['plantillas'])) {
+        $clean['plantillas'] = $plantillas;
     }
     if (isset($data['tiraNombre']) && is_string($data['tiraNombre'])) {
         $tira = trim($data['tiraNombre']);

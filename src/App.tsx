@@ -7,7 +7,7 @@ import {
   Image as ImageIcon, LayoutDashboard, Palette, Info, Loader2, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
-import type { A4Layout, Config, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption, Diseno, TiraItem } from './types';
+import type { A4Layout, Config, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption, Diseno, PlantillaCotizador, TiraItem } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
 import { decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
@@ -31,10 +31,11 @@ import MobileSummaryBar from './components/MobileSummaryBar';
 import MiniGallery from './components/MiniGallery';
 import TiraIdeas from './components/TiraIdeas';
 import DesignStep from './components/DesignStep';
-import { AdminMockupsPanel } from './components/AdminMockupsPanel';
+import { AdminPlantillasPanel } from './components/AdminPlantillasPanel';
 import { usePmuAssets } from './hooks/usePmuAssets';
 import { useClientIdeas } from './hooks/useClientIdeas';
-import { resolveMockupFor } from './core/mockups';
+import { resolvePlantillaFor } from './core/plantillas';
+import { useMockupsPdf } from './hooks/useCotizadorPdf';
 import { SaveIndicator } from './components/SaveIndicator';
 import { infoBtnClass, resolveImage } from './utils/ui';
 
@@ -60,9 +61,9 @@ const App = () => {
   // Sin defaults en código: config/materials/shapesCatalog se hidratan del archivo.
   const {
     config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions,
-    mockups, tiraNombre,
+    plantillas, tiraNombre,
     setConfig, setMaterials, setShapesCatalog, setShapesShowMoreIndex, setMaterialsShowMoreIndex, setGallery, setDeliveryOptions, setDesignOptions,
-    setMockups,
+    setPlantillas,
     isLoaded, loadError, isSaving, saveError, hasChanges, saveConfig,
   } = useConfig(isAdmin);
 
@@ -73,6 +74,8 @@ const App = () => {
   const [diseno, setDiseno] = useState<Diseno | null>(null);
   // Subida del arte en curso: el boton COMPRAR espera a que termine (FR-014).
   const [disenoSubiendo, setDisenoSubiendo] = useState(false);
+
+
 
   const ideasListas = useRef(false);
   useEffect(() => {
@@ -110,6 +113,20 @@ const App = () => {
     };
   });
 
+  // --- Spec 037 (Enmienda v2): plantilla + mockups del Editor ---
+  // Se calculan ANTES de los cortes por carga/error: el hook de mockups tiene que
+  // llamarse siempre (reglas de hooks). Sin plantilla, `pdf` va vacio y el item
+  // nace sin PDF (solo imagen procesada).
+  const categoriaMockup = order.shapeType === 'A Medida' ? 'Formas' : order.shapeType;
+  const sizeMockup = order.shapeType === 'Rectangulares'
+    ? `${order.customRectW}x${order.customRectH} cm`
+    : (shapesCatalog?.[order.shapeType]?.[order.sizeIndex]?.size || '');
+  const plantillaActual = resolvePlantillaFor(
+    { categoria: categoriaMockup, size: sizeMockup },
+    plantillas,
+  );
+  const pdfSlug = plantillaActual?.pdf ?? '';
+  const mockupsPdfApi = useMockupsPdf(pdfSlug);
   // Modo de cálculo para formas rectangulares: 'preciso' (203x271mm) o 'economico' (210x297mm)
   // Usamos directamente order.rectCalcMode como fuente de verdad para evitar loops
   const rectCalcMode = order.rectCalcMode || 'preciso';
@@ -624,13 +641,6 @@ const App = () => {
     ? `${order.customRectW}x${order.customRectH}cm`
     : shapesCatalog?.[order.shapeType]?.[order.sizeIndex]?.size || '';
 
-  // --- Spec 037: mockup del cotizador para la seleccion actual ---
-  // "A Medida" vive en el catalogo de "Formas" (mismo criterio que ShapeSizeSelector).
-  const categoriaMockup = order.shapeType === 'A Medida' ? 'Formas' : order.shapeType;
-  const sizeMockup = order.shapeType === 'Rectangulares'
-    ? `${order.customRectW}x${order.customRectH} cm`
-    : sizeText;
-  const mockupActual = resolveMockupFor({ categoria: categoriaMockup, size: sizeMockup }, mockups);
   const usarTira = (item: TiraItem) => {
     if (item.order) loadOrderFromCode(item.order);
     // Reusar un custom restaura tambien su encuadre (FR-022).
@@ -791,8 +801,9 @@ const App = () => {
                   <DesignStep
                     categoria={categoriaMockup}
                     size={sizeMockup}
-                    forma={mockupActual?.forma}
-                    mockup={mockupActual}
+                    forma="auto"
+                    mockupsPdf={mockupsPdfApi.datos}
+                    pdf={pdfSlug}
                     diseno={diseno}
                     onDiseno={setDiseno}
                     disponible={pmuAssets.disponible}
@@ -923,10 +934,10 @@ const App = () => {
             )}
 
             {activeAdminTab === 'mockups' && (
-              <AdminMockupsPanel
-                mockups={mockups}
-                categorias={Object.keys(shapesCatalog)}
-                onChange={(lista) => setMockups(lista)}
+              <AdminPlantillasPanel
+                plantillas={plantillas}
+                categorias={Array.from(new Set([...Object.keys(shapesCatalog), 'Rectangulares']))}
+                onChange={(lista: PlantillaCotizador[]) => setPlantillas(lista)}
               />
             )}
           </div>

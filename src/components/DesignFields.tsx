@@ -43,6 +43,8 @@ export interface DesignFieldsProps {
   categoria: string;
   size: string;
   forma: string;
+  /** Plantilla importada (slug); vacio = item sin PDF (solo imagen procesada). */
+  pdf: string;
   itemKey: string;
   onItemKey: (itemKey: string) => void;
   onDiseno: (diseno: Diseno | null) => void;
@@ -56,6 +58,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   categoria,
   size,
   forma,
+  pdf,
   itemKey,
   onItemKey,
   onDiseno,
@@ -89,6 +92,8 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     cuerpo.append('action', 'personalizador_pdf_subida');
     cuerpo.append('_wpnonce', PMU_NONCE);
     cuerpo.append('contexto', 'cotizador');
+    // Enmienda v2: la plantilla importada de esta categoria+tamano (si hay).
+    if (pdf) { cuerpo.append('pdf', pdf); }
     if (clave) cuerpo.append('item_key', clave);
     cuerpo.append('imagen', blob, 'arte.png');
     cuerpo.append('params', JSON.stringify(params ?? {}));
@@ -106,7 +111,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     }
     if (fila.item_key) onItemKey(String(fila.item_key));
     return fila;
-  }, [onItemKey]);
+  }, [onItemKey, pdf]);
 
   const publicarDiseno = useCallback((id: string) => {
     const fila = filasRef.current[id] ?? {};

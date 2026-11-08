@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { sizeToPx } from '../core/mockups';
-import type { Diseno, MockupDef } from '../types';
+import type { Diseno, MockupsPdf } from '../types';
 import type { PmuAssetsApi } from '../hooks/usePmuAssets';
 import { DesignFields } from './DesignFields';
 import { MockupPreview } from './MockupPreview';
@@ -22,7 +22,9 @@ export interface DesignStepProps {
   categoria: string;
   size: string;
   forma?: string;
-  mockup: MockupDef | null;
+  mockupsPdf: MockupsPdf | null;
+  /** Plantilla importada para esta categoria+tamano ('' = sin PDF). */
+  pdf: string;
   diseno: Diseno | null;
   onDiseno: (diseno: Diseno | null) => void;
   /** El puente del plugin esta configurado (si no, el paso se oculta). */
@@ -39,7 +41,8 @@ export const DesignStep: React.FC<DesignStepProps> = ({
   categoria,
   size,
   forma,
-  mockup,
+  mockupsPdf,
+  pdf,
   diseno,
   onDiseno,
   disponible,
@@ -75,11 +78,12 @@ export const DesignStep: React.FC<DesignStepProps> = ({
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start">
-      <MockupPreview mockup={mockup} arteUrl={diseno?.url} />
+      <MockupPreview mockupsPdf={mockupsPdf} arteUrl={diseno?.url} />
       <DesignFields
         categoria={categoria}
         size={size}
         forma={forma || ''}
+        pdf={pdf}
         itemKey={itemKey}
         onItemKey={setItemKey}
         onDiseno={onDiseno}

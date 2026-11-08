@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Images, X, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react';
 import type { GalleryItem, GalleryPricing } from '../types';
+import { abrirVisor, cerrarVisor, metaDeItem, motorGaleria } from '../core/muGaleria';
 
 interface MiniGalleryProps {
   items: GalleryItem[];
@@ -77,9 +78,40 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
   const prev = () => setOpenIndex((i) => (i === null ? i : (i - 1 + visibleItems.length) % visibleItems.length));
   const next = () => setOpenIndex((i) => (i === null ? i : (i + 1) % visibleItems.length));
 
+  // Spec 019 (D26): el visor es el MOTOR DEL TEMA cuando esta (`MU.visor`); si no, queda
+  // el lightbox propio de abajo (dependencia BLANDA). El motor aporta foco atrapado,
+  // teclado, tono, meta con precios y `actualizar`, sin duplicar el motor aca.
+  const abrir = (idx: number) => {
+    const item = visibleItems[idx];
+    if (!item) return;
+    const pricing = getPricing(item.order, extractSheetsFromCode(item.order));
+    const ok = abrirVisor({
+      items: visibleItems.map((it) => ({
+        url: resolveImage(it.image),
+        thumb: resolveImage(it.image),
+        etiqueta: it.title || it.caption || '',
+      })),
+      indice: idx,
+      titulo: 'Ideas',
+      tono: 'oscuro',
+      meta: metaDeItem(item, pricing),
+      acciones: [
+        {
+          etiqueta: 'Personalizar',
+          onAccion: (i: number) => {
+            const elegido = visibleItems[i];
+            cerrarVisor();
+            if (elegido) onUse(elegido.order);
+          },
+        },
+      ],
+    });
+    if (!ok) setOpenIndex(idx);
+  };
+
   // Navegación por teclado y bloqueo del scroll de fondo cuando el lightbox está abierto.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || motorGaleria()) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
       else if (e.key === 'ArrowLeft') prev();
@@ -111,7 +143,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
           return (
             <button
               key={item.id}
-              onClick={() => setOpenIndex(idx)}
+              onClick={() => abrir(idx)}
               className="group relative flex-shrink-0 w-32 sm:w-36 rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-blue-400 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 text-left p-0"
               title={label || 'Ver ejemplo'}
             >

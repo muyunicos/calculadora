@@ -5,9 +5,8 @@ import type {
   DesignOption,
   GalleryItem,
   Material,
-  MockupDef,
-  MockupForma,
-  MockupHueco,
+  PlantillaCotizador,
+  RangoCm,
   ShapeItem,
   ShapesCatalog,
   ShapesShowMoreIndex,
@@ -298,31 +297,25 @@ function sanitizeIndexRecord(
   }
   return out;
 }
-
-/** Formas validas del hueco (v1 usa `rectangulo` para "Formas"). */
-const MOCKUP_FORMAS = ['auto', 'rectangulo', 'circulo', 'cuadrado', 'ovalo'] as const;
-
 /**
- * Sanea las definiciones del mockup del cotizador (spec 037, T012).
+ * Sanea el catalogo de plantillas del cotizador (spec 037 Enmienda v2, T040).
  *
- * Criterio "repara y avisa" (el mismo del resto del archivo): si un mockup se
- * puede reparar, se repara; si no (sin `id`, sin `categoria`, sin `fondo` o con el
- * hueco de lado 0), se DESCARTA y se anota en `warnings` — nunca se publica un
- * hueco que taparia el arte del comprador (FR-035).
- *
- * El hueco vive en el espacio LOGICO 300x300: `x/y` en `0..300` y `w/h` en
- * `1..300` (un hueco mayor que el lienzo no es un encuadre, es un error de datos).
+ * Criterio "repara y avisa": una entrada sin `id`, sin `categoria` o con un
+ * `rango` incoherente se descarta (o se le quita el rango) y se anota en
+ * `warnings`; nunca se publica una plantilla que mande a un PDF inexistente sin
+ * avisar. `pdf` se normaliza a slug (`[a-z0-9_-]`, sin `.pdf`): el plugin valida
+ * que exista.
  */
-function sanitizeMockups(raw: unknown, warnings: string[]): MockupDef[] {
+function sanitizePlantillas(raw: unknown, warnings: string[]): PlantillaCotizador[] {
   if (raw === undefined || raw === null) return [];
   if (!Array.isArray(raw)) {
-    warnings.push('mockups no es una lista; se ignoró.');
+    warnings.push('plantillas no es una lista; se ignoró.');
     return [];
   }
-  const out: MockupDef[] = [];
+  const out: PlantillaCotizador[] = [];
   const ids = new Set<string>();
   raw.forEach((item, index) => {
-    const etiqueta = `mockups[${index}]`;
+    const etiqueta = `plantillas[${index}]`;
     if (!isRecord(item)) {
       warnings.push(`${etiqueta} no es un objeto; se descartó.`);
       return;
@@ -341,44 +334,37 @@ function sanitizeMockups(raw: unknown, warnings: string[]): MockupDef[] {
       warnings.push(`${etiqueta} ("${id}") no tiene categoria; se descartó.`);
       return;
     }
-    const fondo = str(item.fondo).trim();
-    if (!fondo) {
-      warnings.push(`${etiqueta} ("${id}") no tiene fondo; se descartó.`);
-      return;
-    }
     if (item.visible === false) {
-      warnings.push(`${etiqueta} ("${id}") está oculto; no se publica.`);
+      warnings.push(`${etiqueta} ("${id}") está oculta; no se publica.`);
       return;
     }
-    const huecoRaw = isRecord(item.hueco) ? item.hueco : {};
-    const hueco: MockupHueco = {
-      x: num(huecoRaw.x, 0, 0, 300),
-      y: num(huecoRaw.y, 0, 0, 300),
-      w: num(huecoRaw.w, 0, 0, 300),
-      h: num(huecoRaw.h, 0, 0, 300),
-      rot: num(huecoRaw.rot, 0, -360, 360),
-    };
-    if (hueco.w < 1 || hueco.h < 1) {
-      warnings.push(`${etiqueta} ("${id}") tiene el hueco sin tamaño; se descartó.`);
-      return;
+    const pdf = str(item.pdf).trim().toLowerCase().replace(/\.pdf$/, '').replace(/[^a-z0-9_-]/g, '');
+    let rango: RangoCm | undefined;
+    if (isRecord(item.rango)) {
+      const minX = num(item.rango.minX, 0, 0, 1000);
+      const maxX = num(item.rango.maxX, 0, 0, 1000);
+      const minY = num(item.rango.minY, 0, 0, 1000);
+      const maxY = num(item.rango.maxY, 0, 0, 1000);
+      if (maxX > 0 && maxY > 0 && minX <= maxX && minY <= maxY) {
+        rango = { minX, maxX, minY, maxY };
+      } else {
+        warnings.push(`${etiqueta} ("${id}") tiene un rango inválido; se ignora el rango.`);
+      }
     }
-    const formaRaw = str(item.forma).trim().toLowerCase();
-    const forma = (MOCKUP_FORMAS as readonly string[]).includes(formaRaw)
-      ? (formaRaw as MockupForma)
-      : 'auto';
     ids.add(id);
     out.push({
       id,
-      titulo: optionalStr(item.titulo)?.trim() || undefined,
+      titulo: (optionalStr(item.titulo)?.trim() || categoria).slice(0, 60),
       categoria,
-      size: optionalStr(item.size)?.trim() || undefined,
-      fondo,
-      hueco,
-      forma,
+      pdf,
+      rango,
       visible: true,
+      orden: int(item.orden, out.length, 0, 999),
     });
   });
-  return out;
+  return out
+    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+    .map((plantilla, i) => ({ ...plantilla, orden: i }));
 }
 
 /**
@@ -428,7 +414,7 @@ export function validateAppData(raw: unknown): ValidationResult {
     gallery,
     deliveryOptions: sanitizeDeliveryOptions(raw.deliveryOptions, warnings),
     designOptions: sanitizeDesignOptions(raw.designOptions, warnings),
-    mockups: sanitizeMockups(raw.mockups, warnings),
+    plantillas: sanitizePlantillas(raw.plantillas, warnings),
     tiraNombre: optionalStr(raw.tiraNombre)?.trim() || undefined,
   };
 

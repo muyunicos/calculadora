@@ -327,9 +327,11 @@ test('el servidor rechaza un material sin nombre y códigos duplicados', () => {
 });
 
 // --- Spec 037: nucleo del mockup del cotizador (T011 + paridad I1) ---
-const { sizeToPx, gidPara, resolveMockupFor, tiraOrden, precioActualizado, descripcionAuto } =
+const { sizeToPx, gidPara, tiraOrden, precioActualizado, descripcionAuto } =
   loadModule('src/core/mockups.ts');
-const paridadCotizador = JSON.parse(
+const { resolvePlantillaFor, duplicarPlantilla, moverPlantilla } =
+  loadModule('src/core/plantillas.ts');
+  const paridadCotizador = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'fixtures', 'cotizador-paridad.json'), 'utf8'),
 );
 
@@ -351,19 +353,32 @@ test('sizeToPx acota el lienzo conservando el aspecto y rechaza basura', () => {
   assert.deepEqual(sizeToPx('sin medidas'), { w: 0, h: 0 });
 });
 
-test('resolveMockupFor: override por tamaño > categoría > null', () => {
-  const base = { fondo: 'fondo.webp', hueco: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, forma: 'auto' };
-  const mockups = [
-    { ...base, id: 'a', categoria: 'Circulares' },
-    { ...base, id: 'b', categoria: 'Circulares', size: '6,0 cm' },
-    { ...base, id: 'c', categoria: 'Formas', forma: 'rectangulo', visible: false },
+test('plantillas: rango X/Y resuelve los tamaños intermedios', () => {
+  const plantillas = [
+    { id: 'p1', titulo: 'Chicos', categoria: 'Circulares', pdf: 'circ-chico', orden: 0, rango: { minX: 2, maxX: 4, minY: 2, maxY: 4 } },
+    { id: 'p2', titulo: 'Grandes', categoria: 'Circulares', pdf: 'circ-grande', orden: 1, rango: { minX: 4.5, maxX: 10, minY: 4.5, maxY: 10 } },
+    { id: 'p3', titulo: 'Todos', categoria: 'Formas', pdf: 'formas', orden: 0 },
   ];
-  assert.equal(resolveMockupFor({ categoria: 'Circulares', size: '6 cm' }, mockups).id, 'b');
-  assert.equal(resolveMockupFor({ categoria: 'Circulares', size: '2,5 cm' }, mockups).id, 'a');
-  assert.equal(resolveMockupFor({ categoria: 'Formas' }, mockups), null);
-  assert.equal(resolveMockupFor({ categoria: 'Otra' }, mockups), null);
+  assert.equal(resolvePlantillaFor({ categoria: 'Circulares', size: '3,0 cm' }, plantillas).pdf, 'circ-chico');
+  assert.equal(resolvePlantillaFor({ categoria: 'Circulares', size: '3,7 cm' }, plantillas).pdf, 'circ-chico');
+  assert.equal(resolvePlantillaFor({ categoria: 'Circulares', size: '6,0 cm' }, plantillas).pdf, 'circ-grande');
+  assert.equal(resolvePlantillaFor({ categoria: 'Formas', size: '5x2,5 cm' }, plantillas).pdf, 'formas');
+  assert.equal(resolvePlantillaFor({ categoria: 'Circulares', size: '12 cm' }, plantillas), null);
 });
 
+test('plantillas: duplicar y reordenar (FR-041)', () => {
+  const base = { titulo: 'Circulares 6', categoria: 'Circulares', pdf: 'c6', orden: 0 };
+  const copia = duplicarPlantilla({ ...base, id: 'a' }, 'b');
+  assert.equal(copia.id, 'b');
+  assert.match(copia.titulo, /\(copia\)/);
+  assert.equal(copia.pdf, 'c6');
+  const lista = moverPlantilla([
+    { ...base, id: 'a', orden: 0 },
+    { ...base, id: 'c', orden: 1 },
+  ], 'c', -1);
+  assert.deepEqual(lista.map((p) => p.id), ['c', 'a']);
+  assert.deepEqual(lista.map((p) => p.orden), [0, 1]);
+});
 test('tiraOrden: favorito, orden manual y fecha (5 asserts)', () => {
   const base = { origen: 'custom', titulo: 'x', favorito: false, orden: 0, creado: 0 };
   const items = [
@@ -402,6 +417,35 @@ test('descripcionAuto arma material | forma tamano | formato | planchas', () => 
     unidades: 225,
   });
   assert.equal(texto, 'Vinilo | Circulares 6,0 cm | Plancha Medio Corte | 15 planchas (~225 u)');
+});
+
+test('spec 019 (D26): el visor delega en el motor del tema', () => {
+  let pedido = null;
+  let cerrado = 0;
+  global.window = {
+    MU: {
+      visor: (o) => { pedido = o; return true; },
+      cerrar: () => { cerrado += 1; },
+    },
+  };
+  const mu = loadModule('src/core/muGaleria.ts');
+  assert.ok(mu.motorGaleria(), 'con window.MU el motor esta disponible');
+  const ok = mu.abrirVisor({ items: [{ url: 'a.png' }], indice: 0, titulo: 'Ideas', tono: 'oscuro' });
+  assert.equal(ok, true, 'abre con el visor del tema');
+  assert.equal(pedido.titulo, 'Ideas');
+  assert.equal(pedido.tono, 'oscuro');
+  mu.cerrarVisor();
+  assert.equal(cerrado, 1, 'cerrar delega en el tema');
+  const meta = mu.metaDeItem(
+    { id: '1', image: 'a.png', order: 'v1', title: 'Sticker' },
+    { perUnit: 10, perUnitBase: 20, total: 1000, totalStickers: 100, sheets: 4, savingsPct: 50 }
+  );
+  assert.equal(meta.titulo, 'Sticker');
+  assert.equal(meta.precios.length, 2, 'dos precios como la tira');
+  assert.equal(meta.badge.texto, '50% OFF');
+  delete global.window;
+  assert.equal(mu.motorGaleria(), null, 'sin window.MU no hay motor (dependencia blanda)');
+  assert.equal(mu.abrirVisor({ items: [{ url: 'a.png' }] }), false, 'sin motor no abre');
 });
 
 console.log(`\n${passed} tests OK`);

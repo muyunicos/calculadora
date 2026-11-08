@@ -28,6 +28,14 @@ declare global {
     // Objetos que inyecta el plugin cuando sus módulos se cargan en esta página.
     PMU_TIENDA?: Record<string, unknown>;
     PMU_COTIZADOR?: Record<string, unknown>;
+    // Spec 019 (D26): motor de galeria/visor del TEMA (`muyunicos`). La calculadora lo
+    // consume cuando esta (dependencia BLANDA); si no, usa sus propios componentes.
+    MU?: {
+      coleccion?: (el: HTMLElement, opciones: Record<string, unknown>) => unknown;
+      visor?: (opciones: Record<string, unknown>) => boolean;
+      cerrar?: () => void;
+      estaAbierto?: () => boolean;
+    };
   }
 }
 

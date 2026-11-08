@@ -154,9 +154,8 @@ export interface AppData {
   gallery?: GalleryItem[];
   deliveryOptions?: DeliveryOption[];
   designOptions?: DesignOption[];
-  // Spec 037: definiciones del mockup del cotizador (fondo + hueco por categoria,
-  // con override opcional por tamano). Las edita el admin; el plugin NO las guarda.
-  mockups?: MockupDef[];
+  // Spec 037 (Enmienda v2): plantillas del cotizador (categoria + rango -> PDF).
+  plantillas?: PlantillaCotizador[];
   // Nombre visible de la tira unificada (Anexo C de la spec 037).
   tiraNombre?: string;
 }
@@ -165,34 +164,71 @@ export type A4FitType = 'portrait' | 'landscape' | 'none';
 
 // ===== Spec 037: mockup del cotizador, diseno e ideas del comprador =====
 
-/** Forma del hueco. En v1 solo "Formas"/"A Medida" usan `rectangulo`. */
-export type MockupForma = 'auto' | 'rectangulo' | 'circulo' | 'cuadrado' | 'ovalo';
+/** Forma del hueco: **siempre automatica** (envoltura del placeholder del PDF). */
+export type MockupForma = 'auto';
 
-/** Hueco del mockup en el espacio LOGICO 300x300 (no en px del sticker). */
-export interface MockupHueco {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  rot: number;
+/** Rango de tamanos (cm) en el que aplica una plantilla. */
+export interface RangoCm {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
 }
 
 /**
- * Definicion del mockup del cotizador (data-model 037): vive en
- * `datos_config.json:mockups[]`, NO en el plugin (el plugin indexa por PDF y el
- * cotizador no tiene PDF).
+ * Plantilla del cotizador (Enmienda v2, D14): asocia una **categoria + rango de
+ * tamano** a un PDF **importado** en el plugin (que aporta placeholders, envolturas
+ * automaticas y los mockups del Editor). Sin `pdf` no hay PDF de produccion.
  */
-export interface MockupDef {
+export interface PlantillaCotizador {
+  id: string;
+  /** Se muestra al cliente (FR-040). */
+  titulo: string;
+  categoria: string;
+  /** Slug de un PDF del plugin (`pdfs/{slug}/`). Vacio = solo imagen procesada. */
+  pdf: string;
+  /** Opcional: aplica solo si el PH cae dentro (los intermedios se resuelven solos). */
+  rango?: RangoCm;
+  visible?: boolean;
+  orden: number;
+}
+
+/** Capa del mockup tal como la guarda el Editor del plugin (contrato C5.2). */
+export interface MockupCapaPdf {
+  tipo?: string;
+  ref?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  rot?: number;
+  sesgo?: number;
+  oculta?: boolean;
+  envoltura?: unknown;
+  grupo?: string;
+  filtros?: Record<string, unknown>;
+  modo?: string;
+}
+
+/** Mockup del PDF (el del "Editor de mockups"): capas + envolturas. */
+export interface MockupPdf {
   id: string;
   titulo?: string;
-  categoria: string;
-  /** Override por tamano: si esta, aplica solo a ese tamano de la categoria. */
-  size?: string;
-  /** URL del fondo (foto de escena); absoluta o relativa a los assets. */
-  fondo: string;
-  hueco: MockupHueco;
-  forma: MockupForma;
-  visible?: boolean;
+  capas: MockupCapaPdf[];
+}
+
+/**
+ * Respuesta de `op=mockups` (subconjunto de `datos_pdf_render()`): con esto el
+ * comprador compone con `PMUMockup.componer`, igual que la ficha.
+ */
+export interface MockupsPdf {
+  activo: boolean;
+  pdf: string;
+  mockups: MockupPdf[];
+  grupos: Array<{ id: string; w: number; h: number; cont?: number }>;
+  imagenes: Record<string, string>;
+  envolturas?: unknown;
+  revision: string;
 }
 
 /**

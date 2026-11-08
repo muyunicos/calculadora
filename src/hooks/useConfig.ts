@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import equal from 'fast-deep-equal';
-import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, MockupDef, ShapesCatalog, ShapesShowMoreIndex } from '../types';
+import type { Config, DeliveryOption, DesignOption, GalleryItem, Material, PlantillaCotizador, ShapesCatalog, ShapesShowMoreIndex } from '../types';
 import { CONFIG_URL, SAVE_URL, SAVE_NONCE } from '../core/wp';
 import { resolveDeliveryOptions, resolveDesignOptions } from '../core/options';
 import { validateAppData, normalizeAppData, sanitizeAppData } from '../core/validation';
@@ -17,8 +17,8 @@ export interface UseConfigResult {
   gallery: GalleryItem[];
   deliveryOptions: DeliveryOption[] | null;
   designOptions: DesignOption[] | null;
-  // Spec 037: mockups del cotizador + nombre de la tira unificada.
-  mockups: MockupDef[];
+  // Spec 037: plantillas del cotizador + nombre de la tira unificada.
+  plantillas: PlantillaCotizador[];
   tiraNombre: string;
   setConfig: React.Dispatch<React.SetStateAction<Config | null>>;
   setMaterials: React.Dispatch<React.SetStateAction<Material[] | null>>;
@@ -28,7 +28,7 @@ export interface UseConfigResult {
   setGallery: React.Dispatch<React.SetStateAction<GalleryItem[]>>;
   setDeliveryOptions: React.Dispatch<React.SetStateAction<DeliveryOption[] | null>>;
   setDesignOptions: React.Dispatch<React.SetStateAction<DesignOption[] | null>>;
-  setMockups: React.Dispatch<React.SetStateAction<MockupDef[]>>;
+  setPlantillas: React.Dispatch<React.SetStateAction<PlantillaCotizador[]>>;
   setTiraNombre: React.Dispatch<React.SetStateAction<string>>;
   isLoaded: boolean;
   loadError: string | null;
@@ -52,9 +52,9 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOption[] | null>(null);
   const [designOptions, setDesignOptions] = useState<DesignOption[] | null>(null);
-  // Spec 037: los mockups del cotizador son DATO del admin (se guardan en
+  // Spec 037: los plantillas del cotizador son DATO del admin (se guardan en
   // datos_config.json). `tiraNombre` es el rotulo de la tira (Anexo C).
-  const [mockups, setMockups] = useState<MockupDef[]>([]);
+  const [plantillas, setPlantillas] = useState<PlantillaCotizador[]>([]);
   const [tiraNombre, setTiraNombre] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     gallery: GalleryItem[];
     deliveryOptions: DeliveryOption[] | null;
     designOptions: DesignOption[] | null;
-    mockups: MockupDef[];
+    plantillas: PlantillaCotizador[];
     tiraNombre: string;
   } | null>(null);
 
@@ -104,9 +104,9 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       const resolvedDelivery = resolveDeliveryOptions(normalized.deliveryOptions);
       const resolvedDesign = resolveDesignOptions(normalized.designOptions);
       const resolvedGallery = Array.isArray(normalized.gallery) ? normalized.gallery as GalleryItem[] : [];
-      // Spec 037: mockups ya saneados por `validateAppData` (ids unicos, sin
+      // Spec 037: plantillas ya saneados por `validateAppData` (ids unicos, sin
       // huecos vacios, sin `visible:false`).
-      const resolvedMockups = Array.isArray(normalized.mockups) ? normalized.mockups : [];
+      const resolvedPlantillas = Array.isArray(normalized.plantillas) ? normalized.plantillas : [];
       const resolvedTira = String(normalized.tiraNombre ?? '').trim();
       const resolvedMaterialsShowMore =
         normalized.materialsShowMoreIndex ?? Math.min(2, normalized.materials.length);
@@ -119,7 +119,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       setGallery(resolvedGallery);
       setDeliveryOptions(resolvedDelivery);
       setDesignOptions(resolvedDesign);
-      setMockups(resolvedMockups);
+      setPlantillas(resolvedPlantillas);
       setTiraNombre(resolvedTira);
 
       // Guardar snapshot de los datos cargados (ya normalizados) para
@@ -133,7 +133,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         gallery: resolvedGallery,
         deliveryOptions: resolvedDelivery,
         designOptions: resolvedDesign,
-        mockups: resolvedMockups,
+        plantillas: resolvedPlantillas,
         tiraNombre: resolvedTira,
       };
     } catch (err) {
@@ -157,8 +157,8 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
   // Esto reduce de 7 timers a 1 solo timer, ahorrando recursos significativamente.
   const allData = useMemo(() => ({
     config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions,
-    mockups, tiraNombre,
-  }), [config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions, mockups, tiraNombre]);
+    plantillas, tiraNombre,
+  }), [config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex, gallery, deliveryOptions, designOptions, plantillas, tiraNombre]);
   
   const debouncedAllData = useDebounce(allData, 800);
 
@@ -174,7 +174,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       !equal(debouncedAllData.gallery, original.gallery) ||
       !equal(debouncedAllData.deliveryOptions, original.deliveryOptions) ||
       !equal(debouncedAllData.designOptions, original.designOptions) ||
-      !equal(debouncedAllData.mockups, original.mockups) ||
+      !equal(debouncedAllData.plantillas, original.plantillas) ||
       !equal(debouncedAllData.tiraNombre, original.tiraNombre);
     setHasChanges(changed);
   }, [debouncedAllData, isLoaded]);
@@ -211,7 +211,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       gallery,
       deliveryOptions,
       designOptions,
-      mockups,
+      plantillas,
       tiraNombre,
     });
     if (!sanitized.success) {
@@ -244,7 +244,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       const savedDelivery = resolveDeliveryOptions(payload.deliveryOptions);
       const savedDesign = resolveDesignOptions(payload.designOptions);
       const savedGallery = payload.gallery || [];
-      const savedMockups = payload.mockups || [];
+      const savedPlantillas = payload.plantillas || [];
       const savedTira = String(payload.tiraNombre ?? '').trim();
       const savedMaterialsShowMore =
         payload.materialsShowMoreIndex ?? Math.min(2, payload.materials.length);
@@ -257,7 +257,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
       setShapesShowMoreIndex(payload.shapesShowMoreIndex || {});
       setMaterialsShowMoreIndex(savedMaterialsShowMore);
       setGallery(savedGallery);
-      setMockups(savedMockups);
+      setPlantillas(savedPlantillas);
       setTiraNombre(savedTira);
       setDeliveryOptions(savedDelivery);
       setDesignOptions(savedDesign);
@@ -272,7 +272,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
         gallery: savedGallery,
         deliveryOptions: savedDelivery,
         designOptions: savedDesign,
-        mockups: savedMockups,
+        plantillas: savedPlantillas,
         tiraNombre: savedTira,
       };
       setHasChanges(false);
@@ -292,7 +292,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     }
   }, [
     isAdmin, config, materials, shapesCatalog, shapesShowMoreIndex, materialsShowMoreIndex,
-    gallery, deliveryOptions, designOptions, mockups, tiraNombre, isSaving, showToast,
+    gallery, deliveryOptions, designOptions, plantillas, tiraNombre, isSaving, showToast,
   ]);
 
   return {
@@ -304,7 +304,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     gallery,
     deliveryOptions,
     designOptions,
-    mockups,
+    plantillas,
     tiraNombre,
     setConfig,
     setMaterials,
@@ -314,7 +314,7 @@ export function useConfig(isAdmin: boolean): UseConfigResult {
     setGallery,
     setDeliveryOptions,
     setDesignOptions,
-    setMockups,
+    setPlantillas,
     setTiraNombre,
     isLoaded,
     loadError,

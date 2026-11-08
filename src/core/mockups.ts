@@ -6,8 +6,6 @@
 //    (`w/h` de la receta): el cotizador no tiene `analisis.json` del que sacarlo.
 //  - `gidPara`: el `gid` de 6 hex de la receta. Se deriva de categoria + tamano
 //    NORMALIZADO a px, asi `3,0 cm` y `3 cm` dan el mismo id y el compuesto cachea.
-//  - `resolveMockupFor`: que definicion de mockup aplica (override por tamano >
-//    categoria > null).
 //  - `tiraOrden` / `precioActualizado`: comparador de la tira unificada y aviso de
 //    precio viejo (D7), testeables en Node.
 //
@@ -16,7 +14,7 @@
 // Si una de las dos implementaciones cambia, una de las dos puertas falla.
 
 import { hex6Mayus } from './sha1';
-import type { GalleryPricing, MockupDef, MockupForma, TiraItem } from '../types';
+import type { GalleryPricing, TiraItem } from '../types';
 
 /** Lado maximo del lienzo: espejo de `PMU_Sesion::PH_MAX` y `Compositor::PH_MAX`. */
 export const PH_MAX = 3000;
@@ -70,40 +68,6 @@ export function gidClave(categoria: string, size: string): string {
  */
 export function gidPara(categoria: string, size: string): string {
   return hex6Mayus(gidClave(categoria, size));
-}
-
-/** Forma del hueco por categoria (v1: "Formas" y "A Medida" usan rectangulo). */
-export function formaForCategoria(categoria: string): MockupForma {
-  const cat = String(categoria ?? '').trim().toLowerCase();
-  if (cat === 'formas' || cat === 'a medida') return 'rectangulo';
-  return 'auto';
-}
-/** Normaliza un tamano para comparar ("6,0 cm" === "6 cm" === "6,0cm"). */
-function normalizarSize(size: string | undefined): string {
-  const { w, h } = sizeToPx(String(size ?? ''));
-  return `${w}x${h}`;
-}
-
-/**
- * Que mockup aplica a la seleccion del comprador.
- *
- * Precedencia: override por TAMANO (misma categoria + mismo tamano) > mockup de la
- * CATEGORIA (sin `size`) > `null` (sin hueco: el paso de diseno se muestra vacio).
- */
-export function resolveMockupFor(
-  seleccion: { categoria: string; size?: string },
-  mockups: MockupDef[] | undefined,
-): MockupDef | null {
-  const lista = (mockups ?? []).filter((m) => m && m.visible !== false && !!m.fondo);
-  const categoria = String(seleccion?.categoria ?? '').trim();
-  if (!categoria || lista.length === 0) return null;
-  const deCategoria = lista.filter((m) => String(m.categoria ?? '').trim() === categoria);
-  const size = normalizarSize(seleccion?.size);
-  const porTamano = deCategoria.filter(
-    (m) => !!m.size && normalizarSize(m.size) === size && size !== '0x0',
-  );
-  if (porTamano.length > 0) return porTamano[0];
-  return deCategoria.find((m) => !m.size) ?? null;
 }
 
 /**
