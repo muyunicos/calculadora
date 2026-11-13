@@ -28,34 +28,64 @@ const { config, materials, shapesCatalog, deliveryOptions, designOptions } = dat
 function calcA4Layout(rawW, rawH, mode = 'preciso') {
   const w = parseFloat(String(rawW));
   const h = parseFloat(String(rawH));
-  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return { qty: 0 };
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    return { qty: 0, adjustedW: w || 0, adjustedH: h || 0 };
+  }
 
   // Mismas dimensiones utiles que src/core/a4Layout.ts.
-  // preciso: A4 menos margenes (203x271). economico: A4 completa (210x297) y se
-  // permite estirar cada sticker hasta 5 mm para repartir el espacio.
+  // preciso: A4 menos margenes (203x271). economico: A4 completa (210x297).
   const sheets = {
-    preciso: { width: 203, height: 271 },
-    economico: { width: 210, height: 297 },
+    preciso: { width: 203, height: 271, tolerance: 0 },
+    economico: { width: 210, height: 297, tolerance: 5 },
   };
   const sheet = sheets[mode] || sheets.preciso;
+  const tol = sheet.tolerance;
 
   const rectWmm = Math.max(2, w) * 10;
   const rectHmm = Math.max(2, h) * 10;
+
+  // Ajusta UN eje: agranda hasta tol; si no se puede, achica hasta tol.
+  const fitAxis = (sheetDim, rectDim, allowShrink) => {
+    const k = Math.floor(sheetDim / rectDim);
+    if (k < 1) return { count: 0, size: rectDim };
+    const up = sheetDim / k;
+    if (up - rectDim <= tol) return { count: k, size: up };
+    if (allowShrink) {
+      const down = sheetDim / (k + 1);
+      if (rectDim - down <= tol) return { count: k + 1, size: down };
+    }
+    return { count: k, size: rectDim };
+  };
 
   const orientations = [
     { sheetW: sheet.width, sheetH: sheet.height },
     { sheetW: sheet.height, sheetH: sheet.width },
   ];
 
-  let bestQty = 0;
+  // Fase 1: elegir la orientacion con mas stickers (solo agrandando).
+  let pick = null;
   for (const ori of orientations) {
-    const cols = Math.floor(ori.sheetW / rectWmm);
-    const rows = Math.floor(ori.sheetH / rectHmm);
-    if (cols < 1 || rows < 1) continue;
-    const qty = cols * rows;
-    if (qty > bestQty) bestQty = qty;
+    const c = fitAxis(ori.sheetW, rectWmm, false);
+    const r = fitAxis(ori.sheetH, rectHmm, false);
+    if (c.count < 1 || r.count < 1) continue;
+    const qty = c.count * r.count;
+    if (!pick || qty > pick.qty) {
+      pick = { qty, sw: ori.sheetW, sh: ori.sheetH };
+    }
   }
-  return { qty: bestQty };
+
+  if (!pick) return { qty: 0, adjustedW: w, adjustedH: h };
+
+  // Fase 2: sobre la orientacion elegida, achicar los ejes que no se pudieron agrandar.
+  const bestW = fitAxis(pick.sw, rectWmm, true);
+  const bestH = fitAxis(pick.sh, rectHmm, true);
+
+  const r1 = (v) => Math.round((v + Number.EPSILON) * 10) / 10;
+  return {
+    qty: bestW.count * bestH.count,
+    adjustedW: r1(bestW.size / 10),
+    adjustedH: r1(bestH.size / 10),
+  };
 }
 function autoComplexity(qty) {
   return Math.max(1, Math.min(10, Math.ceil(qty / 10)));
@@ -74,9 +104,14 @@ function calcularPrecio(order) {
   if (!del || !des) return null;
 
   // 1. Cantidades
-  let qtyPerSheet;
+  let qtyPerSheet = 0;
+  let adjustedW = 0;
+  let adjustedH = 0;
   if (order.shapeType === 'Rectangulares') {
-    qtyPerSheet = calcA4Layout(order.customRectW, order.customRectH, order.rectCalcMode || 'preciso').qty;
+    const layout = calcA4Layout(order.customRectW, order.customRectH, order.rectCalcMode || 'preciso');
+    qtyPerSheet = layout.qty;
+    adjustedW = layout.adjustedW;
+    adjustedH = layout.adjustedH;
   } else {
     qtyPerSheet = shapesCatalog[order.shapeType]?.[order.sizeIndex]?.qty || 0;
   }
@@ -116,7 +151,7 @@ function calcularPrecio(order) {
   const finalPrice = totalCost + profitAmount;
 
   return {
-    mat, del, des, qtyPerSheet, totalStickers, printCostPerSheet, complexity,
+    mat, del, des, qtyPerSheet, totalStickers, adjustedW, adjustedH, printCostPerSheet, complexity,
     complexityFactor, preCutTime, baseCutTime, cutWearCostPerSheet, totalRawMaterial,
     wasteAmount, costWithWaste, designTime, variableTimeMins, totalLogisticsTime,
     fixedTimeMins, totalTimeMins, laborCost, totalCost, profitAmount, finalPrice,
@@ -138,7 +173,11 @@ function ejemplo(titulo, order) {
 
   let shapeDesc;
   if (order.shapeType === 'Rectangulares') {
-    shapeDesc = `Rectangular ${order.customRectW}×${order.customRectH} cm`;
+    const modo = order.rectCalcMode === 'economico' ? 'Económico' : 'Preciso';
+    const ajuste = order.rectCalcMode === 'economico' && r.adjustedW > 0 && r.adjustedH > 0
+      ? ` · ajustada a ${dec(r.adjustedW)}×${dec(r.adjustedH)} cm`
+      : '';
+    shapeDesc = `Rectangular ${order.customRectW}×${order.customRectH} cm · modo ${modo}${ajuste}`;
   } else {
     const item = shapesCatalog[order.shapeType][order.sizeIndex];
     shapeDesc = `${order.shapeType} ${item.size}`;
@@ -169,6 +208,20 @@ function ejemplo(titulo, order) {
 18. Costo total: ${dec(r.costWithWaste)} + ${dec(r.laborCost)} + ${config.packagingCost} = **${dec(r.totalCost)}**
 19. Ganancia (${config.profitMargin}%): ${dec(r.totalCost)} × ${dec(config.profitMargin / 100)} = **${dec(r.profitAmount)}**
 20. **Precio final: ${pesos(r.finalPrice)}**`;
+}
+
+// ─── Comparación de precio por unidad entre modos rectangulares ─────────
+function comparacionEconomica() {
+  const base = {
+    materialId: 'm1', shapeType: 'Rectangulares', sizeIndex: -1,
+    customRectW: 7, customRectH: 7, sheetsQty: 10,
+    deliveryFormat: 'plancha', designType: 'none', customDesignTime: 45,
+  };
+  const preciso = calcularPrecio({ ...base, rectCalcMode: 'preciso' });
+  const economico = calcularPrecio({ ...base, rectCalcMode: 'economico' });
+  if (!preciso || !economico || preciso.totalStickers <= 0 || economico.totalStickers <= 0) return '';
+
+  return `> **Comparación 7×7 (10 planchas):** preciso → ${preciso.totalStickers} stickers / ${pesos(preciso.finalPrice)} = **${pesos(preciso.finalPrice / preciso.totalStickers)} por sticker**; económico → ${economico.totalStickers} stickers / ${pesos(economico.finalPrice)} = **${pesos(economico.finalPrice / economico.totalStickers)} por sticker**. El económico sube el total por plancha por la complejidad de corte, pero baja el precio por unidad.`;
 }
 
 // ─── Generar tablas del catálogo ───────────────────────────────────────
@@ -227,7 +280,7 @@ Sos el asistente de Muy Únicos, empresa de stickers personalizados. Tu trabajo 
 ## FLUJO DE CONVERSACIÓN
 Preguntá al cliente en este orden (no avances al siguiente paso hasta tener la respuesta):
 1. **Material** → ¿Papel Adhesivo o Vinilo?
-2. **Forma y tamaño** → ¿Circular, Forma especial, o Rectangular (con medidas en cm)?
+2. **Forma y tamaño** → ¿Circular, Forma especial, o Rectangular (con medidas en cm)? Si es rectangular, preguntar también si quiere cálculo **Preciso** o **Económico**.
 3. **Formato de entrega** → ¿Sin cortar, Plancha (medio corte), o Cortados sueltos?
 4. **Diseño** → ¿Ya tenés diseño, necesitás armado básico, o diseño a medida?
 5. **Cantidad de planchas** → ¿Cuántas planchas A4?
@@ -243,11 +296,20 @@ ${materialesTable()}
 ${formasTable()}
 
 ### Rectangulares (medidas libres)
-El cliente da ancho y alto en cm (mínimo 2×2). Se calcula cuántos entran en una hoja A4 útil de 203×271 mm:
-1. Convertir a mm (×10)
-2. Probar orientación normal: columnas = ⌊203 / ancho_mm⌋, filas = ⌊271 / alto_mm⌋
-3. Probar orientación rotada: columnas = ⌊271 / ancho_mm⌋, filas = ⌊203 / alto_mm⌋
-4. Elegir la orientación con más stickers. Stickers por hoja = columnas × filas
+El cliente da ancho y alto en cm (mínimo 2×2). Hay dos modos de cálculo:
+
+- **Preciso** (por defecto): hoja útil de **203×271 mm** (A4 menos márgenes de impresión). La medida entregada es exactamente la pedida.
+- **Económico**: hoja A4 completa de **210×297 mm**. Se ajusta cada sticker hasta **5 mm** para aprovechar la hoja: primero se agranda; si no se puede, se achica (nunca más de 5 mm).
+
+Cálculo:
+1. Convertir a mm (×10).
+2. Probar orientación normal: columnas = ⌊anchoHoja / anchoSticker⌋, filas = ⌊altoHoja / altoSticker⌋.
+3. Probar orientación rotada: intercambiar ancho y alto de la hoja.
+4. Elegir la orientación con más stickers. Stickers por hoja = columnas × filas.
+5. En modo económico, por eje: si al agrandar sobra ≤5 mm, agrandar hasta llenar la celda; si no se puede agrandar, achicar hasta 5 mm para sumar una fila/columna más (ej.: 5×5 → 5,25×4,95 → 24 por plancha).
+6. **Total stickers** = stickers por hoja × cantidad de planchas.
+
+> **Diferencia de precio:** ambos modos usan el mismo costo por plancha. El precio por sticker baja cuando el modo económico mete más unidades en la misma hoja. Si ambos modos dan la misma cantidad de stickers, el precio es el mismo. El económico puede subir levemente el costo por plancha porque más unidades por hoja aumentan la complejidad de corte.
 
 ### Formatos de entrega
 ${formatosTable()}
@@ -269,7 +331,9 @@ ${disenosTable()}
 
 ### Paso 1: Stickers por hoja
 - Circular/Forma: buscar en la tabla de arriba
-- Rectangular: calcular con A4 (ver sección anterior)
+- Rectangular: calcular con A4 según el modo elegido (ver sección Rectangulares):
+  - Preciso: 203×271 mm.
+  - Económico: 210×297 mm y ajuste de hasta 5 mm (agranda o achica).
 - **Total stickers** = stickers por hoja × cantidad de planchas
 
 ### Paso 2: Costo de impresión por hoja
@@ -314,7 +378,13 @@ ${ejemplo('Ejemplo 1: Vinilo circular en plancha', { materialId: 'm1', shapeType
 
 ${ejemplo('Ejemplo 2: Papel circular cortado suelto con armado', { materialId: 'm2', shapeType: 'Circulares', sizeIndex: 1, customRectW: '', customRectH: '', sheetsQty: 3, deliveryFormat: 'individual', designType: 'basic', complexity: 6, customDesignTime: 45 })}
 
-${ejemplo('Ejemplo 3: Vinilo rectangular sin cortar', { materialId: 'm1', shapeType: 'Rectangulares', sizeIndex: -1, customRectW: 5, customRectH: 3, sheetsQty: 10, deliveryFormat: 'sincorte', designType: 'none', complexity: 4, customDesignTime: 45 })}
+${ejemplo('Ejemplo 3: Vinilo rectangular sin cortar — modo Preciso', { materialId: 'm1', shapeType: 'Rectangulares', sizeIndex: -1, customRectW: 5, customRectH: 3, sheetsQty: 10, deliveryFormat: 'sincorte', designType: 'none', rectCalcMode: 'preciso', customDesignTime: 45 })}
+
+${ejemplo('Ejemplo 4: Rectangular 7×7 cm en plancha — modo Preciso (10 planchas)', { materialId: 'm1', shapeType: 'Rectangulares', sizeIndex: -1, customRectW: 7, customRectH: 7, sheetsQty: 10, deliveryFormat: 'plancha', designType: 'none', rectCalcMode: 'preciso', customDesignTime: 45 })}
+
+${ejemplo('Ejemplo 5: Rectangular 7×7 cm en plancha — modo Económico (10 planchas)', { materialId: 'm1', shapeType: 'Rectangulares', sizeIndex: -1, customRectW: 7, customRectH: 7, sheetsQty: 10, deliveryFormat: 'plancha', designType: 'none', rectCalcMode: 'economico', customDesignTime: 45 })}
+
+${comparacionEconomica()}
 
 ## CIERRE DE COTIZACIÓN
 Al presentar el precio al cliente:

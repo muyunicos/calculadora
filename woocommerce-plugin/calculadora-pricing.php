@@ -108,47 +108,58 @@ function mu_calc_a4_layout($rawW, $rawH, $mode = 'preciso') {
         'economico' => array('w' => 210, 'h' => 297, 'tol' => 5),
     );
     $sheet = isset($sheets[$mode]) ? $sheets[$mode] : $sheets['preciso'];
+    $tol = $sheet['tol'];
+
+    // Ajusta UN eje: agranda hasta $tol; si no se puede, achica hasta $tol.
+    $fit_axis = function ($sheetDim, $rectDim, $allowShrink) use ($tol) {
+        $k = (int) floor($sheetDim / $rectDim);
+        if ($k < 1) {
+            return array('count' => 0, 'size' => $rectDim);
+        }
+        $up = $sheetDim / $k;
+        if (($up - $rectDim) <= $tol) {
+            return array('count' => $k, 'size' => $up);
+        }
+        if ($allowShrink) {
+            $down = $sheetDim / ($k + 1);
+            if (($rectDim - $down) <= $tol) {
+                return array('count' => $k + 1, 'size' => $down);
+            }
+        }
+        return array('count' => $k, 'size' => $rectDim);
+    };
 
     $orientations = array(
         array('sw' => $sheet['w'], 'sh' => $sheet['h']),
         array('sw' => $sheet['h'], 'sh' => $sheet['w']),
     );
 
-    $best = null;
+    // Fase 1: elegir la orientación con más stickers (solo agrandando).
+    $pick = null;
     foreach ($orientations as $orientation) {
-        $cols = (int) floor($orientation['sw'] / $rectWmm);
-        $rows = (int) floor($orientation['sh'] / $rectHmm);
-        if ($cols < 1 || $rows < 1) {
+        $c = $fit_axis($orientation['sw'], $rectWmm, false);
+        $r = $fit_axis($orientation['sh'], $rectHmm, false);
+        if ($c['count'] < 1 || $r['count'] < 1) {
             continue;
         }
-        $qty = $cols * $rows;
-        $finalWmm = $rectWmm;
-        $finalHmm = $rectHmm;
-
-        if ($mode === 'economico' && $sheet['tol'] > 0) {
-            $wPerfect = $orientation['sw'] / $cols;
-            $hPerfect = $orientation['sh'] / $rows;
-            if ($wPerfect >= $rectWmm && ($wPerfect - $rectWmm) <= $sheet['tol']) {
-                $finalWmm = $wPerfect;
-            }
-            if ($hPerfect >= $rectHmm && ($hPerfect - $rectHmm) <= $sheet['tol']) {
-                $finalHmm = $hPerfect;
-            }
-        }
-
-        if ($best === null || $qty > $best['qty']) {
-            $best = array('qty' => $qty, 'w' => $finalWmm, 'h' => $finalHmm);
+        $qty = $c['count'] * $r['count'];
+        if ($pick === null || $qty > $pick['qty']) {
+            $pick = array('qty' => $qty, 'sw' => $orientation['sw'], 'sh' => $orientation['sh']);
         }
     }
 
-    if ($best === null) {
+    if ($pick === null) {
         return array('qty' => 0, 'adjustedW' => $w, 'adjustedH' => $h);
     }
 
+    // Fase 2: sobre la orientación elegida, achicar los ejes que no se pudieron agrandar.
+    $bestW = $fit_axis($pick['sw'], $rectWmm, true);
+    $bestH = $fit_axis($pick['sh'], $rectHmm, true);
+
     return array(
-        'qty' => $best['qty'],
-        'adjustedW' => round($best['w'] / 10, 1),
-        'adjustedH' => round($best['h'] / 10, 1),
+        'qty' => $bestW['count'] * $bestH['count'],
+        'adjustedW' => round($bestW['size'] / 10, 1),
+        'adjustedH' => round($bestH['size'] / 10, 1),
     );
 }
 

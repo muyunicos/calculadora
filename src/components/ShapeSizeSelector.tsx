@@ -55,37 +55,34 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
     };
   };
 
-  // Función centralizada para validar y ajustar un valor
-  const validateAndAdjustValue = (value: string, field: 'customRectW' | 'customRectH'): string => {
-    const numValue = parseFloat(value);
-    const { sheetW, sheetH } = getSheetLimits();
-
-    // Validar mínimo
-    if (numValue < 2 || isNaN(numValue)) {
-      return '2';
-    }
-
-    // Validar máximo según el otro campo
-    const otherField = field === 'customRectW' ? 'customRectH' : 'customRectW';
-    const otherValue = order[otherField];
-    const otherNum = otherValue ? parseFloat(String(otherValue)) : 0;
-
-    let maxForField = sheetH;
-    if (otherNum > sheetW) {
-      maxForField = sheetW;
-    }
-
-    if (numValue > maxForField && Math.abs(numValue - maxForField) > 0.01) {
-      return String(maxForField);
-    }
-
-    return value;
-  };
-
+  // El valor crudo se guarda tal cual: se permite tipear cualquier número y la
+  // advertencia (mínimo/máximo/no entra) se muestra en el bloque inferior.
   const handleRectChange = (field: 'customRectW' | 'customRectH', value: string) => {
-    const adjustedValue = validateAndAdjustValue(value, field);
-    setOrder({ ...order, [field]: adjustedValue });
+    setOrder({ ...order, [field]: value });
   };
+
+  const RECT_MIN_CM = 2;
+
+  // Devuelve el mensaje de advertencia para las medidas, o null si son válidas.
+  const getRectValidation = (): string | null => {
+    const wRaw = String(order.customRectW ?? '').trim();
+    const hRaw = String(order.customRectH ?? '').trim();
+    if (wRaw === '' || hRaw === '') return 'Ingresá ANCHO y ALTO para calcular.';
+    const w = parseFloat(wRaw);
+    const h = parseFloat(hRaw);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+      return 'Ingresá ANCHO y ALTO numéricos y mayores a 0.';
+    }
+    const { sheetH } = getSheetLimits();
+    if (w < RECT_MIN_CM || h < RECT_MIN_CM) return `El mínimo es ${RECT_MIN_CM} cm por lado.`;
+    if (w > sheetH || h > sheetH) return `El máximo es ${sheetH} cm por lado (hoja A4).`;
+    if (customRectMath.qty === 0) return 'Esas medidas no entran en la hoja A4. Probá achicarlas.';
+    return null;
+  };
+
+  // Formatea cm con hasta 2 decimales, sin ceros sobrantes (5,25 -> "5,25"; 5 -> "5").
+  const fmtCm = (v?: number): string =>
+    v == null ? '' : String(Number(v.toFixed(2))).replace('.', ',');
 
   // Determinar si el paso está completado
   const isStepComplete = !!order.shapeType && (
@@ -194,6 +191,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                   step={0.5}
                   min={2}
                   max={rectCalcMode === 'preciso' ? 27.1 : 29.7}
+                  clampOnBlur={false}
                   className="py-3 sm:py-2"
                 />
               </div>
@@ -205,6 +203,7 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
                   step={0.5}
                   min={2}
                   max={rectCalcMode === 'preciso' ? 27.1 : 29.7}
+                  clampOnBlur={false}
                   className="py-3 sm:py-2"
                 />
               </div>
@@ -232,24 +231,24 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
 
                 {/* Detalles según el modo */}
                 <div className="mt-2 text-xs text-blue-700">
-                  {!order.customRectW || !order.customRectH ? (
-                    <div>Ingresá ANCHO y ALTO para calcular.</div>
-                  ) : customRectMath.qty === 0 ? (
-                    <div>Ingresá ANCHO y ALTO válidos para calcular.</div>
-                  ) : (
-                    <>
-                      {rectCalcMode === 'preciso' ? (
-                        <div>
-                          En modo Preciso{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {String(order.customRectW).replace('.', ',')}x{String(order.customRectH).replace('.', ',')}cm por plancha.
-                        </div>
-                      ) : (
-                        <div>
-                          En modo Económico{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {customRectMath.adjustedW?.toFixed(1).replace('.', ',')}x{customRectMath.adjustedH?.toFixed(1).replace('.', ',')}cm por plancha.
-                          <div className="mt-1 text-blue-600">Se ajusta hasta 5 mm para aprovechar la hoja (no es un margen blanco).</div>
-                        </div>
-                      )}
-                    </>
-                  )}
+                  {(() => {
+                    const error = getRectValidation();
+                    if (error) return <div>{error}</div>;
+                    return (
+                      <>
+                        {rectCalcMode === 'preciso' ? (
+                          <div>
+                            En modo Preciso{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {String(order.customRectW).replace('.', ',')}x{String(order.customRectH).replace('.', ',')}cm por plancha.
+                          </div>
+                        ) : (
+                          <div>
+                            En modo Económico{customRectMath.sheetRotated ? ' (hoja rotada)' : ''} entran <strong>{customRectMath.qty}</strong> unidades de {fmtCm(customRectMath.exactW)}x{fmtCm(customRectMath.exactH)}cm por plancha.
+                            <div className="mt-1 text-blue-600">Se ajusta hasta 5 mm para aprovechar la hoja (no es un margen blanco).</div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

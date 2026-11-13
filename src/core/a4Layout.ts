@@ -41,6 +41,25 @@ export function calcA4Layout(
   const rectWmm = Math.max(2, w) * 10;
   const rectHmm = Math.max(2, h) * 10;
   const sheet = SHEETS[mode] ?? SHEETS.preciso;
+  const tol = sheet.tolerance;
+
+  // Ajusta UN eje: intenta AGRANDAR hasta 'tol'; si no se puede, ACHICA hasta 'tol'
+  // (solo en económico, donde tol > 0) para aprovechar una fila/columna más.
+  const fitAxis = (
+    sheetDim: number,
+    rectDim: number,
+    allowShrink: boolean,
+  ): { count: number; size: number } => {
+    const k = Math.floor(sheetDim / rectDim);
+    if (k < 1) return { count: 0, size: rectDim };
+    const up = sheetDim / k;
+    if (up - rectDim <= tol) return { count: k, size: up }; // agrandar
+    if (allowShrink) {
+      const down = sheetDim / (k + 1);
+      if (rectDim - down <= tol) return { count: k + 1, size: down }; // achicar
+    }
+    return { count: k, size: rectDim };
+  };
 
   // Se prueban ambas orientaciones de la hoja.
   const orientations = [
@@ -48,32 +67,19 @@ export function calcA4Layout(
     { sheetW: sheet.height, sheetH: sheet.width, rotated: true },
   ];
 
-  type Best = { qty: number; rotated: boolean; finalWmm: number; finalHmm: number };
-  let best: Best | null = null;
-
-  for (const orientation of orientations) {
-    const cols = Math.floor(orientation.sheetW / rectWmm);
-    const rows = Math.floor(orientation.sheetH / rectHmm);
+  // Fase 1: elegir la orientación con más stickers (solo agrandando, como antes).
+  let pick: { qty: number; rotated: boolean; sheetW: number; sheetH: number } | null = null;
+  for (const o of orientations) {
+    const cols = fitAxis(o.sheetW, rectWmm, false).count;
+    const rows = fitAxis(o.sheetH, rectHmm, false).count;
     if (cols < 1 || rows < 1) continue; // el sticker no entra en esta orientación
-
     const qty = cols * rows;
-    let finalWmm = rectWmm;
-    let finalHmm = rectHmm;
-
-    if (mode === 'economico' && sheet.tolerance > 0) {
-      // Solo se agranda (nunca se achica) y como máximo la tolerancia permitida.
-      const wPerfect = orientation.sheetW / cols;
-      const hPerfect = orientation.sheetH / rows;
-      if (wPerfect >= rectWmm && wPerfect - rectWmm <= sheet.tolerance) finalWmm = wPerfect;
-      if (hPerfect >= rectHmm && hPerfect - rectHmm <= sheet.tolerance) finalHmm = hPerfect;
-    }
-
-    if (!best || qty > best.qty) {
-      best = { qty, rotated: orientation.rotated, finalWmm, finalHmm };
+    if (!pick || qty > pick.qty) {
+      pick = { qty, rotated: o.rotated, sheetW: o.sheetW, sheetH: o.sheetH };
     }
   }
 
-  if (!best) {
+  if (!pick) {
     // No entra en ninguna orientación: qty 0 y el motor de precios no cotiza.
     return {
       qty: 0,
@@ -83,19 +89,28 @@ export function calcA4Layout(
       sheetRotated: false,
       adjustedW: w,
       adjustedH: h,
+      exactW: w,
+      exactH: h,
     };
   }
 
-  const renderW = round1(best.finalWmm / 10);
-  const renderH = round1(best.finalHmm / 10);
+  // Fase 2: sobre la orientación elegida, achicar los ejes que no se pudieron agrandar.
+  const bestW = fitAxis(pick.sheetW, rectWmm, true);
+  const bestH = fitAxis(pick.sheetH, rectHmm, true);
+  const qty = bestW.count * bestH.count;
+
+  const renderW = round1(bestW.size / 10);
+  const renderH = round1(bestH.size / 10);
 
   return {
-    qty: best.qty,
-    fitType: best.rotated ? 'landscape' : 'portrait',
+    qty,
+    fitType: pick.rotated ? 'landscape' : 'portrait',
     renderW,
     renderH,
     adjustedW: renderW,
     adjustedH: renderH,
-    sheetRotated: best.rotated,
+    exactW: bestW.size / 10,
+    exactH: bestH.size / 10,
+    sheetRotated: pick.rotated,
   };
 }

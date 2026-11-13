@@ -16,7 +16,7 @@
 ### Motor de precios
 - Fórmula defensiva: sin `NaN`/`Infinity`, precios redondeados a centavos, sin cotizar pedidos de 0 unidades.
 - El tiempo de diseño sale de `designOptions[].designMinutes` (editable en Admin > Formato y Diseño).
-- `calcA4Layout` sin ramas muertas; el ajuste económico nunca achica el sticker.
+- `calcA4Layout` sin ramas muertas; en modo económico el ajuste por eje agranda hasta 5 mm y, si no se puede, achica hasta 5 mm para sumar una fila/columna más.
 - El código v1 incluye `c<complejidad>` para paridad exacta con el carrito y los links compartidos.
 
 ### Carrito / WooCommerce
@@ -25,7 +25,7 @@
 - `cart-integration.js` reintenta una vez con nonce nuevo y no inyecta HTML desde el servidor.
 
 ### Tests
-- `npm test`: 20 casos (saneador + round-trip, A4, codec, precios, paridad TS↔PHP y validación del guardado PHP).
+- `npm test`: 34 casos (saneador + round-trip, A4, codec, precios, paridad TS↔PHP y validación del guardado PHP).
 
 ### Deploy de esta revisión (pendiente)
 1. `npm run build` y subir `assets/js/calculadora_stickers.js` + `assets/css/calculadora_stickers.css` (archivo por archivo).

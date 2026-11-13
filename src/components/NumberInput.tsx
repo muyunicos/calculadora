@@ -9,6 +9,8 @@ interface NumberInputProps {
   max?: number;
   className?: string;
   disabled?: boolean;
+  // Si es false, el valor crudo persiste al perder el foco (no se recorta a min/max).
+  clampOnBlur?: boolean;
 }
 
 export const NumberInput: React.FC<NumberInputProps> = ({
@@ -19,6 +21,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
   max,
   className = '',
   disabled = false,
+  clampOnBlur = true,
 }) => {
   const handleIncrement = () => {
     const currentValue = parseFloat(String(value)) || 0;
@@ -51,6 +54,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
   // Al salir del campo se recorta al rango: antes se podía dejar 0 (o negativo)
   // en campos con min=1 y el pedido quedaba incompleto sin explicación.
   const handleBlur = () => {
+    if (!clampOnBlur) return;
     const parsed = parseFloat(String(value));
     if (!Number.isFinite(parsed)) {
       onChange(String(min));

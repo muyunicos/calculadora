@@ -319,6 +319,9 @@ export interface A4Layout {
   renderH: number;
   adjustedW?: number;
   adjustedH?: number;
+  // Tamaño ajustado EXACTO (sin redondear) para mostrar en pantalla.
+  exactW?: number;
+  exactH?: number;
   sheetRotated?: boolean; // Indica si la hoja A4 está rotada 90°
 }
 

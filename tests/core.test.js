@@ -37,7 +37,7 @@ function loadModule(relativePath) {
 
 const { calcA4Layout } = loadModule('src/core/a4Layout.ts');
 const { encodeOrderCode, decodeAnyOrder } = loadModule('src/core/orderCodec.ts');
-const { calcularPrecio, autoComplexity, missingSelections } = loadModule('src/core/priceEngine.ts');
+const { calcularPrecio, autoComplexity, missingSelections, galleryPricing } = loadModule('src/core/priceEngine.ts');
 const { validateAppData } = loadModule('src/core/validation.ts');
 const { findMaterialCodeDuplicates, findShapeCodeDuplicates } = loadModule('src/utils/validation.ts');
 
@@ -127,6 +127,30 @@ test('A4: 4x4 cm en modo económico reparte 5x7 y ajusta a 4,2 cm', () => {
   assert.equal(layout.adjustedH, 4.2);
 });
 
+test('A4: 7x7 cm entra 6 en modo preciso y 12 en económico', () => {
+  assert.equal(calcA4Layout(7, 7, 'preciso').qty, 6);
+  assert.equal(calcA4Layout(7, 7, 'economico').qty, 12);
+});
+
+test('A4: 5x5 y 5x4,5 en económico entran 24 (achica hasta 5 mm si no puede agrandar)', () => {
+  // 5x5: el alto no se puede agrandar (sobra 9,4 mm > 5 mm); se achica a 4,95 para
+  // meter 6 filas -> 4 x 6 = 24 (antes daba 20).
+  const l5 = calcA4Layout(5, 5, 'economico');
+  assert.equal(l5.qty, 24);
+  assert.equal(l5.adjustedW, 5.3);
+  assert.equal(l5.adjustedH, 5);
+  // 5x4,5: se agranda a 5,25 x 4,95 -> 4 x 6 = 24.
+  assert.equal(calcA4Layout(5, 4.5, 'economico').qty, 24);
+});
+
+test('A4: el modo económico respeta el tope de 5 mm al ajustar (agranda o achica)', () => {
+  for (const [w, h] of [[4, 4], [7, 7], [2, 2]]) {
+    const layout = calcA4Layout(w, h, 'economico');
+    assert.ok(Math.abs(layout.adjustedW - w) <= 0.5 + 1e-9, 'ancho ajustado ' + layout.adjustedW + ' vs ' + w);
+    assert.ok(Math.abs(layout.adjustedH - h) <= 0.5 + 1e-9, 'alto ajustado ' + layout.adjustedH + ' vs ' + h);
+  }
+});
+
 test('A4: medidas que no entran devuelven qty 0', () => {
   assert.equal(calcA4Layout(30, 2, 'preciso').qty, 0);
   assert.equal(calcA4Layout(0, 5, 'preciso').qty, 0);
@@ -203,6 +227,84 @@ test('fórmula de precio exacta (material + merma + packaging + ganancia)', () =
   assert.equal(result.finalPrice, 480);
   assert.equal(result.pricePerSheet, 240);
   assert.equal(result.pricePerSticker, 12);
+});
+
+test('rectangular: el modo económico cambia las unidades por plancha y el precio unitario', () => {
+  const rect7 = {
+    ...tinyOrder,
+    shapeType: 'Rectangulares',
+    sizeIndex: -1,
+    customRectW: 7,
+    customRectH: 7,
+    sheetsQty: 2,
+    rectCalcMode: 'preciso',
+    complexity: 1,
+  };
+  const preciso = calcularPrecio(rect7, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
+  const economico = calcularPrecio(
+    { ...rect7, rectCalcMode: 'economico', complexity: 2 },
+    tinyConfig,
+    [tinyMaterial],
+    tinyCatalog,
+    tinyDelivery,
+    tinyDesign,
+  );
+
+  assert.equal(preciso.qtyStickersPerSheet, 6);
+  assert.equal(economico.qtyStickersPerSheet, 12);
+  assert.equal(preciso.totalStickers, 12);
+  assert.equal(economico.totalStickers, 24);
+  // Con el material de prueba (sin tiempos de corte) el costo por plancha no cambia;
+  // la diferencia de precio por unidad sale de la cantidad de stickers por hoja.
+  assert.equal(preciso.finalPrice, 480);
+  assert.equal(economico.finalPrice, 480);
+  assert.equal(preciso.pricePerSticker, 40);
+  assert.equal(economico.pricePerSticker, 20);
+});
+
+test('galleryPricing usa el modo del pedido (no siempre el layout preciso)', () => {
+  const rect7 = {
+    ...tinyOrder,
+    shapeType: 'Rectangulares',
+    sizeIndex: -1,
+    customRectW: 7,
+    customRectH: 7,
+    rectCalcMode: 'economico',
+  };
+  const economico = galleryPricing(rect7, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
+  const preciso = galleryPricing(
+    { ...rect7, rectCalcMode: 'preciso' },
+    tinyConfig,
+    [tinyMaterial],
+    tinyCatalog,
+    tinyDelivery,
+    tinyDesign,
+    2,
+  );
+
+  assert.ok(economico && preciso);
+  // Económico: 12 por hoja × 2 planchas. Preciso: 6 × 2.
+  assert.equal(economico.totalStickers, 24);
+  assert.equal(preciso.totalStickers, 12);
+  assert.equal(economico.perUnitBase, 26.25);
+  assert.equal(economico.perUnit, 20);
+  assert.equal(preciso.perUnitBase, 52.5);
+  assert.equal(preciso.perUnit, 40);
+});
+
+test('missingSelections usa el modo económico para validar las medidas', () => {
+  // 20,5 cm no entra en 203 mm, pero sí en 210 mm.
+  const rect = {
+    ...tinyOrder,
+    shapeType: 'Rectangulares',
+    sizeIndex: -1,
+    customRectW: 20.5,
+    customRectH: 20.5,
+    rectCalcMode: 'preciso',
+  };
+  assert.ok(missingSelections(rect, [tinyMaterial], tinyCatalog).includes('medidas'));
+  const economico = { ...rect, rectCalcMode: 'economico' };
+  assert.ok(!missingSelections(economico, [tinyMaterial], tinyCatalog).includes('medidas'));
 });
 
 test('no cotiza con 0 unidades por hoja y lo informa en "falta"', () => {
