@@ -80,9 +80,9 @@ export const ShapeSizeSelector: React.FC<ShapeSizeSelectorProps> = ({
     return null;
   };
 
-  // Formatea cm con hasta 2 decimales, sin ceros sobrantes (5,25 -> "5,25"; 5 -> "5").
+  // Formatea cm con 1 decimal, sin ceros sobrantes (5,25 -> "5,3"; 5 -> "5").
   const fmtCm = (v?: number): string =>
-    v == null ? '' : String(Number(v.toFixed(2))).replace('.', ',');
+    v == null ? '' : String(Number(v.toFixed(1))).replace('.', ',');
 
   // Determinar si el paso está completado
   const isStepComplete = !!order.shapeType && (

@@ -3,6 +3,15 @@ import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown
 import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption, Diseno } from '../types';
 import PriceTable from './PriceTable';
 import { useToast } from './ToastProvider';
+import { calcularPrecio } from '../core/priceEngine';
+
+// Escalones del incentivo "comprando más planchas" (economía de escala).
+const INCENTIVE_STEPS = [1, 2, 3, 5, 10, 25, 50, 100];
+
+// Formatea cm con 1 decimal y coma (5,25 -> "5,3"; 5 -> "5").
+const fmtCm = (v?: number): string => (v == null ? '' : String(Number(v.toFixed(1))).replace('.', ','));
+// Precio sin decimales, formato es-AR ($3.945).
+const money0 = (n?: number): string => (n ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
 interface OrderSummaryProps {
   order: Order;
@@ -28,6 +37,9 @@ interface OrderSummaryProps {
   diseno?: Diseno | null;
   /** Subida del arte en curso: COMPRAR espera (FR-014). */
   subiendo?: boolean;
+  /** Tamaño ajustado (cm) para el detalle de rectangulares en económico. */
+  adjustedW?: number;
+  adjustedH?: number;
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -50,8 +62,28 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   designOptions = [],
   diseno = null,
   subiendo = false,
+  adjustedW,
+  adjustedH,
 }) => {
   const { showToast } = useToast();
+
+  // Incentivo de economía de escala: precio por plancha del siguiente escalón.
+  const offer = React.useMemo(() => {
+    if (!results) return null;
+    const next = INCENTIVE_STEPS.find((n) => n > (order.sheetsQty || 0));
+    if (!next) return null;
+    const r = calcularPrecio(
+      { ...order, sheetsQty: next },
+      config,
+      materials,
+      shapesCatalog,
+      deliveryOptions,
+      designOptions,
+    );
+    if (!r || !(r.pricePerSheet < results.pricePerSheet - 0.01)) return null;
+    return { sheets: next, pricePerSheet: r.pricePerSheet };
+  }, [results, order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
+
   return (
     <div id="order-summary" className="lg:col-span-5 relative">
       <div className="sticky top-6 space-y-6">
@@ -89,18 +121,18 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="cl-flex-col  pb-3">
               <div className="cl-flex-between">
                 <span className="text-slate-300 font-medium">Total Stickers:</span>
-                <span className="text-xl font-bold text-white bg-slate-800 cl-p-sm cl-rounded-md cl-border-sm border-slate-600">~{results?.totalStickers ?? 0} unid.</span>
+                <span className="text-xl font-bold text-white bg-slate-800 cl-p-sm cl-rounded-md cl-border-sm border-slate-600">{results?.totalStickers ?? 0} u.</span>
               </div>
               {(results?.totalStickers ?? 0) > 0 && (
                 <div className="text-xs text-slate-400 mt-1.5 text-right font-medium">
-                  ({order.sheetsQty} planchas de {order.shapeType} {sizeText})
+                  ({order.sheetsQty} plancha{order.sheetsQty === 1 ? '' : 's'} de {results?.totalStickers} stickers {order.shapeType === 'Rectangulares' ? 'rectangulares' : String(order.shapeType).toLowerCase()} de {order.shapeType === 'Rectangulares' ? `${fmtCm(adjustedW)}x${fmtCm(adjustedH)}cm` : sizeText} c/u)
                 </div>
               )}
             </div>
             {(results?.totalStickers ?? 0) > 0 && (
               <div className="cl-flex-between pb-2">
-                <span className="text-slate-300 font-medium">Precio por unidad:</span>
-                <span className="font-medium text-slate-300">${results?.pricePerSticker?.toLocaleString('es-AR', { maximumFractionDigits: 2 })}</span>
+                <span className="text-slate-300 font-medium">Precio por plancha:</span>
+                <span className="font-medium text-slate-300">${money0(results?.pricePerSheet)}</span>
               </div>
             )}
           </div>
@@ -111,6 +143,20 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               ${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
             </div>
           </div>
+
+          {offer && results && (
+            <div className="relative z-10 mt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setOrder({ ...order, sheetsQty: offer.sheets })}
+                className="text-[11px] text-slate-400 hover:text-white transition-colors"
+              >
+                Comprando {offer.sheets} planchas:{' '}
+                <s className="text-slate-500">${money0(results.pricePerSheet)}</s>{' '}
+                <span className="text-emerald-300 font-bold">${money0(offer.pricePerSheet)}</span>
+              </button>
+            </div>
+          )}
 
           {diseno && (
             <div className="relative z-10 flex items-center gap-2 mt-4 text-xs text-slate-300">

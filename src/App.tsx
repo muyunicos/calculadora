@@ -842,6 +842,8 @@ const App = () => {
               designOptions={designOptions}
               diseno={diseno}
               subiendo={disenoSubiendo}
+              adjustedW={customRectMath.adjustedW}
+              adjustedH={customRectMath.adjustedH}
             />
             </div>
 
