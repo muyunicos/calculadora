@@ -114,7 +114,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           {!results ? (
             <div className="relative z-10 text-center py-6">
               <div className="w-14 h-14 mx-auto cl-mb-md rounded-full bg-slate-800 cl-border-sm border-slate-700 cl-flex-center">
-                <Calculator className="w-6 h-6 text-slate-500" />
+                <Calculator className="w-6 h-6 text-slate-400" />
               </div>
               <p className="text-slate-100 font-semibold cl-mb-sm">Completá los pasos para ver el precio</p>
               {missing.length > 0 && (
@@ -149,7 +149,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <span className="font-medium text-slate-300">
                   {order.sheetsQty > 1 && basePerSheet > 0 ? (
                     <>
-                      <s className="text-slate-500 mr-1.5">${money0(basePerSheet)}</s>
+                      <s className="text-slate-400 mr-1.5">${money0(basePerSheet)}</s>
                       ${money0(results?.pricePerSheet)}
                     </>
                   ) : (
@@ -165,7 +165,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md">
               {order.sheetsQty > 1 && basePerSheet > 0 ? (
                 <>
-                  <s className="text-2xl md:text-3xl text-slate-500 font-bold align-middle mr-1.5">${money0(basePerSheet * order.sheetsQty)}</s>
+                  <s className="text-2xl md:text-3xl text-slate-400 font-bold align-middle mr-1.5">${money0(basePerSheet * order.sheetsQty)}</s>
                   ${money0(results?.finalPrice)}
                 </>
               ) : (
@@ -181,7 +181,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   className="text-[11px] text-slate-300 border border-slate-600 rounded-full px-2.5 py-1 hover:border-emerald-400 hover:text-white transition-colors"
                 >
                   Comprando {offer.sheets} planchas:{' '}
-                  <s className="text-slate-500">${money0(basePerSheet)}</s>{' '}
+                  <s className="text-slate-400">${money0(basePerSheet)}</s>{' '}
                   <span className="text-emerald-300 font-bold">${money0(offer.pricePerSheet)}</span>
                 </button>
               </div>
