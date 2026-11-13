@@ -77,7 +77,7 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
                   role={!isCurrent ? "button" : undefined}
                   onKeyPress={(e) => !isCurrent && e.key === 'Enter' && onChangeQuantity?.(r.planchas)}
                 >
-                  <td className={`px-4 py-3 text-left font-bold ${isCurrent ? 'border-l-4 border-emerald-500' : ''}`}>
+                  <td className="px-4 py-3 text-left font-bold">
                     <span className="inline-flex items-center gap-2">
                       {r.planchas}
                       {isCurrent && (
