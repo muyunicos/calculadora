@@ -49,7 +49,7 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
   return (
     <div className="cl-card overflow-hidden">
       <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100">
-        <h4 className="font-bold text-emerald-900 text-base leading-tight">Ahorrá llevando más planchas</h4>
+        <h4 className="font-bold text-emerald-900 text-base leading-tight m-0">Ahorrá llevando más planchas</h4>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
