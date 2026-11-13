@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { TrendingDown } from 'lucide-react';
 import type { Config, Material, Order, ShapesCatalog, DeliveryOption, DesignOption } from '../types';
 import { calcularPrecio } from '../core/priceEngine';
 
@@ -49,14 +48,8 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
 
   return (
     <div className="cl-card overflow-hidden">
-      <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-4 flex items-center gap-3">
-        <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-          <TrendingDown className="w-5 h-5 text-white" />
-        </span>
-        <div className="min-w-0">
-          <h4 className="font-bold text-white text-base leading-tight">Ahorrá llevando más planchas</h4>
-          <p className="text-[11px] text-emerald-50/90 leading-tight">El precio por plancha baja al pedir más.</p>
-        </div>
+      <div className="bg-emerald-50 px-4 py-3 border-b border-emerald-100">
+        <h4 className="font-bold text-emerald-900 text-base leading-tight">Ahorrá llevando más planchas</h4>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
