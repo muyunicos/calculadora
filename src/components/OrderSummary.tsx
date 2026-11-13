@@ -139,7 +139,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               </div>
               {(results?.totalStickers ?? 0) > 0 && (
                 <div className="text-xs text-slate-400 mt-1.5 text-right font-medium">
-                  ({order.sheetsQty} plancha{order.sheetsQty === 1 ? '' : 's'} de {results?.totalStickers} stickers {order.shapeType === 'Rectangulares' ? 'rectangulares' : String(order.shapeType).toLowerCase()} de {order.shapeType === 'Rectangulares' ? `${fmtCm(adjustedW)}x${fmtCm(adjustedH)}cm` : sizeText} c/u)
+                  ({order.sheetsQty} plancha{order.sheetsQty === 1 ? '' : 's'} de {results?.qtyStickersPerSheet ?? 0} stickers · {order.shapeType === 'Rectangulares' ? `${fmtCm(adjustedW)}×${fmtCm(adjustedH)} cm` : sizeText} c/u)
                 </div>
               )}
             </div>
