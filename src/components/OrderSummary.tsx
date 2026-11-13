@@ -178,7 +178,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <button
                   type="button"
                   onClick={() => setOrder({ ...order, sheetsQty: offer.sheets })}
-                  className="text-[11px] text-slate-300 border border-slate-600 rounded-full px-2.5 py-1 hover:border-emerald-400 hover:text-white transition-colors"
+                  className="bg-transparent text-[11px] text-slate-300 border border-slate-600 rounded-full px-2.5 py-1 hover:border-emerald-400 hover:text-white transition-colors"
                 >
                   Comprando {offer.sheets} planchas:{' '}
                   <s className="text-slate-400">${money0(basePerSheet)}</s>{' '}
