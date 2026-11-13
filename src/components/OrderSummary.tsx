@@ -84,6 +84,20 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     return { sheets: next, pricePerSheet: r.pricePerSheet };
   }, [results, order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
+  // Precio por plancha base (1 plancha): referencia contra la que se muestra el ahorro.
+  const basePerSheet = React.useMemo(() => {
+    if (!results) return 0;
+    const base = calcularPrecio(
+      { ...order, sheetsQty: 1 },
+      config,
+      materials,
+      shapesCatalog,
+      deliveryOptions,
+      designOptions,
+    );
+    return base?.pricePerSheet ?? 0;
+  }, [results, order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
+
   return (
     <div id="order-summary" className="lg:col-span-5 relative">
       <div className="sticky top-6 space-y-6">
@@ -132,7 +146,16 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             {(results?.totalStickers ?? 0) > 0 && (
               <div className="cl-flex-between pb-2">
                 <span className="text-slate-300 font-medium">Precio por plancha:</span>
-                <span className="font-medium text-slate-300">${money0(results?.pricePerSheet)}</span>
+                <span className="font-medium text-slate-300">
+                  {order.sheetsQty > 1 && basePerSheet > 0 ? (
+                    <>
+                      <s className="text-slate-500 mr-1.5">${money0(basePerSheet)}</s>
+                      ${money0(results?.pricePerSheet)}
+                    </>
+                  ) : (
+                    `$${money0(results?.pricePerSheet)}`
+                  )}
+                </span>
               </div>
             )}
           </div>
@@ -140,23 +163,30 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="relative z-10 bg-slate-800/50 cl-p-sm cl-rounded-xl cl-border-sm border-slate-700 backdrop-blur-sm">
             <span className="text-slate-400 text-sm font-medium block cl-mb-sm">Total Estimado</span>
             <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md">
-              ${results?.finalPrice?.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+              {order.sheetsQty > 1 && basePerSheet > 0 ? (
+                <>
+                  <s className="text-2xl md:text-3xl text-slate-500 font-bold align-middle mr-1.5">${money0(basePerSheet * order.sheetsQty)}</s>
+                  ${money0(results?.finalPrice)}
+                </>
+              ) : (
+                `$${money0(results?.finalPrice)}`
+              )}
             </div>
-          </div>
 
-          {offer && results && (
-            <div className="relative z-10 mt-2 text-center">
-              <button
-                type="button"
-                onClick={() => setOrder({ ...order, sheetsQty: offer.sheets })}
-                className="text-[11px] text-slate-400 hover:text-white transition-colors"
-              >
-                Comprando {offer.sheets} planchas:{' '}
-                <s className="text-slate-500">${money0(results.pricePerSheet)}</s>{' '}
-                <span className="text-emerald-300 font-bold">${money0(offer.pricePerSheet)}</span>
-              </button>
-            </div>
-          )}
+            {offer && results && (
+              <div className="mt-3 text-left">
+                <button
+                  type="button"
+                  onClick={() => setOrder({ ...order, sheetsQty: offer.sheets })}
+                  className="text-[11px] text-slate-300 border border-slate-600 rounded-full px-2.5 py-1 hover:border-emerald-400 hover:text-white transition-colors"
+                >
+                  Comprando {offer.sheets} planchas:{' '}
+                  <s className="text-slate-500">${money0(basePerSheet)}</s>{' '}
+                  <span className="text-emerald-300 font-bold">${money0(offer.pricePerSheet)}</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {diseno && (
             <div className="relative z-10 flex items-center gap-2 mt-4 text-xs text-slate-300">
