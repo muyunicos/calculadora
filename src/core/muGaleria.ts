@@ -13,6 +13,7 @@ export type MuOpcionesVisor = {
   indice?: number;
   titulo?: string;
   tono?: 'claro' | 'oscuro';
+  tema?: string;                                 // spec 020: atajo de presentacion
   contador?: 'auto' | boolean;
   ancho?: 'auto' | 'completo';
   meta?: Record<string, unknown> | null;
