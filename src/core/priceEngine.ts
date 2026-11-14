@@ -250,26 +250,30 @@ export function calcularPrecio(
   const neto = calcularPrecioNeto(order, config, materials, shapesCatalog, deliveryOptions, designOptions);
   if (!neto) return null;
 
-const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
-
-  // `precioLista` es el total de ESTA cantidad sin NINGUN descuento (ni promo ni escala):
-  // el tachado y el badge de la interfaz se calculan contra este numero, no contra el
-  // precio de 1 plancha (asi el tachado aparece tambien con 1 plancha si hay promo).
-  const lista = calcularPrecioNeto(order, { ...config, promo: null, promos: null }, materials, shapesCatalog, deliveryOptions, designOptions);
-  const precioLista = lista ? lista.finalPrice : neto.finalPrice;
-  const sinDescuento = { ...neto, precioLista, ahorroPct: 0, promoManda: false };
-  if (!promo) return sinDescuento;
-
-  // El descuento por cantidad ya esta dentro de `neto.finalPrice` (baja por plancha);
-  // la promo se compara contra el precio de 1 plancha por unidad, que es la referencia
-  // que ve el cliente en la vidriera.
+// Referencia REGULAR PURA (spec 038 v6): el precio por unidad a **1 plancha**, sin escala
+  // y sin promo. Sobre este numero se calculan el tachado y el badge de toda la interfaz,
+  // asi el ahorro CRECE con la cantidad (si se usara el neto de la fila, el ahorro mediria
+  // solo lo que la promo agrega encima de la escala y la tabla se aplastaba).
   const base = calcularPrecioNeto({ ...order, sheetsQty: 1 }, config, materials, shapesCatalog, deliveryOptions, designOptions);
-  if (!base || base.pricePerSticker <= 0) return sinDescuento;
+  const precioLista = base && base.pricePerSticker > 0
+    ? round2(base.pricePerSticker * neto.totalStickers)
+    : neto.finalPrice;
+  const pctSobreLista = (total: number) => (precioLista > 0 ? round2(((precioLista - total) / precioLista) * 100) : 0);
+
+  const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
+  if (!promo || !base || base.pricePerSticker <= 0) {
+    return { ...neto, precioLista, ahorroPct: pctSobreLista(neto.finalPrice), promoManda: false };
+  }
+
   const ahorroCantidad = ((base.pricePerSticker - neto.pricePerSticker) / base.pricePerSticker) * 100;
-  if (promo.pct <= ahorroCantidad) return sinDescuento;
+  if (promo.pct <= ahorroCantidad) {
+    return { ...neto, precioLista, ahorroPct: pctSobreLista(neto.finalPrice), promoManda: false };
+  }
 
   const finalPrice = round2(base.pricePerSticker * neto.totalStickers * (1 - promo.pct / 100));
-  if (!(finalPrice < neto.finalPrice)) return sinDescuento;
+  if (!(finalPrice < neto.finalPrice)) {
+    return { ...neto, precioLista, ahorroPct: pctSobreLista(neto.finalPrice), promoManda: false };
+  }
 
   const total = round2(finalPrice);
   return {
@@ -278,7 +282,7 @@ const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
     promo: { id: promo.id, desde: promo.desde, pct: promo.pct, ahorroCantidad: round2(ahorroCantidad * 100) / 100 },
     promoManda: true,
     finalPrice: total,
-    ahorroPct: precioLista > 0 ? round2(((precioLista - total) / precioLista) * 100 * 100) / 100 : 0,
+    ahorroPct: pctSobreLista(total),
     pricePerSheet: round2(total / Math.max(1, Math.round(safeNum(order.sheetsQty, 1)))),
     pricePerSticker: round2(total / neto.totalStickers),
   };

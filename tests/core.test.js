@@ -696,31 +696,39 @@ test('spec 038 (v5): paridad TS/PHP con promos (gana, no gana y desempate)', () 
   assert.equal(phpCon(otra).promo, null, 'PHP: forma distinta no aplica');
   assert.ok(!tsCon(otra).promo, 'TS: forma distinta no aplica');
 });
-test('spec 038 (v5): precioLista y ahorroPct (tachado + badge del total)', () => {
-  // tinyOrder: 2 planchas de 20 u = 40 u; 1 plancha = 20 u a 12 u c/u.
-  // Sin descuentos: `precioLista` = total neto y `ahorroPct` = 0.
+test('spec 038 (v6): precioLista es REGULAR PURA y el ahorro crece con la cantidad', () => {
+  // tinyOrder: 2 planchas de 20 u = 40 u. A 1 plancha el unitario es 15,75 (total 315);
+  // a 2 planchas baja a 12 (total 480): ese es el descuento por CANTIDAD.
+  const uno = calcularPrecio({ ...tinyOrder, sheetsQty: 1 }, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
   const limpio = calcularPrecio(tinyOrder, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
-  assert.ok(limpio);
-  assert.equal(limpio.precioLista, limpio.finalPrice, 'sin descuento: lista = total');
-  assert.equal(limpio.ahorroPct, 0);
-  assert.ok(!limpio.promoManda);
+  assert.ok(uno && limpio);
+  assert.equal(uno.pricePerSticker, 15.75, 'unitario a 1 plancha');
+  assert.equal(limpio.pricePerSticker, 12, 'unitario a 2 planchas (menor por cantidad)');
 
-  // Con promo que gana: el tachado es el total de lista de ESTA cantidad (no el de 1 plancha).
+  // La lista es el unitario de 1 plancha x unidades de ESTA cantidad (ni promo ni escala).
+  assert.equal(limpio.precioLista, 630, 'lista = 15,75 x 40');
+  assert.equal(limpio.finalPrice, 480, 'final = neto con escala');
+  assert.equal(limpio.ahorroPct, 23.81, 'ahorro total sobre la lista');
+  assert.ok(!limpio.promoManda, 'sin promo no manda la promo');
+
+  // El $/plancha de LISTA es estable: 630 / 2 = 315 = el de 1 plancha.
+  assert.equal(limpio.precioLista / 2, uno.pricePerSheet, '$/plancha de lista = 1 plancha');
+
+  // Con promo que gana: la lista no cambia, el total baja y el ahorro sube.
   const promo = { ...tinyConfig, promos: [{ id: 'p', material: 'todos', forma: 'todas', desde: 1, pct: 80 }] };
   const conPromo = calcularPrecio(tinyOrder, promo, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
   assert.ok(conPromo);
-  assert.ok(conPromo.precioLista > conPromo.finalPrice, 'lista > final');
-  assert.equal(conPromo.precioLista, limpio.finalPrice, 'la lista es el total sin descuento de ESTA cantidad');
-  // El % es sobre el total de lista (que ya incluye la escala), asi que puede ser
-  // menor que el de la promo: es el descuento REAL que ve el cliente.
+  assert.equal(conPromo.precioLista, 630, 'la lista no cambia con la promo');
+  assert.ok(conPromo.promoManda, 'la promo manda');
+  assert.ok(conPromo.ahorroPct > limpio.ahorroPct, 'la promo sube el ahorro');
   const pctLista = ((conPromo.precioLista - conPromo.finalPrice) / conPromo.precioLista) * 100;
   assert.ok(Math.abs(conPromo.ahorroPct - pctLista) < 0.01, 'ahorroPct = descuento sobre la lista');
-  assert.ok(conPromo.ahorroPct > 0.5, 'hay ahorro que mostrar');
-  assert.ok(conPromo.promoManda, 'la promo manda');
 
-  // El `$/plancha` de lista es estable: no se aplasta con la promo.
-  const porPlancha = conPromo.precioLista / 2;
-  assert.ok(Math.abs(porPlancha - limpio.pricePerSheet) < 0.01, '$/plancha de lista = sin descuento');
+  // El ahorro CRECE con la cantidad (lo que se ve en la tabla de escalones).
+  const a1 = calcularPrecio({ ...tinyOrder, sheetsQty: 1 }, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
+  const a4 = calcularPrecio({ ...tinyOrder, sheetsQty: 4 }, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
+  assert.ok(a1 && a4);
+  assert.ok(a4.ahorroPct > a1.ahorroPct, '4 planchas ahorran mas que 1');
 });
 
 test('spec 038 (C): mockupsDePlantilla ordena PDF primero y filtra por requiere', () => {
