@@ -172,6 +172,76 @@ export const PlantillaCard: React.FC<PlantillaCardProps> = ({
               ))}
             </select>
           </label>
+          <label className="block text-xs font-bold text-slate-500 uppercase">
+            Mockup propio (sin PDF)
+            <select
+              className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-normal text-slate-800"
+              value={plantilla.mockup ? 'si' : 'no'}
+              onChange={(e) => onCambio({
+                mockup: e.target.value === 'si'
+                  ? { fondo: 1, hueco: { x: 60, y: 60, w: 180, h: 180, rot: 0 }, forma: 'rectangulo' }
+                  : undefined,
+              })}
+            >
+              <option value="no">No (solo los mockups del PDF)</option>
+              <option value="si">Si (fondo + hueco)</option>
+            </select>
+          </label>
+          {plantilla.mockup && (
+            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                  Fondo (id del catalogo img/)
+                  <input
+                    type="number"
+                    min={1}
+                    className="mt-1 w-full border border-slate-300 rounded-md px-2 py-1 text-sm font-normal text-slate-800"
+                    value={plantilla.mockup.fondo}
+                    onChange={(e) => onCambio({ mockup: { ...plantilla.mockup!, fondo: num(e.target.value) } })}
+                  />
+                </label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                  Forma del hueco
+                  <select
+                    className="mt-1 w-full border border-slate-300 rounded-md px-2 py-1 text-sm font-normal text-slate-800"
+                    value={plantilla.mockup.forma}
+                    onChange={(e) => onCambio({ mockup: { ...plantilla.mockup!, forma: e.target.value as 'rectangulo' | 'circulo' | 'cuadrado' | 'ovalo' } })}
+                  >
+                    <option value="rectangulo">Rectangulo</option>
+                    <option value="cuadrado">Cuadrado</option>
+                    <option value="circulo">Circulo</option>
+                    <option value="ovalo">Ovalo</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {(['x', 'y', 'w', 'h', 'rot'] as const).map((clave) => (
+                  <label key={clave} className="block text-[10px] font-bold text-slate-500 uppercase">
+                    {clave}
+                    <input
+                      type="number"
+                      className="mt-1 w-full border border-slate-300 rounded-md px-2 py-1 text-sm font-normal text-slate-800"
+                      value={plantilla.mockup!.hueco[clave] ?? 0}
+                      onChange={(e) => onCambio({ mockup: { ...plantilla.mockup!, hueco: { ...plantilla.mockup!.hueco, [clave]: num(e.target.value) } } })}
+                    />
+                  </label>
+                ))}
+              </div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                Mostrar el mockup
+                <select
+                  className="mt-1 w-full border border-slate-300 rounded-md px-2 py-1 text-sm font-normal text-slate-800"
+                  value={plantilla.requiere ?? ''}
+                  onChange={(e) => onCambio({ requiere: e.target.value === '' ? null : (e.target.value as 'arte' | 'pdf') })}
+                >
+                  <option value="">Siempre</option>
+                  <option value="arte">Solo con arte subido</option>
+                  <option value="pdf">Solo si la plantilla tiene PDF</option>
+                </select>
+              </label>
+              <p className="text-[11px] text-slate-500">El fondo se elige por id del catalogo img/ (o mockups/). El hueco va en px sobre 300x300.</p>
+            </div>
+          )}
           <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase">
               <input
