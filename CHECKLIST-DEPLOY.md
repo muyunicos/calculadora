@@ -14,10 +14,13 @@
 > 1. `npm run build:js && npm run build:css` (genera el bundle y el CSS).
 > 2. `npm run pub:tema` → copia los 4 artefactos al repo `muyunicos/assets` y verifica
 >    **SHA256**. `datos_config.json` **no** se publica: es dato del admin (servidor).
-> 3. `git add/commit` **en el repo del tema** (el deploy sube solo lo versionado).
-> 4. Implementar en Hostinger + purgar caché (LiteSpeed/CDN) + Ctrl+F5.
+> 3. `git add/commit` + **`git push` en el repo del tema** (el deploy lo dispara el webhook).
+> 4. Disparar el webhook del tema y **verificar** el deploy:
+>    `pwsh -NoProfile -File scripts/verificar-deploy.ps1 -Url <servido> -Local <archivo>`
+>    (sale 0 con `DEPLOY OK`); el botón Implementar queda como rescate.
 > 5. Puerta: `node tests/cotizador-assets.js` en el repo del tema
 >    (`COTIZADOR ASSETS OK (8 checks)`): avisa si el tema quedó con una versión distinta.
+> 6. **Purgar caché (LiteSpeed/CDN) + Ctrl+F5**.
 >
 > Si alguna vez aparece el error de *untracked*: **apartar** esos archivos
 > (`mv assets/js/calculadora_stickers.js .pmu-backup-…/`) y volver a implementar. **Nunca**
