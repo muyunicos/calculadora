@@ -5,7 +5,13 @@
 
 import type { GalleryItem, GalleryPricing } from '../types';
 
-export type MuItem = { url: string; thumb?: string; etiqueta?: string };
+export type MuItem = {
+  url: string;
+  thumb?: string;
+  etiqueta?: string;
+  /** Spec 038 (D6): categoria del item (la usa el <select> del visor). */
+  categoria?: string;
+};
 export type MuAccion = { etiqueta: string; clase?: string; onAccion: (indice: number) => void };
 
 export type MuOpcionesVisor = {
@@ -18,6 +24,9 @@ export type MuOpcionesVisor = {
   ancho?: 'auto' | 'completo';
   meta?: Record<string, unknown> | null;
   acciones?: MuAccion[];
+  /** Spec 038 (D6): campo(s) por los que filtra el <select> del visor (ej. 'categoria'). */
+  filtros?: string | string[];
+  filtroActivo?: string;
   alCerrar?: () => void;
 };
 
@@ -116,6 +125,15 @@ export function metaDeItem(
         tono: promoGana ? 'promo' : 'tienda',
       };
     }
+  }
+  // Spec 038 (D6): categoria automatica. `PROMO` es del motor (gana la promo); el
+  // resto lo declara el consumidor (`categoria` del item).
+  const badgeMeta = meta.badge as { tono?: string } | undefined;
+  const promoActiva = !!badgeMeta && badgeMeta.tono === 'promo';
+  const cat = String(item.categoria || '').trim();
+  const categoria = promoActiva ? 'PROMO' : cat;
+  if (categoria) {
+    meta.categoria = categoria;
   }
   return Object.keys(meta).length ? meta : null;
 }

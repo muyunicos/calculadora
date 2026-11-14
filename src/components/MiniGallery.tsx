@@ -65,6 +65,18 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
   );
 };
 
+/**
+ * Spec 038 (D6): categoria automatica de un item.
+ *
+ * `PROMO` la pone el MOTOR (`metaDeItem`) cuando la promo del admin gana; si el
+ * consumidor declara otra (`GUARDADO`/`COMPRADO`), se respeta. Una idea comun
+ * no lleva etiqueta.
+ */
+function categoriaDe(it: GalleryItem): string | undefined {
+  const declarada = String(it.categoria || '').trim();
+  return declarada || undefined;
+}
+
 // Mini-galería de ejemplos: una fila de miniaturas con scroll horizontal. Al tocar
 // una foto se abre un lightbox para verla en grande, con el precio destacado y un
 // botón para personalizar (cargar ese pedido como base). Pensada para el cliente
@@ -97,12 +109,16 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         url: resolveImage(it.image),
         thumb: resolveImage(it.image),
         etiqueta: it.title || it.caption || '',
+        // Spec 038 (D6): la categoria del visor sale del MISMO criterio que la tarjeta.
+        categoria: categoriaDe(it),
         // Spec 020 (D26): la meta va POR ITEM, asi al navegar cambian tambien el titulo,
         // la descripcion, los precios y el badge (no solo la foto).
         meta: metaDeItem(it, getPricing(it.order, extractSheetsFromCode(it.order)), describe ? describe(it.order) : undefined),
       })),
       indice: idx,
       titulo: 'Ideas',
+      // Spec 038 (D6): el <select> del visor filtra por categoria (Todos + las que existan).
+      filtros: 'categoria',
       tono: 'claro',
       tema: 'cotizador',
       meta: metaDeItem(item, pricing, describe ? describe(item.order) : undefined),
@@ -148,6 +164,8 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         url: resolveImage(it.image),
         thumb: resolveImage(it.image),
         etiqueta: it.title || it.caption || '',
+        // Spec 038 (D6): categoria de la tarjeta.
+        categoria: categoriaDe(it),
         // Tema `cotizador`: descripcion automatica (material · forma · medida) y el
         // precio por unidades ("500 u x $16.720") en la misma linea.
         descripcion: describe ? describe(it.order) : '',
@@ -172,7 +190,8 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         preset: 'tarjeta',
         // El titulo va en el velo (sobre la foto); el cuerpo lleva la descripcion
         // automatica y el precio con unidades. Sin duplicar el titulo.
-        slots: { titulo: false, etiqueta: true, descripcion: true, precio: true },
+        // Spec 038 (D6): `categoria` pinta la pastilla (PROMO/GUARDADO/COMPRADO).
+        slots: { titulo: false, etiqueta: true, categoria: true, descripcion: true, precio: true },
         tamano: { ancho: 168, alto: 104 },
         onAbrir: (i: number) => abrir(i),
       })

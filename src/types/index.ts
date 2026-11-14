@@ -132,6 +132,8 @@ export interface GalleryItem {
   caption?: string; // Descripción que se muestra debajo de la foto en el lightbox.
   order: string; // Código de pedido v1 (ej. "v1.m11.s201.q25.f2.d0").
   visible?: boolean; // Si se muestra al cliente.
+  /** Spec 038 (D6): `PROMO` | `GUARDADO` | `COMPRADO` (ausente = sin etiqueta). */
+  categoria?: string;
 }
 
 // Precios calculados para mostrar en la galería de forma "marketinera": el precio
@@ -326,6 +328,10 @@ export interface TiraItem {
   precio?: IdeaPrecio;
   /** Precio recalculado con el catalogo vigente (D7); ausente si no se pudo. */
   precioActual?: GalleryPricing | null;
+  /** Spec 038 (D6): categoria automatica que se pinta en la tarjeta.
+   *  `PROMO` la pone el motor cuando la promo gana; `GUARDADO`/`COMPRADO` el
+   *  origen del item. Ausente = idea regular de la tienda (sin etiqueta). */
+  categoria?: string;
 }
 
 export interface A4Layout {

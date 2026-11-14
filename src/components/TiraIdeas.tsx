@@ -64,6 +64,7 @@ function tarjetas(props: TiraIdeasProps): TiraItem[] {
     favorito: !!idea.favorito,
     orden: idea.orden ?? 0,
     creado: idea.creado ?? 0,
+    categoria: 'GUARDADO',
     idea,
     precio: idea.precio,
   }));
@@ -77,15 +78,20 @@ function tarjetas(props: TiraIdeasProps): TiraItem[] {
     favorito: esFav('historial', String(pedido.order_id)),
     orden: 0,
     creado: 0,
+    categoria: 'COMPRADO',
   }));
 
   return [...deCustom, ...deTienda, ...deHistorial].sort(tiraOrden);
 }
 
-const OrigenBadge: React.FC<{ origen: TiraItem['origen'] }> = ({ origen }) => {
-  const texto = origen === 'custom' ? 'Guardada' : origen === 'historial' ? 'Comprada' : 'Tienda';
+const OrigenBadge: React.FC<{ item: TiraItem }> = ({ item }) => {
+  // Spec 038 (D6): la categoria manda (PROMO/GUARDADO/COMPRADO). Sin categoria, una
+  // idea comun no lleva etiqueta (no saturar la tira).
+  const texto = item.categoria || (item.origen === 'custom' ? 'Guardada' : item.origen === 'historial' ? 'Comprada' : '');
+  if (!texto) return null;
+  const tono = texto === 'PROMO' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600';
   return (
-    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{texto}</span>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tono}`}>{texto}</span>
   );
 };
 
@@ -143,7 +149,7 @@ export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
                 )}
               </div>
               <div className="p-2 space-y-1">
-                <OrigenBadge origen={item.origen} />
+                <OrigenBadge item={item} />
                 <p className="text-xs font-semibold text-slate-800 leading-tight line-clamp-2">{item.titulo}</p>
                 {item.descripcion && (
                   <p className="text-[11px] text-slate-500 leading-tight line-clamp-2">{item.descripcion}</p>
