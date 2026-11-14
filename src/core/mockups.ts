@@ -129,3 +129,22 @@ export function descripcionAuto(datos: {
   }
   return partes.join(' | ').slice(0, 240);
 }
+
+/**
+ * Forma de la guia del cargador segun la categoria y la medida (spec 038, B).
+ *
+ * `Circulares` -> `circulo`; `Cuadrados` -> `cuadrado`; `Rectangulares` con aspecto ~1
+ * -> `cuadrado`, si no `rectangulo`; `Formas`/`A Medida`/desconocida -> `auto` (la guia la
+ * resuelve el selector). El tamano se lee con `sizeToPx` (misma regla que el lienzo).
+ */
+export function formaDeCategoria(categoria: string, size?: string): 'auto' | 'rectangulo' | 'circulo' | 'cuadrado' {
+  const c = String(categoria ?? '').toLowerCase();
+  if (c.includes('circular') || c.includes('redond')) return 'circulo';
+  if (c.includes('cuadrad')) return 'cuadrado';
+  if (c.includes('rectang')) {
+    const { w, h } = sizeToPx(String(size ?? ''));
+    if (w > 0 && h > 0 && Math.abs(w - h) / Math.max(w, h) <= 0.05) return 'cuadrado';
+    return 'rectangulo';
+  }
+  return 'auto';
+}

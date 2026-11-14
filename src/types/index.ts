@@ -91,6 +91,8 @@ export interface DesignOption {
   image?: string;
   designMinutes?: number; // Minutos fijos de diseño (para 'basic').
   isCustomTime: boolean; // Si permite tiempo custom del cliente (para 'custom').
+  /** Spec 038 (B): esta opcion pide arte al cliente (muestra el paso Tu diseno). */
+  pideArte?: boolean;
   customerVisible?: boolean; // Si se muestra como tarjeta al cliente (false para 'custom').
   visible: boolean; // Si se muestra al cliente (unifica customerVisible).
 }

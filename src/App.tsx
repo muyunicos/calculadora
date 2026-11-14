@@ -35,6 +35,7 @@ import { AdminPlantillasPanel } from './components/AdminPlantillasPanel';
 import { usePmuAssets } from './hooks/usePmuAssets';
 import { useClientIdeas } from './hooks/useClientIdeas';
 import { resolvePlantillaFor } from './core/plantillas';
+import { formaDeCategoria } from './core/mockups';
 import { useMockupsPdf } from './hooks/useCotizadorPdf';
 import { SaveIndicator } from './components/SaveIndicator';
 import { infoBtnClass, resolveImage } from './utils/ui';
@@ -501,7 +502,7 @@ const App = () => {
 
   const updateDesignOption = (
     id: DesignType,
-    field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'designMinutes' | 'isCustomTime',
+    field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'designMinutes' | 'isCustomTime' | 'pideArte',
     value: string | boolean,
   ) =>
     setDesignOptions((prev) =>
@@ -517,6 +518,7 @@ const App = () => {
               return { ...option, visible: Boolean(value), customerVisible: Boolean(value) };
             }
             if (field === 'isCustomTime') return { ...option, isCustomTime: Boolean(value) };
+            if (field === 'pideArte') return { ...option, pideArte: Boolean(value) };
             const parsed = parseFloat(String(value));
             return { ...option, designMinutes: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 };
           })
@@ -693,6 +695,14 @@ const App = () => {
 
   const materialName = materials?.find((m) => m.id === order.materialId)?.name ?? '';
   const formatoLabel = deliveryOptions?.find((o) => o.id === order.deliveryFormat)?.label ?? '';
+   // Spec 038 (B): el paso de arte se muestra solo si la opcion elegida pide arte.
+  // Retrocompatible: si NINGUNA opcion lo declara, se muestra siempre (como hoy).
+  const hayPideArte = (designOptions || []).some((o) => o.pideArte === true);
+  const opcionDiseno = (designOptions || []).find((o) => o.id === order.designType);
+  const mostrarDiseno = !hayPideArte || opcionDiseno?.pideArte === true;
+  // Spec 038 (B): la guia del cargador respeta la forma real de la categoria.
+  const formaDiseno = formaDeCategoria(categoriaMockup, sizeMockup);
+
   const designLabel = designOptions?.find((o) => o.id === order.designType)?.label ?? '';
   const missing = missingSelections(order, materials, shapesCatalog);
 
@@ -810,7 +820,7 @@ const App = () => {
 
               {/* Paso 4 (spec 037): Tu diseno. Opcional: el arte no bloquea la
                   compra (constitution §I, Enmienda 4.1.0). */}
-              {pmuAssets.disponible && (
+              {pmuAssets.disponible && mostrarDiseno && (
                 <section className="bg-white rounded-xl cl-shadow-sm border border-slate-200 p-4">
                   <div className="flex items-baseline justify-between gap-2 mb-3">
                     <h3 className="text-sm font-bold text-slate-800">Tu diseno</h3>
@@ -819,7 +829,7 @@ const App = () => {
                   <DesignStep
                     categoria={categoriaMockup}
                     size={sizeMockup}
-                    forma="auto"
+                    forma={formaDiseno}
                     mockupsPdf={mockupsPdfApi.datos}
                     pdf={pdfSlug}
                     grupo={plantillaActual?.grupo ?? 'todos'}

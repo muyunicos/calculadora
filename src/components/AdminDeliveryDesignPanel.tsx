@@ -8,7 +8,7 @@ interface AdminDeliveryDesignPanelProps {
   designOptions: DesignOption[];
   resolveImage: (src: string) => string;
   updateDeliveryOption: (id: DeliveryFormat, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'cutFactor' | 'cutWearFactor', value: string | boolean) => void;
-  updateDesignOption: (id: DesignType, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'designMinutes' | 'isCustomTime', value: string | boolean) => void;
+  updateDesignOption: (id: DesignType, field: 'label' | 'subtitle' | 'description' | 'image' | 'visible' | 'designMinutes' | 'isCustomTime' | 'pideArte', value: string | boolean) => void;
   addDeliveryOption: () => void;
   addDesignOption: () => void;
   removeDeliveryOption: (id: DeliveryFormat) => void;
@@ -189,7 +189,15 @@ export const AdminDeliveryDesignPanel: React.FC<AdminDeliveryDesignPanelProps> =
                       Pide minutos al cliente
                     </label>
                   </div>
-                  <InfoExtraEditor
+                   <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-lg p-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={opt.pideArte === true}
+                      onChange={(e) => updateDesignOption(opt.id, 'pideArte', e.target.checked)}
+                      className="accent-blue-600 w-4 h-4"
+                    />
+                    Pide arte al cliente (muestra el paso de diseno)
+                  </label>                 <InfoExtraEditor
                     description={opt.description}
                     image={opt.image}
                     onChange={(field, value) => updateDesignOption(opt.id, field, value)}

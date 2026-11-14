@@ -555,4 +555,14 @@ test('spec 019 (D26): el visor delega en el motor del tema', () => {
   assert.equal(mu.abrirVisor({ items: [{ url: 'a.png' }] }), false, 'sin motor no abre');
 });
 
+
+test('spec 038 (B): forma de la guia del cargador por categoria', () => {
+  const mu = loadModule('src/core/mockups.ts');
+  assert.equal(mu.formaDeCategoria('Circulares', '6,0 cm'), 'circulo');
+  assert.equal(mu.formaDeCategoria('Cuadrados', '4 cm'), 'cuadrado');
+  assert.equal(mu.formaDeCategoria('Rectangulares', '5x5 cm'), 'cuadrado');
+  assert.equal(mu.formaDeCategoria('Rectangulares', '5x2,5 cm'), 'rectangulo');
+  assert.equal(mu.formaDeCategoria('A Medida', '10x3 cm'), 'auto');
+  assert.equal(mu.formaDeCategoria('Formas', '3 cm'), 'auto');
+});
 console.log(`\n${passed} tests OK`);
