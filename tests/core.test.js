@@ -543,8 +543,13 @@ test('spec 019 (D26): el visor delega en el motor del tema', () => {
     { perUnit: 10, perUnitBase: 20, total: 1000, totalStickers: 100, sheets: 4, savingsPct: 50 }
   );
   assert.equal(meta.titulo, 'Sticker');
-  assert.equal(meta.precios.length, 2, 'dos precios como la tira');
-  assert.equal(meta.badge.texto, '50% OFF');
+  // Spec 020: la meta del visor es del LOTE (un solo precio: total con tachado), la nota
+  // sin el total repetido y el badge con el formato de la tabla de ahorro.
+  assert.equal(meta.precios.length, 1, 'un solo precio (el del lote)');
+  assert.equal(meta.precios[0].valor, 1000, 'el precio es el total del lote');
+  assert.equal(meta.precios[0].anterior, 2000, 'el tachado es el lote de a una plancha');
+  assert.equal(meta.nota, 'Comprando 4 planchas · 100 u');
+  assert.equal(meta.badge.texto, '-50%');
   delete global.window;
   assert.equal(mu.motorGaleria(), null, 'sin window.MU no hay motor (dependencia blanda)');
   assert.equal(mu.abrirVisor({ items: [{ url: 'a.png' }] }), false, 'sin motor no abre');

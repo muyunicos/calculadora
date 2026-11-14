@@ -81,21 +81,28 @@ export function cerrarVisor(): void {
  */
 export function metaDeItem(
   item: GalleryItem,
-  pricing: GalleryPricing | null
+  pricing: GalleryPricing | null,
+  descripcion?: string
 ): Record<string, unknown> | null {
   const meta: Record<string, unknown> = {};
   if (item.title) meta.titulo = item.title;
-  if (item.caption) meta.descripcion = item.caption;
+  // La descripcion del visor es la automatica (material · forma · medida) si el
+  // consumidor la provee; si no, cae al texto de la foto.
+  const desc = descripcion || item.caption;
+  if (desc) meta.descripcion = desc;
   if (pricing) {
+    // Un SOLO precio: el total del lote de referencia, con el tachado del lote comprando
+    // de a una plancha. Sin etiquetas "Regular/Por mayor": el tamanio lo da la nota.
     meta.precios = [
-      { etiqueta: 'Regular', valor: pricing.perUnitBase },
-      { etiqueta: 'Por mayor', valor: pricing.perUnit, anterior: pricing.perUnitBase },
+      {
+        valor: pricing.total,
+        anterior: pricing.perUnitBase * pricing.totalStickers,
+      },
     ];
     meta.nota =
-      'Comprando ' + pricing.sheets + ' planchas (~' + pricing.totalStickers + ' u): $' +
-      pricing.total;
+      'Comprando ' + pricing.sheets + ' planchas · ' + pricing.totalStickers + ' u';
     if (pricing.savingsPct > 0.5) {
-      meta.badge = { texto: Math.round(pricing.savingsPct) + '% OFF', tono: 'tienda' };
+      meta.badge = { texto: '-' + Math.round(pricing.savingsPct) + '%', tono: 'tienda' };
     }
   }
   return Object.keys(meta).length ? meta : null;

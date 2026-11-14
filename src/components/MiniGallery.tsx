@@ -99,13 +99,13 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         etiqueta: it.title || it.caption || '',
         // Spec 020 (D26): la meta va POR ITEM, asi al navegar cambian tambien el titulo,
         // la descripcion, los precios y el badge (no solo la foto).
-        meta: metaDeItem(it, getPricing(it.order, extractSheetsFromCode(it.order))),
+        meta: metaDeItem(it, getPricing(it.order, extractSheetsFromCode(it.order)), describe ? describe(it.order) : undefined),
       })),
       indice: idx,
       titulo: 'Ideas',
       tono: 'claro',
       tema: 'cotizador',
-      meta: metaDeItem(item, pricing),
+      meta: metaDeItem(item, pricing, describe ? describe(item.order) : undefined),
       acciones: [
         {
           etiqueta: 'Personalizar',
