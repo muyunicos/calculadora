@@ -26,18 +26,22 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
       .filter((n) => n >= 1)
       .sort((a, b) => a - b);
 
-    const base = calcularPrecio({ ...order, sheetsQty: 1 }, config, materials, shapesCatalog, deliveryOptions, designOptions);
-    const basePerSheet = base?.pricePerSheet || 0;
-
+    // Spec 038 (v5): el `$/plancha` es el de LISTA (sin promo ni escala), asi la columna no
+    // se aplasta cuando hay promo. El ahorro de cada fila si incluye promo + escala.
     return steps.map((n) => {
       const r = calcularPrecio({ ...order, sheetsQty: n }, config, materials, shapesCatalog, deliveryOptions, designOptions);
       const perSheet = r?.pricePerSheet || 0;
-      const savingsPct = basePerSheet > 0 ? ((basePerSheet - perSheet) / basePerSheet) * 100 : 0;
+      const perSheetLista = r?.precioLista ? r.precioLista / Math.max(1, n) : 0;
+      const ahorroPct = r && r.precioLista && r.precioLista > 0 && r.ahorroPct !== undefined
+        ? r.ahorroPct
+        : (perSheetLista > 0 ? ((perSheetLista - perSheet) / perSheetLista) * 100 : 0);
       return {
         planchas: n,
         totalStickers: r?.totalStickers || 0,
         perSheet,
-        savingsPct,
+        perSheetLista,
+        savingsPct: ahorroPct,
+        promoManda: r?.promoManda === true,
       };
     });
   }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
@@ -92,11 +96,18 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-slate-800">${fmt(r.perSheet)}</td>
+                  <td className="px-4 py-3 text-right font-bold text-slate-800">${fmt(r.perSheetLista || r.perSheet)}</td>
                   <td className="px-4 py-3 text-right text-slate-500">{r.totalStickers}</td>
                   <td className="px-4 py-3 text-right">
                     {r.savingsPct > 0.5 ? (
-                      <span className="inline-flex items-center text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      <span
+                        className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                          r.promoManda
+                            ? 'text-amber-700 bg-amber-50 border-amber-300'
+                            : 'text-emerald-700 bg-emerald-100 border-emerald-200'
+                        }`}
+                        title={r.promoManda ? 'Descuento de promo del admin' : 'Ahorro por comprar más planchas'}
+                      >
                         -{r.savingsPct.toFixed(0)}%
                       </span>
                     ) : (

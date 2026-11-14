@@ -98,6 +98,17 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     return base?.pricePerSheet ?? 0;
   }, [results, order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
 
+  // Descuento de la cantidad actual (spec 038, v5): el tachado es el precio de LISTA de
+  // esta misma cantidad (sin promo ni escala) y el badge es el % total. `promo` marca si
+  // la que manda es la promo del admin (badge dorado) o la escala (verde).
+  const descuento = React.useMemo(() => {
+    if (!results) return null;
+    const pct = results.ahorroPct ?? 0;
+    const lista = results.precioLista ?? 0;
+    if (!(pct > 0.5) || !(lista > 0)) return null;
+    return { pct, lista, promo: results.promoManda === true };
+  }, [results]);
+
   return (
     <div id="order-summary" className="lg:col-span-5 relative">
       <div className="sticky top-6 space-y-6">
@@ -162,10 +173,22 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
           <div className="relative z-10 bg-slate-800/50 cl-p-sm cl-rounded-xl cl-border-sm border-slate-700 backdrop-blur-sm">
             <span className="text-slate-400 text-sm font-medium block cl-mb-sm">Total Estimado</span>
+            {descuento && (
+              <span
+                className={`absolute top-2 right-2 inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                  descuento.promo
+                    ? 'text-amber-700 bg-amber-50 border-amber-300'
+                    : 'text-emerald-700 bg-emerald-100 border-emerald-200'
+                }`}
+                title={descuento.promo ? 'Descuento de promo del admin' : 'Ahorro por comprar más planchas'}
+              >
+                -{descuento.pct.toFixed(0)}%
+              </span>
+            )}
             <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md whitespace-nowrap">
-              {order.sheetsQty > 1 && basePerSheet > 0 ? (
+              {descuento ? (
                 <>
-                  <s className="text-2xl md:text-3xl text-slate-400 font-bold align-middle mr-1.5">${money0(basePerSheet * order.sheetsQty)}</s>
+                  <s className="text-2xl md:text-3xl text-slate-400 font-bold align-middle mr-1.5">${money0(descuento.lista)}</s>
                   ${money0(results?.finalPrice)}
                 </>
               ) : (

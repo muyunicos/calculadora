@@ -696,6 +696,33 @@ test('spec 038 (v5): paridad TS/PHP con promos (gana, no gana y desempate)', () 
   assert.equal(phpCon(otra).promo, null, 'PHP: forma distinta no aplica');
   assert.ok(!tsCon(otra).promo, 'TS: forma distinta no aplica');
 });
+test('spec 038 (v5): precioLista y ahorroPct (tachado + badge del total)', () => {
+  // tinyOrder: 2 planchas de 20 u = 40 u; 1 plancha = 20 u a 12 u c/u.
+  // Sin descuentos: `precioLista` = total neto y `ahorroPct` = 0.
+  const limpio = calcularPrecio(tinyOrder, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
+  assert.ok(limpio);
+  assert.equal(limpio.precioLista, limpio.finalPrice, 'sin descuento: lista = total');
+  assert.equal(limpio.ahorroPct, 0);
+  assert.ok(!limpio.promoManda);
+
+  // Con promo que gana: el tachado es el total de lista de ESTA cantidad (no el de 1 plancha).
+  const promo = { ...tinyConfig, promos: [{ id: 'p', material: 'todos', forma: 'todas', desde: 1, pct: 80 }] };
+  const conPromo = calcularPrecio(tinyOrder, promo, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign);
+  assert.ok(conPromo);
+  assert.ok(conPromo.precioLista > conPromo.finalPrice, 'lista > final');
+  assert.equal(conPromo.precioLista, limpio.finalPrice, 'la lista es el total sin descuento de ESTA cantidad');
+  // El % es sobre el total de lista (que ya incluye la escala), asi que puede ser
+  // menor que el de la promo: es el descuento REAL que ve el cliente.
+  const pctLista = ((conPromo.precioLista - conPromo.finalPrice) / conPromo.precioLista) * 100;
+  assert.ok(Math.abs(conPromo.ahorroPct - pctLista) < 0.01, 'ahorroPct = descuento sobre la lista');
+  assert.ok(conPromo.ahorroPct > 0.5, 'hay ahorro que mostrar');
+  assert.ok(conPromo.promoManda, 'la promo manda');
+
+  // El `$/plancha` de lista es estable: no se aplasta con la promo.
+  const porPlancha = conPromo.precioLista / 2;
+  assert.ok(Math.abs(porPlancha - limpio.pricePerSheet) < 0.01, '$/plancha de lista = sin descuento');
+});
+
 test('spec 038 (C): mockupsDePlantilla ordena PDF primero y filtra por requiere', () => {
   const mu = loadModule('src/core/mockups.ts');
   const payload = (pdf, n) => ({ activo: true, pdf, mockups: Array.from({ length: n }, (_, i) => ({ id: `${pdf}-${i}`, capas: [] })), grupos: [], imagenes: {}, revision: pdf });

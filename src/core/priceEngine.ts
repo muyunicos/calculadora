@@ -250,27 +250,37 @@ export function calcularPrecio(
   const neto = calcularPrecioNeto(order, config, materials, shapesCatalog, deliveryOptions, designOptions);
   if (!neto) return null;
 
-  const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
-  if (!promo) return neto;
+const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
+
+  // `precioLista` es el total de ESTA cantidad sin NINGUN descuento (ni promo ni escala):
+  // el tachado y el badge de la interfaz se calculan contra este numero, no contra el
+  // precio de 1 plancha (asi el tachado aparece tambien con 1 plancha si hay promo).
+  const lista = calcularPrecioNeto(order, { ...config, promo: null, promos: null }, materials, shapesCatalog, deliveryOptions, designOptions);
+  const precioLista = lista ? lista.finalPrice : neto.finalPrice;
+  const sinDescuento = { ...neto, precioLista, ahorroPct: 0, promoManda: false };
+  if (!promo) return sinDescuento;
 
   // El descuento por cantidad ya esta dentro de `neto.finalPrice` (baja por plancha);
   // la promo se compara contra el precio de 1 plancha por unidad, que es la referencia
   // que ve el cliente en la vidriera.
   const base = calcularPrecioNeto({ ...order, sheetsQty: 1 }, config, materials, shapesCatalog, deliveryOptions, designOptions);
-  if (!base || base.pricePerSticker <= 0) return neto;
+  if (!base || base.pricePerSticker <= 0) return sinDescuento;
   const ahorroCantidad = ((base.pricePerSticker - neto.pricePerSticker) / base.pricePerSticker) * 100;
-  if (promo.pct <= ahorroCantidad) return neto;
+  if (promo.pct <= ahorroCantidad) return sinDescuento;
 
   const finalPrice = round2(base.pricePerSticker * neto.totalStickers * (1 - promo.pct / 100));
-  if (!(finalPrice < neto.finalPrice)) return neto;
+  if (!(finalPrice < neto.finalPrice)) return sinDescuento;
 
+  const total = round2(finalPrice);
   return {
     ...neto,
-    precioLista: neto.finalPrice,
+    precioLista,
     promo: { id: promo.id, desde: promo.desde, pct: promo.pct, ahorroCantidad: round2(ahorroCantidad * 100) / 100 },
-    finalPrice,
-    pricePerSheet: round2(finalPrice / Math.max(1, Math.round(safeNum(order.sheetsQty, 1)))),
-    pricePerSticker: round2(finalPrice / neto.totalStickers),
+    promoManda: true,
+    finalPrice: total,
+    ahorroPct: precioLista > 0 ? round2(((precioLista - total) / precioLista) * 100 * 100) / 100 : 0,
+    pricePerSheet: round2(total / Math.max(1, Math.round(safeNum(order.sheetsQty, 1)))),
+    pricePerSticker: round2(total / neto.totalStickers),
   };
 }
 // Calcula la complejidad automática de corte según unidades por hoja (1..10).

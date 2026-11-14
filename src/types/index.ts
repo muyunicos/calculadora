@@ -404,8 +404,14 @@ export interface PriceResult {
   finalPrice: number;
   pricePerSheet: number;
   pricePerSticker: number;
-  /** Spec 038 (D8): precio de lista SIN la promo (solo cambia si la promo gano). */
+  /** Spec 038 (D8): total de ESTA cantidad sin NINGUN descuento (ni promo ni escala). */
   precioLista?: number;
   /** Spec 038 (D8): promo aplicada (solo si gano al descuento por cantidad). */
   promo?: PromoElegida | null;
+  /** Spec 038 (v5): % de descuento total de esta cantidad (promo + escala) sobre el
+   *  precio de lista. Es el numero del badge (verde si es solo escala, dorado si la
+   *  promo es la que manda). */
+  ahorroPct?: number;
+  /** Spec 038 (v5): true si la promo es la que mas descuenta (badge dorado). */
+  promoManda?: boolean;
 }
