@@ -822,6 +822,7 @@ const App = () => {
                     forma="auto"
                     mockupsPdf={mockupsPdfApi.datos}
                     pdf={pdfSlug}
+                    grupo={plantillaActual?.grupo ?? 'todos'}
                     diseno={diseno}
                     onDiseno={setDiseno}
                     disponible={pmuAssets.disponible}

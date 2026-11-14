@@ -45,6 +45,8 @@ export interface DesignFieldsProps {
   forma: string;
   /** Plantilla importada (slug); vacio = item sin PDF (solo imagen procesada). */
   pdf: string;
+  /** Spec 038 (D1): grupo(s) del PDF que reciben el arte ('todos' por defecto). */
+  grupo?: string;
   itemKey: string;
   onItemKey: (itemKey: string) => void;
   onDiseno: (diseno: Diseno | null) => void;
@@ -59,6 +61,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   size,
   forma,
   pdf,
+  grupo,
   itemKey,
   onItemKey,
   onDiseno,
@@ -94,6 +97,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     cuerpo.append('contexto', 'cotizador');
     // Enmienda v2: la plantilla importada de esta categoria+tamano (si hay).
     if (pdf) { cuerpo.append('pdf', pdf); }
+    if (grupo) { cuerpo.append('grupo', grupo); }
     if (clave) cuerpo.append('item_key', clave);
     cuerpo.append('imagen', blob, 'arte.png');
     cuerpo.append('params', JSON.stringify(params ?? {}));

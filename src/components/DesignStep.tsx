@@ -25,6 +25,8 @@ export interface DesignStepProps {
   mockupsPdf: MockupsPdf | null;
   /** Plantilla importada para esta categoria+tamano ('' = sin PDF). */
   pdf: string;
+  /** Spec 038 (D1): grupo(s) del PDF que reciben el arte. */
+  grupo?: string;
   diseno: Diseno | null;
   onDiseno: (diseno: Diseno | null) => void;
   /** El puente del plugin esta configurado (si no, el paso se oculta). */
@@ -43,6 +45,7 @@ export const DesignStep: React.FC<DesignStepProps> = ({
   forma,
   mockupsPdf,
   pdf,
+  grupo,
   diseno,
   onDiseno,
   disponible,
@@ -84,6 +87,7 @@ export const DesignStep: React.FC<DesignStepProps> = ({
         size={size}
         forma={forma || ''}
         pdf={pdf}
+        grupo={grupo}
         itemKey={itemKey}
         onItemKey={setItemKey}
         onDiseno={onDiseno}

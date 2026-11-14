@@ -158,6 +158,20 @@ export const PlantillaCard: React.FC<PlantillaCardProps> = ({
             )}
           </label>
 
+          <label className="block text-xs font-bold text-slate-500 uppercase">
+            Grupo del PDF que recibe el arte
+            <select
+              className="mt-1 w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm font-normal text-slate-800"
+              value={plantilla.grupo ?? 'todos'}
+              onChange={(e) => onCambio({ grupo: e.target.value })}
+            >
+              <option value="todos">Todos los grupos (recomendado)</option>
+              <option value="auto">Solo el grupo mayor</option>
+              {(pdfs.find((p) => p.slug === plantilla.pdf)?.grupos ?? []).map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </label>
           <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase">
               <input

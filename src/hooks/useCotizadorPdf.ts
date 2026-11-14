@@ -15,6 +15,8 @@ export interface PdfPlantilla {
   titulo: string;
   mockups: string[];
   tiene_mockups: boolean;
+  /** Spec 038 (D1): grupos (6 hex) del PDF; el arte puede ir a todos. */
+  grupos?: string[];
 }
 
 interface Respuesta {

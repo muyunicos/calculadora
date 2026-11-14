@@ -339,6 +339,10 @@ function sanitizePlantillas(raw: unknown, warnings: string[]): PlantillaCotizado
       return;
     }
     const pdf = str(item.pdf).trim().toLowerCase().replace(/\.pdf$/, '').replace(/[^a-z0-9_-]/g, '');
+    const grupoCrudo = str(item.grupo).trim().toLowerCase();
+    const grupo = grupoCrudo === 'auto'
+      ? 'auto'
+      : /^[0-9a-f]{6}$/.test(grupoCrudo) ? grupoCrudo.toUpperCase() : 'todos';
     let rango: RangoCm | undefined;
     if (isRecord(item.rango)) {
       const minX = num(item.rango.minX, 0, 0, 1000);
@@ -357,6 +361,7 @@ function sanitizePlantillas(raw: unknown, warnings: string[]): PlantillaCotizado
       titulo: (optionalStr(item.titulo)?.trim() || categoria).slice(0, 60),
       categoria,
       pdf,
+      grupo,
       rango,
       visible: true,
       orden: int(item.orden, out.length, 0, 999),

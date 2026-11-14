@@ -187,6 +187,8 @@ export interface PlantillaCotizador {
   categoria: string;
   /** Slug de un PDF del plugin (`pdfs/{slug}/`). Vacio = solo imagen procesada. */
   pdf: string;
+  /** Spec 038 (D1): a que grupo(s) del PDF va el arte. 'todos' = todos (default). */
+  grupo?: 'todos' | 'auto' | string;
   /** Opcional: aplica solo si el PH cae dentro (los intermedios se resuelven solos). */
   rango?: RangoCm;
   visible?: boolean;
