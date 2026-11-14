@@ -12,6 +12,9 @@ interface MiniGalleryProps {
   // Precio marketinero (1 plancha vs. máximo) para la foto; null si no se puede calcular.
   // Puede recibir un segundo parámetro con la cantidad de planchas a mostrar.
   getPricing: (orderCode: string, displaySheets?: number) => GalleryPricing | null;
+  // Descripcion automatica de la idea ("vinilo · circulares · 5cm"); opcional: si el
+  // consumidor no la provee, la tira muestra solo el titulo y el precio.
+  describe?: (orderCode: string) => string;
 }
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 2 });
@@ -66,7 +69,7 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
 // una foto se abre un lightbox para verla en grande, con el precio destacado y un
 // botón para personalizar (cargar ese pedido como base). Pensada para el cliente
 // que no sabe qué elegir.
-const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, getPricing }) => {
+const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, getPricing, describe }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   // Tira del MOTOR DEL TEMA (spec 019/020): `MU.coleccion` la pinta con el tema del
   // contenedor; sin motor (tema ausente) queda la tira propia de abajo.
@@ -145,7 +148,19 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         url: resolveImage(it.image),
         thumb: resolveImage(it.image),
         etiqueta: it.title || it.caption || '',
-        precio: p ? { valor: p.perUnit, anterior: p.perUnitBase } : undefined,
+        // Tema `cotizador`: descripcion automatica (material · forma · medida) y el
+        // precio por unidades ("500 u x $16.720") en la misma linea.
+        descripcion: describe ? describe(it.order) : '',
+        unidades: p ? p.totalStickers : undefined,
+        precio: p
+          ? {
+              valor: p.perUnit,
+              anterior: p.perUnitBase,
+              total: p.total,
+              // Badge de descuento en la MISMA celda (el motor lo pinta como `.promo`).
+              promo: p.savingsPct > 0.5 ? Math.round(p.savingsPct) + '% OFF' : undefined,
+            }
+          : undefined,
       };
     });
     setMotor(
@@ -153,9 +168,11 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         items: datos,
         layout: 'fila',
         navegable: true,
-        preset: 'producto',
-        slots: { titulo: false, etiqueta: true, precio: true },
-        tamano: { ancho: 136, alto: 104 },
+        preset: 'tarjeta',
+        // El titulo va en el velo (sobre la foto); el cuerpo lleva la descripcion
+        // automatica y el precio con unidades. Sin duplicar el titulo.
+        slots: { titulo: false, etiqueta: true, descripcion: true, precio: true },
+        tamano: { ancho: 168, alto: 104 },
         onAbrir: (i: number) => abrir(i),
       })
     );

@@ -25,7 +25,11 @@ export type MuItemColeccion = {
   url: string;
   thumb?: string;
   etiqueta?: string;
-  precio?: { valor: number; anterior?: number };
+  // Texto de apoyo bajo el titulo (tema `cotizador`: "vinilo · circulares · 5cm").
+  descripcion?: string;
+  // Precio por UNIDADES: `unidades` + `precio.total` pintan "500 u x $16.720".
+  unidades?: number;
+  precio?: { valor: number; anterior?: number; total?: number };
 };
 
 export type MuOpcionesColeccion = {

@@ -622,6 +622,24 @@ const App = () => {
     return galleryPricing(decoded, config, materials, shapesCatalog, deliveryOptions || [], designOptions || [], displaySheets);
   };
 
+  // Descripcion automatica de una idea para la tira: "vinilo · circulares · 5cm".
+  // Se arma desde el codigo del pedido (material + forma + medida) porque el comprador
+  // no escribio nada: sin esto la celda mostraba solo el precio.
+  const describeOrder = (code: string): string => {
+    if (!materials || !shapesCatalog) return '';
+    const decoded = decodeAnyOrder(code, materials, shapesCatalog, deliveryOptions || [], designOptions || []);
+    if (!decoded) return '';
+    const material = materials.find((m) => m.id === decoded.materialId);
+    const partes: string[] = [];
+    if (material?.name) partes.push(material.name);
+    if (decoded.shapeType) partes.push(decoded.shapeType.toLowerCase());
+    const medida = decoded.shapeType === 'Rectangulares'
+      ? `${decoded.customRectW}x${decoded.customRectH} cm`
+      : shapesCatalog[decoded.shapeType]?.[decoded.sizeIndex]?.size || '';
+    if (medida) partes.push(medida);
+    return partes.join(' · ');
+  };
+
   const removeGalleryItem = (id: string) =>
     setGallery((prev) => prev.filter((g) => g.id !== id));
 
@@ -722,7 +740,7 @@ const App = () => {
               className="mb-4"
             />
           ) : (
-            <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} />
+            <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} describe={describeOrder} />
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
