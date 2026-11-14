@@ -93,6 +93,8 @@ export interface IdeasApi {
   listar: (forzar?: boolean) => Promise<void>;
   historial: () => Promise<void>;
   guardar: (idea: IdeaCustom, snapshot?: Blob) => Promise<IdeaCustom | null>;
+  /** Spec 038 (D7): renombra una idea guardada por el cliente. */
+  renombrar: (ideaId: string, titulo: string) => Promise<boolean>;
   favorito: (tipo: 'custom' | 'tienda' | 'historial', ref: string, valor: boolean) => Promise<boolean>;
   borrar: (ideaId: string) => Promise<boolean>;
   invalidar: () => void;
@@ -177,6 +179,23 @@ export function useClientIdeas(activo = true): IdeasApi {
     }
   }, [invalidar, listar]);
 
+  // Spec 038 (D7): el titulo lo escribe el cliente. Reusa `op=guardar` con el id existente
+  // (el backend reemplaza la fila), asi no hay endpoint nuevo ni duplicar la idea.
+  const renombrar = useCallback(async (ideaId: string, titulo: string): Promise<boolean> => {
+    const actual = ideas.find((i) => i.id === ideaId);
+    if (!actual) return false;
+    const limpio = String(titulo || '').trim().slice(0, 80);
+    if (!limpio) return false;
+    try {
+      await post('guardar', { idea: JSON.stringify({ ...actual, titulo: limpio }) });
+      invalidar();
+      await listar(true);
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return false;
+    }
+  }, [ideas, invalidar, listar]);
   const favorito = useCallback(async (
     tipo: 'custom' | 'tienda' | 'historial',
     ref: string,
@@ -216,6 +235,7 @@ export function useClientIdeas(activo = true): IdeasApi {
     listar,
     historial,
     guardar,
+    renombrar,
     favorito,
     borrar,
     invalidar,

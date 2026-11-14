@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Star, Trash2, Wand2, Clock } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Star, Trash2, Wand2, Clock, Pencil } from 'lucide-react';
 
 import type { FavoritoRef, GalleryItem, GalleryPricing, IdeaCustom, TiraItem } from '../types';
 import { precioActualizado, tiraOrden } from '../core/mockups';
@@ -29,6 +29,8 @@ export interface TiraIdeasProps {
   onUsar: (item: TiraItem) => void;
   onEstrella?: (tipo: 'custom' | 'tienda' | 'historial', ref: string, valor: boolean) => void;
   onBorrar?: (ideaId: string) => void;
+  /** Spec 038 (D7): renombra una idea guardada por el cliente. */
+  onRenombrar?: (ideaId: string, titulo: string) => void;
   className?: string;
 }
 
@@ -102,6 +104,8 @@ function referencia(item: TiraItem): string {
 }
 export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
   const items = useMemo(() => tarjetas(props), [props]);
+  // Spec 038 (D7): que tarjeta esta renombrando (solo una a la vez).
+  const [editando, setEditando] = useState<string | null>(null);
   if (items.length === 0) return null;
 
   return (
@@ -150,7 +154,39 @@ export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
               </div>
               <div className="p-2 space-y-1">
                 <OrigenBadge item={item} />
-                <p className="text-xs font-semibold text-slate-800 leading-tight line-clamp-2">{item.titulo}</p>
+{editando ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    defaultValue={item.titulo}
+                    maxLength={80}
+                    aria-label={'Nombre de tu diseno'}
+                    className={'w-full text-xs font-semibold text-slate-800 border border-emerald-300 rounded px-1 py-0.5'}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.currentTarget.blur(); }
+                      if (e.key === 'Escape') { setEditando(null); }
+                    }}
+                    onBlur={(e) => {
+                      setEditando(null);
+                      const v = e.target.value.trim();
+                      if (v && v !== item.titulo) props.onRenombrar?.(String(item.idea?.id ?? ''), v);
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-start gap-1">
+                    <p className="text-xs font-semibold text-slate-800 leading-tight line-clamp-2 flex-1">{item.titulo}</p>
+                    {item.origen === 'custom' && props.onRenombrar && (
+                      <button
+                        type="button"
+                        aria-label={'Renombrar esta idea'}
+                        onClick={() => setEditando(item.key)}
+                        className={'shrink-0 text-slate-400 hover:text-emerald-600'}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
                 {item.descripcion && (
                   <p className="text-[11px] text-slate-500 leading-tight line-clamp-2">{item.descripcion}</p>
                 )}

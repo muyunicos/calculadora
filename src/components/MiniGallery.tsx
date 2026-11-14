@@ -72,9 +72,11 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
  * consumidor declara otra (`GUARDADO`/`COMPRADO`), se respeta. Una idea comun
  * no lleva etiqueta.
  */
-function categoriaDe(it: GalleryItem): string | undefined {
+function categoriaDe(it: GalleryItem, promo?: { pct: number } | null): string | undefined {
   const declarada = String(it.categoria || '').trim();
-  return declarada || undefined;
+  if (declarada) return declarada;
+  // PROMO es automatica: la decide el precio (gana la promo del admin), no el admin.
+  return promo ? 'PROMO' : undefined;
 }
 
 // Mini-galería de ejemplos: una fila de miniaturas con scroll horizontal. Al tocar
@@ -105,16 +107,19 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
     if (!item) return;
     const pricing = getPricing(item.order, extractSheetsFromCode(item.order));
     const ok = abrirVisor({
-      items: visibleItems.map((it) => ({
-        url: resolveImage(it.image),
-        thumb: resolveImage(it.image),
-        etiqueta: it.title || it.caption || '',
+      items: visibleItems.map((it) => {
+        const pi = getPricing(it.order, extractSheetsFromCode(it.order));
+        return {
+          url: resolveImage(it.image),
+          thumb: resolveImage(it.image),
+          etiqueta: it.title || it.caption || ' + ' + ' + ', 
         // Spec 038 (D6): la categoria del visor sale del MISMO criterio que la tarjeta.
-        categoria: categoriaDe(it),
+        categoria: categoriaDe(it, pi ? pi.promo : null),
         // Spec 020 (D26): la meta va POR ITEM, asi al navegar cambian tambien el titulo,
         // la descripcion, los precios y el badge (no solo la foto).
-        meta: metaDeItem(it, getPricing(it.order, extractSheetsFromCode(it.order)), describe ? describe(it.order) : undefined),
-      })),
+        meta: metaDeItem(it, pi, describe ? describe(it.order) : undefined),
+        };
+      }),
       indice: idx,
       titulo: 'Ideas',
       // Spec 038 (D6): el <select> del visor filtra por categoria (Todos + las que existan).
@@ -165,7 +170,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         thumb: resolveImage(it.image),
         etiqueta: it.title || it.caption || '',
         // Spec 038 (D6): categoria de la tarjeta.
-        categoria: categoriaDe(it),
+        categoria: categoriaDe(it, p ? p.promo : null),
         // Tema `cotizador`: descripcion automatica (material · forma · medida) y el
         // precio por unidades ("500 u x $16.720") en la misma linea.
         descripcion: describe ? describe(it.order) : '',

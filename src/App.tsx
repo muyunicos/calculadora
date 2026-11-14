@@ -756,6 +756,7 @@ const App = () => {
               onUsar={usarTira}
               onEstrella={(tipo, ref, valor) => { void ideas.favorito(tipo, ref, valor); }}
               onBorrar={(ideaId) => { void ideas.borrar(ideaId); }}
+              onRenombrar={(ideaId, titulo) => { void ideas.renombrar(ideaId, titulo); }}
               className="mb-4"
             />
           ) : (
