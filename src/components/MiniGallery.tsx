@@ -152,13 +152,14 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         // precio por unidades ("500 u x $16.720") en la misma linea.
         descripcion: describe ? describe(it.order) : '',
         unidades: p ? p.totalStickers : undefined,
+        // La celda muestra el TOTAL DEL LOTE (no el unitario): el precio tachado es el de
+        // comprar 1 sola plancha por unidad y el destacado es el del lote de referencia.
         precio: p
           ? {
-              valor: p.perUnit,
-              anterior: p.perUnitBase,
-              total: p.total,
-              // Badge de descuento en la MISMA celda (el motor lo pinta como `.promo`).
-              promo: p.savingsPct > 0.5 ? Math.round(p.savingsPct) + '% OFF' : undefined,
+              valor: p.total,
+              anterior: p.perUnitBase * p.totalStickers,
+              // Badge de descuento con el formato de la tabla de ahorro ("-23%").
+              promo: p.savingsPct > 0.5 ? '-' + Math.round(p.savingsPct) + '%' : undefined,
             }
           : undefined,
       };
