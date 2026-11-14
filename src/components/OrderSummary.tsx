@@ -172,19 +172,21 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
 
           <div className="relative z-10 bg-slate-800/50 cl-p-sm cl-rounded-xl cl-border-sm border-slate-700 backdrop-blur-sm">
-            <span className="text-slate-400 text-sm font-medium block cl-mb-sm">Total Estimado</span>
-            {descuento && (
-              <span
-                className={`absolute top-2 right-2 inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                  descuento.promo
-                    ? 'text-amber-700 bg-amber-50 border-amber-300'
-                    : 'text-emerald-700 bg-emerald-100 border-emerald-200'
-                }`}
-                title={descuento.promo ? 'Descuento de promo del admin' : 'Ahorro por comprar más planchas'}
-              >
-                -{descuento.pct.toFixed(0)}%
-              </span>
-            )}
+            <div className="flex items-center justify-between gap-2 cl-mb-sm">
+              <span className="text-slate-400 text-sm font-medium">Total Estimado</span>
+              {descuento && (
+                <span
+                  className={`inline-flex shrink-0 items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                    descuento.promo
+                      ? 'text-amber-700 bg-amber-50 border-amber-300'
+                      : 'text-emerald-700 bg-emerald-100 border-emerald-200'
+                  }`}
+                  title={descuento.promo ? 'Descuento de promo del admin' : 'Ahorro por comprar más planchas'}
+                >
+                  -{descuento.pct.toFixed(0)}%
+                </span>
+              )}
+            </div>
             <div className="text-5xl md:text-6xl font-black text-emerald-400 tracking-tight drop-shadow-md whitespace-nowrap">
               {descuento ? (
                 <>
