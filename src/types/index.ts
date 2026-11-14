@@ -185,6 +185,12 @@ export interface GalleryPricing {
   totalStickers: number; // Unidades al máximo de referencia.
   sheets: number; // Planchas de referencia (máximo).
   savingsPct: number; // Ahorro % por unidad vs. 1 plancha.
+  /** Spec 038 (v6): total de ESTA cantidad sin ningun descuento (referencia del tachado). */
+  precioLista: number;
+  /** Spec 038 (v6): true si la promo del admin es la que manda (badge dorado). */
+  promoManda?: boolean;
+  /** Spec 038 (v6): la promo esta VIGENTE para esta cantidad (aunque la escala sea mayor). */
+  promoActiva?: boolean;
   promo?: { desde: number; pct: number } | null; // Promocion del admin (spec 038, Enmienda v4).
 }
 
@@ -408,6 +414,10 @@ export interface PriceResult {
   precioLista?: number;
   /** Spec 038 (D8): promo aplicada (solo si gano al descuento por cantidad). */
   promo?: PromoElegida | null;
+  /** Spec 038 (v6): la promo esta VIGENTE para esta cantidad (aunque el descuento por
+   *  cantidad sea mayor). Es lo que tiñe el badge de ORO: el cliente no debe sentir que
+   *  la promo "se pierde" al subir de planchas. */
+  promoActiva?: boolean;
   /** Spec 038 (v5): % de descuento total de esta cantidad (promo + escala) sobre el
    *  precio de lista. Es el numero del badge (verde si es solo escala, dorado si la
    *  promo es la que manda). */

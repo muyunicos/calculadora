@@ -25,7 +25,7 @@ const rectMode = (order: Order): 'preciso' | 'economico' =>
 // distintos `order`).
 //
 // La lógica es una portación fiel del cálculo original que vivía en un useEffect.
-function calcularPrecioNeto(
+export function calcularPrecioNeto(
   order: Order,
   config: Config,
   materials: Material[],
@@ -218,7 +218,7 @@ export function elegirPromo(order: Order, config: Config, shapesCatalog: ShapesC
  * cantidad mira `order.sheetsQty` (planchas), que es lo que el admin declara.
  * Devuelve null si ninguna promo aplica o si el descuento por cantidad es mejor.
  */
-export function promoAplicable(
+export function promoElegible(
   order: Order,
   config: Config,
   shapesCatalog: ShapesCatalog,
@@ -260,27 +260,24 @@ export function calcularPrecio(
     : neto.finalPrice;
   const pctSobreLista = (total: number) => (precioLista > 0 ? round2(((precioLista - total) / precioLista) * 100) : 0);
 
-  const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
+  const promo = promoElegible(order, config, shapesCatalog, neto.totalStickers);
   if (!promo || !base || base.pricePerSticker <= 0) {
     return { ...neto, precioLista, ahorroPct: pctSobreLista(neto.finalPrice), promoManda: false };
   }
 
   const ahorroCantidad = ((base.pricePerSticker - neto.pricePerSticker) / base.pricePerSticker) * 100;
-  if (promo.pct <= ahorroCantidad) {
-    return { ...neto, precioLista, ahorroPct: pctSobreLista(neto.finalPrice), promoManda: false };
-  }
-
-  const finalPrice = round2(base.pricePerSticker * neto.totalStickers * (1 - promo.pct / 100));
-  if (!(finalPrice < neto.finalPrice)) {
-    return { ...neto, precioLista, ahorroPct: pctSobreLista(neto.finalPrice), promoManda: false };
-  }
-
-  const total = round2(finalPrice);
+  // Spec 038 (v6): desde que la promo entra en vigencia (llegaste a `desde` unidades) el item
+  // es PROMO, aunque el descuento por cantidad sea mayor: el cliente NO debe sentir que la
+  // promo se le pierde. El precio si es el mejor de los dos.
+  const promoFinal = round2(base.pricePerSticker * neto.totalStickers * (1 - promo.pct / 100));
+  const promoGana = promoFinal < neto.finalPrice;
+  const total = promoGana ? promoFinal : neto.finalPrice;
   return {
     ...neto,
     precioLista,
     promo: { id: promo.id, desde: promo.desde, pct: promo.pct, ahorroCantidad: round2(ahorroCantidad * 100) / 100 },
-    promoManda: true,
+    promoActiva: true,
+    promoManda: promoGana,
     finalPrice: total,
     ahorroPct: pctSobreLista(total),
     pricePerSheet: round2(total / Math.max(1, Math.round(safeNum(order.sheetsQty, 1)))),
@@ -294,7 +291,7 @@ export function autoComplexity(qtyStickersPerSheet: number): number {
 
 // Precio de una foto de la galería para mostrarlo de forma marketinera: compara el
 // $/unidad a 1 plancha (caro) contra una cantidad de referencia (barato) y el ahorro.
-const resolverPromo = (order: Order, config: Config, shapesCatalog: ShapesCatalog, totalStickers: number) => promoAplicable(order, config, shapesCatalog, totalStickers);
+const resolverPromo = (order: Order, config: Config, shapesCatalog: ShapesCatalog, totalStickers: number) => promoElegible(order, config, shapesCatalog, totalStickers);
 
 // La complejidad se recalcula sola (igual que al cargar el pedido), así no depende
 // del valor neutro que trae el código.
@@ -317,8 +314,11 @@ export function galleryPricing(
   const requested = displaySheets && displaySheets > 1 ? Math.floor(displaySheets) : 0;
   const refSheets = clamp(requested > 1 ? requested : Math.round(config.galleryRefSheets || 10), 1, 1000);
 
-  const base = calcularPrecio({ ...order, sheetsQty: 1, complexity }, config, materials, shapesCatalog, deliveryOptions, designOptions);
-  const max = calcularPrecio(
+// Spec 038 (v6): la referencia (base y max) se calcula con el motor NETO, sin promo, para
+  // que el "precio de lista" y el ahorro por cantidad no vengan ya descontados por la promo
+  // (si no, `perUnitBase` salia promo-descontado y el ahorro daba 0).
+  const base = calcularPrecioNeto({ ...order, sheetsQty: 1, complexity }, config, materials, shapesCatalog, deliveryOptions, designOptions);
+  const max = calcularPrecioNeto(
     { ...order, sheetsQty: refSheets, complexity },
     config,
     materials,
@@ -328,16 +328,26 @@ export function galleryPricing(
   );
   if (!base || !max || base.pricePerSticker <= 0) return null;
 
-  // Spec 038 (D8): `max` ya viene con la promo si gano (calcularPrecio la aplica), asi que
-  // el ahorro y el total de la vidriera coinciden con lo que se cobra.
+  // La referencia es el total de ESTA cantidad (sin escala), igual que `precioLista`.
+  const precioLista = round2(base.pricePerSticker * max.totalStickers);
+  const ahorroCantidad = ((base.pricePerSticker - max.pricePerSticker) / base.pricePerSticker) * 100;
+  const elegible = promoElegible(order, config, shapesCatalog, max.totalStickers);
+  const promoGana = elegible !== null && elegible.pct > ahorroCantidad;
+  const total = promoGana && elegible
+    ? round2(base.pricePerSticker * max.totalStickers * (1 - elegible.pct / 100))
+    : max.finalPrice;
+
   return {
-    perUnit: max.pricePerSticker,
+    perUnit: total / max.totalStickers,
     perUnitBase: base.pricePerSticker,
-    total: max.finalPrice,
+    total,
+    precioLista,
     totalStickers: max.totalStickers,
     sheets: refSheets,
-    savingsPct: ((base.pricePerSticker - max.pricePerSticker) / base.pricePerSticker) * 100,
-    promo: max.promo ? { desde: max.promo.desde, pct: max.promo.pct } : null,
+    savingsPct: ((precioLista - total) / precioLista) * 100,
+    promo: promoGana && elegible ? { desde: elegible.desde, pct: elegible.pct } : null,
+    promoManda: promoGana,
+    promoActiva: true,
   };
 }
 

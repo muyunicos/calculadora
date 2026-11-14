@@ -75,8 +75,9 @@ const PriceTag: React.FC<{ pricing: GalleryPricing; compact?: boolean }> = ({ pr
 function categoriaDe(it: GalleryItem, promo?: { pct: number } | null): string | undefined {
   const declarada = String(it.categoria || '').trim();
   if (declarada) return declarada;
-  // PROMO es automatica: la decide el precio (gana la promo del admin), no el admin.
-  return promo ? 'PROMO' : undefined;
+  // PROMO es automatica: solo si la promo del admin es la que MANDA (no alcanza con que
+  // exista; si gana el descuento por cantidad, el item no es PROMO).
+  return promo && promo.pct > 0 ? 'PROMO' : undefined;
 }
 
 // Mini-galería de ejemplos: una fila de miniaturas con scroll horizontal. Al tocar
@@ -182,7 +183,10 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
               valor: p.total,
               anterior: p.perUnitBase * p.totalStickers,
               // Badge de descuento con el formato de la tabla de ahorro ("-23%").
+              // Spec 038 (v6): si manda la PROMO del admin, el badge va en ORO.
               promo: p.savingsPct > 0.5 ? '-' + Math.round(p.savingsPct) + '%' : undefined,
+              // Spec 038 (v6): ORO desde que la promo esta vigente (aunque la escala sea mayor).
+              promoOro: p.promoActiva === true || p.promoManda === true,
             }
           : undefined,
       };

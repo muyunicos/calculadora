@@ -42,6 +42,8 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
         perSheetLista,
         savingsPct: ahorroPct,
         promoManda: r?.promoManda === true,
+        // Spec 038 (v6): desde que la promo esta vigente el badge es ORO (aunque la escala sea mayor).
+        promoActiva: r?.promoActiva === true,
       };
     });
   }, [order, config, materials, shapesCatalog, deliveryOptions, designOptions]);
@@ -60,9 +62,7 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
           <thead>
             <tr className="bg-slate-50 text-slate-400 text-[11px] uppercase tracking-wider">
               <th className="text-left font-semibold px-4 py-2.5">Planchas</th>
-              <th className="text-right font-semibold px-4 py-2.5">$/plancha</th>
-              <th className="text-right font-semibold px-4 py-2.5">Unidades</th>
-              <th className="text-right font-semibold px-4 py-2.5">Ahorro</th>
+              <th className="text-right font-semibold px-4 py-2.5">Precio</th>
             </tr>
           </thead>
           <tbody>
@@ -78,12 +78,13 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
                       : 'text-slate-600 hover:bg-emerald-50/40 cursor-pointer focus:outline-none focus:bg-emerald-50/40'
                   }`}
                   tabIndex={!isCurrent ? 0 : undefined}
-                  role={!isCurrent ? "button" : undefined}
+                  role={!isCurrent ? 'button' : undefined}
                   onKeyPress={(e) => !isCurrent && e.key === 'Enter' && onChangeQuantity?.(r.planchas)}
                 >
-                  <td className="px-4 py-3 text-left font-bold">
-                    <span className="inline-flex items-center gap-2">
-                      {r.planchas}
+                  <td className="px-4 py-3 text-left">
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <span className="font-bold">{r.planchas}</span>
+                      <span className="text-[11px] text-slate-400 font-medium">({r.totalStickers} unidades)</span>
                       {isCurrent && (
                         <span className="text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
                           Tu pedido
@@ -96,22 +97,20 @@ const PriceTable: React.FC<PriceTableProps> = ({ order, config, materials, shape
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-bold text-slate-800">${fmt(r.perSheetLista || r.perSheet)}</td>
-                  <td className="px-4 py-3 text-right text-slate-500">{r.totalStickers}</td>
-                  <td className="px-4 py-3 text-right">
-                    {r.savingsPct > 0.5 ? (
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <span className="font-bold text-slate-800">${fmt(r.perSheet)}</span>
+                    <span className="text-[11px] text-slate-400 font-medium ml-1">c/u</span>
+                    {r.savingsPct > 0.5 && (
                       <span
-                        className={`inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                          r.promoManda
+                        className={`ml-2 inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                          r.promoActiva
                             ? 'text-amber-700 bg-amber-50 border-amber-300'
                             : 'text-emerald-700 bg-emerald-100 border-emerald-200'
                         }`}
-                        title={r.promoManda ? 'Descuento de promo del admin' : 'Ahorro por comprar más planchas'}
+                        title={r.promoActiva ? 'Promo del admin activa' : 'Ahorro por comprar más planchas'}
                       >
                         -{r.savingsPct.toFixed(0)}%
                       </span>
-                    ) : (
-                      <span className="text-slate-300">—</span>
                     )}
                   </td>
                 </tr>

@@ -580,13 +580,15 @@ test('spec 038 (v4): la promo gana solo si supera al descuento por cantidad', ()
   assert.equal(menor.promo, null, 'no gana: no se reporta (el total sigue con el descuento por cantidad)');
   const metaMenor = mu.metaDeItem({ id: '1', image: 'a.png', order: 'v1' }, menor);
   assert.equal(metaMenor.badge.texto, '-' + Math.round(menor.savingsPct) + '%', 'gana el descuento por cantidad');
-  assert.equal(metaMenor.badge.tono, 'tienda');
+  // v6: desde que la promo esta VIGENTE el badge es de promo (oro), aunque el descuento
+  // por cantidad sea mayor: el cliente no debe sentir que la promo se le pierde.
+  assert.equal(metaMenor.badge.tono, 'promo');
   assert.equal(metaMenor.precios[0].valor, menor.total);
   // Promo por encima: gana ella (precio y badge PROMO).
   const mayor = galleryPricing(tinyOrder, { ...tinyConfig, promo: { desde: 40, pct: 80 } }, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
   assert.ok(mayor);
   const metaMayor = mu.metaDeItem({ id: '1', image: 'a.png', order: 'v1' }, mayor);
-  assert.equal(metaMayor.badge.texto, 'PROMO -80%');
+  assert.equal(metaMayor.badge.texto, '-80%');
   assert.equal(metaMayor.badge.tono, 'promo');
   const esperado = Math.round(mayor.perUnitBase * mayor.totalStickers * 0.2 * 100) / 100;
   assert.equal(metaMayor.precios[0].valor, esperado, 'el precio aplica el % de la promo');
@@ -671,8 +673,9 @@ test('spec 038 (v5): paridad TS/PHP con promos (gana, no gana y desempate)', () 
 
   // 2) 40%: el descuento por cantidad es mayor (42%) -> NO aplica en ninguno.
   const plaza40 = [{ id: 'p40', material: 'todos', forma: 'Circulares', tamMin: 3, tamMax: 6, desde: 1, pct: 40 }];
-  assert.equal(phpCon(plaza40).promo, null, 'PHP: 40% no supera al descuento por cantidad');
-  assert.ok(!tsCon(plaza40).promo, 'TS: 40% no supera al descuento por cantidad');
+  assert.ok(!phpCon(plaza40).promo.manda, 'PHP: 40% no manda sobre el descuento por cantidad');
+  assert.ok(tsCon(plaza40).promoActiva, 'TS: la promo esta vigente desde 1 plancha');
+  assert.ok(!tsCon(plaza40).promoManda, 'TS: 40% no manda sobre el descuento por cantidad');
 
   // 3) 60%: gana en los dos y el precio coincide.
   const plaza60 = [{ id: 'p60', material: 'todos', forma: 'Circulares', tamMin: 3, tamMax: 6, desde: 1, pct: 60 }];

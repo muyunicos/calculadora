@@ -461,18 +461,19 @@ function mu_calc_compute_price($order, $config, $sinPromo = false) {
             $mejor = array('desde' => max(1, (int) mu_calc_num(isset($promo['desde']) ? $promo['desde'] : 0)), 'pct' => $pct);
         }
     }
-    if ($sinPromo === false && $mejor !== null && $totalStickers > 0) {
+if ($sinPromo === false && $mejor !== null && $totalStickers > 0) {
         $orderBase = $order;
         $orderBase['sheetsQty'] = 1;
         $base = mu_calc_compute_price($orderBase, $config, true);
         if ($base !== null && $base['pricePerSticker'] > 0) {
             $ahorroCantidad = (($base['pricePerSticker'] - $finalPrice / $totalStickers) / $base['pricePerSticker']) * 100;
-            if ($mejor['pct'] > $ahorroCantidad) {
-                $conPromo = mu_calc_round2($base['pricePerSticker'] * $totalStickers * (1 - $mejor['pct'] / 100));
-                if ($conPromo < $finalPrice) {
-                    $promoAplicada = array('desde' => $mejor['desde'], 'pct' => $mejor['pct'], 'ahorroCantidad' => mu_calc_round2($ahorroCantidad));
-                    $finalPrice = $conPromo;
-                }
+            // Spec 038 (v6): la promo entra en vigencia al llegar a `desde`. Desde ahi el item es
+            // PROMO (aunque el descuento por cantidad sea mayor: el cliente no debe sentir que la
+            // promo se le pierde), pero el precio es el mejor de los dos.
+            $conPromo = mu_calc_round2($base['pricePerSticker'] * $totalStickers * (1 - $mejor['pct'] / 100));
+            $promoAplicada = array('desde' => $mejor['desde'], 'pct' => $mejor['pct'], 'ahorroCantidad' => mu_calc_round2($ahorroCantidad), 'manda' => ($conPromo < $finalPrice));
+            if ($conPromo < $finalPrice) {
+                $finalPrice = $conPromo;
             }
         }
     }

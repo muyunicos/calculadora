@@ -102,10 +102,11 @@ export function metaDeItem(
   if (pricing) {
     // Un SOLO precio: el total del lote de referencia, con el tachado del lote comprando
     // de a una plancha. Sin etiquetas "Regular/Por mayor": el tamanio lo da la nota.
-    // Spec 038 (D8): el motor de precios ya aplico la promo cuando gano, asi que el
-    // total de la vidriera ES el que se cobra. `pricing.promo` solo viaja si gano.
-    const promo = pricing.promo;
-    const pct = Math.max(0, Math.min(100, promo ? promo.pct : pricing.savingsPct));
+    // Spec 038 (D8/v6): el motor de precios ya aplico el mejor de los dos descuentos, asi que el
+    // total de la vidriera ES el que se cobra. `promoActiva` marca que hay promo vigente (badge
+    // PROMO en oro) aunque el descuento por cantidad sea mayor: no se le quita al cliente.
+    const promo = pricing.promoActiva === true || pricing.promoManda === true;
+    const pct = Math.max(0, Math.min(100, pricing.savingsPct));
     meta.precios = [
       {
         valor: pricing.total,
@@ -116,7 +117,8 @@ export function metaDeItem(
       'Comprando ' + pricing.sheets + ' planchas · ' + pricing.totalStickers + ' u';
     if (pct > 0.5) {
       meta.badge = {
-        texto: (promo ? 'PROMO ' : '') + '-' + Math.round(pct) + '%',
+        // El texto es siempre -N%: el COLOR (oro/verde) dice si es promo o escala.
+        texto: '-' + Math.round(pct) + '%',
         tono: promo ? 'promo' : 'tienda',
       };
     }
