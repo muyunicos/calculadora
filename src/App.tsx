@@ -339,9 +339,17 @@ const App = () => {
   // --- HANDLERS (Admin) ---
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
+    // Spec 038 (v4): la promo son DOS campos (pct + desde) que viven juntos en
+    // config.promo; el resto de los inputs siguen siendo numeros planos.
+    const esPromo = name === 'promoPct' || name === 'promoDesde';
     setConfig((prev) => {
       if (!prev) return prev;
       const val = type === 'checkbox' ? checked : parseFloat(value) || 0;
+      if (esPromo) {
+        const pct = name === 'promoPct' ? Math.min(100, Math.max(0, Number(val))) : prev?.promo?.pct ?? 0;
+        const desde = name === 'promoDesde' ? Math.max(1, Math.round(Number(val))) : prev?.promo?.desde ?? 1;
+        return { ...prev, promo: pct > 0 && desde > 0 ? { desde, pct } : null } as Config;
+      }
       const next = { ...prev, [name]: val } as Config;
       // Recorte de rangos: nunca se guarda un valor que luego no pueda cargarse
       // (p. ej. profitMargin 5000 o weeklyHours > 168).

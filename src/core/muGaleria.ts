@@ -93,16 +93,28 @@ export function metaDeItem(
   if (pricing) {
     // Un SOLO precio: el total del lote de referencia, con el tachado del lote comprando
     // de a una plancha. Sin etiquetas "Regular/Por mayor": el tamanio lo da la nota.
+    const cantidadPct = Math.max(0, Math.min(100, pricing.savingsPct));
+    // Spec 038 (v4): la PROMO del admin **gana solo si supera** al descuento por
+    // cantidad; si no, el cliente ve el mejor precio de los dos.
+    const promo = pricing.promo;
+    const pct = promo ? Math.max(cantidadPct, promo.pct) : cantidadPct;
+    const promoGana = !!promo && promo.pct > cantidadPct + 0.5;
     meta.precios = [
       {
-        valor: pricing.total,
+        valor: promoGana && promo
+          ? Math.round(pricing.perUnitBase * pricing.totalStickers * (1 - promo.pct / 100) * 100) / 100
+          : pricing.total,
         anterior: pricing.perUnitBase * pricing.totalStickers,
       },
     ];
     meta.nota =
       'Comprando ' + pricing.sheets + ' planchas · ' + pricing.totalStickers + ' u';
-    if (pricing.savingsPct > 0.5) {
-      meta.badge = { texto: '-' + Math.round(pricing.savingsPct) + '%', tono: 'tienda' };
+    if (pct > 0.5) {
+      meta.badge = {
+        texto: 
+          (promoGana ? 'PROMO ' : '') + '-' + Math.round(pct) + '%',
+        tono: promoGana ? 'promo' : 'tienda',
+      };
     }
   }
   return Object.keys(meta).length ? meta : null;

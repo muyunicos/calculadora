@@ -137,6 +137,24 @@ export function autoComplexity(qtyStickersPerSheet: number): number {
 
 // Precio de una foto de la galería para mostrarlo de forma marketinera: compara el
 // $/unidad a 1 plancha (caro) contra una cantidad de referencia (barato) y el ahorro.
+/**
+ * Promocion del admin (spec 038, Enmienda v4): un descuento fijo en % que se aplica
+ * desde una cantidad de unidades y **solo gana si supera** al descuento por
+ * cantidad (FR: el cliente ve el mejor precio de los dos).
+ */
+function resolverPromo(
+  order: Order,
+  config: Config,
+  totalStickers: number
+): { desde: number; pct: number } | null {
+  const promo = config.promo;
+  if (!promo || !Number.isFinite(promo.pct) || !Number.isFinite(promo.desde)) return null;
+  const desde = Math.max(1, Math.round(promo.desde as number));
+  const pct = clamp(promo.pct as number, 0, 100);
+  if (pct <= 0 || totalStickers < desde) return null;
+  return { desde, pct };
+}
+
 // La complejidad se recalcula sola (igual que al cargar el pedido), así no depende
 // del valor neutro que trae el código.
 // displaySheets: cantidad a mostrar (si es undefined o 1, usa config.galleryRefSheets)
@@ -176,6 +194,7 @@ export function galleryPricing(
     totalStickers: max.totalStickers,
     sheets: refSheets,
     savingsPct: ((base.pricePerSticker - max.pricePerSticker) / base.pricePerSticker) * 100,
+    promo: resolverPromo(order, config, max.totalStickers),
   };
 }
 

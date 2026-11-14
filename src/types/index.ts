@@ -16,6 +16,9 @@ export interface Config {
   timeDesignBasic: number;
   timeDesignCustom: number;
   galleryRefSheets: number;
+  // Spec 038 (v4): promocion del admin. Un % de descuento fijo desde N unidades;
+  // gana solo si supera al descuento por cantidad (ver core/priceEngine).
+  promo?: { desde: number; pct: number } | null;
 }
 
 export interface Material {
@@ -141,6 +144,7 @@ export interface GalleryPricing {
   totalStickers: number; // Unidades al máximo de referencia.
   sheets: number; // Planchas de referencia (máximo).
   savingsPct: number; // Ahorro % por unidad vs. 1 plancha.
+  promo?: { desde: number; pct: number } | null; // Promocion del admin (spec 038, Enmienda v4).
 }
 
 // Estructura persistida en datos_config.json (la fuente de datos del admin).

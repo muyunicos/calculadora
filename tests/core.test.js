@@ -566,6 +566,36 @@ test('spec 038 (B): forma de la guia del cargador por categoria', () => {
   assert.equal(mu.formaDeCategoria('Formas', '3 cm'), 'auto');
 });
 
+
+test('spec 038 (v4): la promo gana solo si supera al descuento por cantidad', () => {
+  // 2 planchas de 20 u = 40 u; 1 plancha = 20 u (precio base 12 u).
+  const mu = loadModule('src/core/muGaleria.ts');
+  const sinPromo = galleryPricing(tinyOrder, tinyConfig, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
+  assert.ok(sinPromo);
+  assert.ok(sinPromo.savingsPct > 0, 'el caso base ya tiene ahorro por cantidad');
+  assert.equal(sinPromo.promo, null, 'sin config.promo no hay promo');
+  // Promo por debajo del descuento por cantidad: NO gana (sigue el de cantidad).
+  const menor = galleryPricing(tinyOrder, { ...tinyConfig, promo: { desde: 40, pct: 1 } }, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
+  assert.ok(menor);
+  assert.equal(menor.promo.pct, 1);
+  const metaMenor = mu.metaDeItem({ id: '1', image: 'a.png', order: 'v1' }, menor);
+  assert.equal(metaMenor.badge.texto, '-' + Math.round(menor.savingsPct) + '%', 'gana el descuento por cantidad');
+  assert.equal(metaMenor.badge.tono, 'tienda');
+  assert.equal(metaMenor.precios[0].valor, menor.total);
+  // Promo por encima: gana ella (precio y badge PROMO).
+  const mayor = galleryPricing(tinyOrder, { ...tinyConfig, promo: { desde: 40, pct: 80 } }, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
+  assert.ok(mayor);
+  const metaMayor = mu.metaDeItem({ id: '1', image: 'a.png', order: 'v1' }, mayor);
+  assert.equal(metaMayor.badge.texto, 'PROMO -80%');
+  assert.equal(metaMayor.badge.tono, 'promo');
+  const esperado = Math.round(mayor.perUnitBase * mayor.totalStickers * 0.2 * 100) / 100;
+  assert.equal(metaMayor.precios[0].valor, esperado, 'el precio aplica el % de la promo');
+  // Por debajo del minimo de unidades la promo no aplica.
+  const poca = galleryPricing(tinyOrder, { ...tinyConfig, promo: { desde: 1000, pct: 90 } }, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
+  assert.ok(poca);
+  assert.equal(poca.promo, null, 'no llega al minimo de unidades');
+});
+
 test('spec 038 (C): mockupsDePlantilla ordena PDF primero y filtra por requiere', () => {
   const mu = loadModule('src/core/mockups.ts');
   const payload = (pdf, n) => ({ activo: true, pdf, mockups: Array.from({ length: n }, (_, i) => ({ id: `${pdf}-${i}`, capas: [] })), grupos: [], imagenes: {}, revision: pdf });

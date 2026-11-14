@@ -49,7 +49,7 @@ const CONFIG_FALLBACK: Config = {
 
 // [mínimo, máximo] por campo numérico de Config (mismos topes que el schema
 // anterior, pero ahora se recortan en lugar de rechazar todo el archivo).
-const CONFIG_LIMITS: Record<Exclude<keyof Config, 'calcSalaryMode'>, [number, number]> = {
+const CONFIG_LIMITS: Record<Exclude<keyof Config, 'calcSalaryMode' | 'promo'>, [number, number]> = {
   monthlySalary: [0, 1e9],
   weeklyHours: [0, 168],
   hourlyRate: [0, 1e7],
@@ -96,7 +96,7 @@ function sanitizeConfig(raw: Record<string, unknown>, warnings: string[]): Confi
   const config: Config = { ...CONFIG_FALLBACK };
   config.calcSalaryMode = bool(raw.calcSalaryMode, CONFIG_FALLBACK.calcSalaryMode);
 
-  for (const key of Object.keys(CONFIG_LIMITS) as Array<Exclude<keyof Config, 'calcSalaryMode'>>) {
+  for (const key of Object.keys(CONFIG_LIMITS) as Array<Exclude<keyof Config, 'calcSalaryMode' | 'promo'>>) {
     const [min, max] = CONFIG_LIMITS[key];
     const value = num(raw[key], CONFIG_FALLBACK[key], min, max);
     if (typeof raw[key] !== 'number' || !Number.isFinite(raw[key] as number) || value !== raw[key]) {
@@ -114,6 +114,19 @@ function sanitizeConfig(raw: Record<string, unknown>, warnings: string[]): Confi
   }
   if (config.calcSalaryMode && config.weeklyHours > 0 && config.hourlyRate === 0 && config.monthlySalary > 0) {
     config.hourlyRate = Math.round(config.monthlySalary / (config.weeklyHours * 4.33));
+  }
+
+  // Spec 038 (v4): promocion del admin (opcional). Se sanea aparte porque no es un
+  // numero simple: { desde, pct }.
+  const promoRaw = isRecord(raw.promo) ? raw.promo : null;
+  if (promoRaw) {
+    const pct = num(promoRaw.pct, 0, 0, 100);
+    const desde = int(promoRaw.desde, 1, 1, 1e9);
+    if (pct > 0 && Number.isFinite(desde)) {
+      config.promo = { desde, pct };
+    } else {
+      warnings.push('config.promo invalido; se ignoro.');
+    }
   }
 
   return config;
