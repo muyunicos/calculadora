@@ -86,10 +86,10 @@ export function metaDeItem(
 ): Record<string, unknown> | null {
   const meta: Record<string, unknown> = {};
   if (item.title) meta.titulo = item.title;
-  // La descripcion del visor es la automatica (material · forma · medida) si el
-  // consumidor la provee; si no, cae al texto de la foto.
-  const desc = descripcion || item.caption;
-  if (desc) meta.descripcion = desc;
+  // La descripcion son LINEAS: primero el texto que escribio el admin (si lo hay) y
+  // despues la automatica (material · forma · medida). El motor pinta una por entrada.
+  const desc = [item.caption, descripcion].filter((d): d is string => !!d);
+  if (desc.length) meta.descripcion = desc;
   if (pricing) {
     // Un SOLO precio: el total del lote de referencia, con el tachado del lote comprando
     // de a una plancha. Sin etiquetas "Regular/Por mayor": el tamanio lo da la nota.
