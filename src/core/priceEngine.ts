@@ -1,4 +1,4 @@
-import type { Config, DeliveryOption, DesignOption, GalleryPricing, Material, Order, PriceResult, ShapesCatalog } from '../types';
+import type { Config, DeliveryOption, DesignOption, GalleryPricing, Material, Order, PriceResult, Promo, PromoElegida, ShapesCatalog } from '../types';
 import { calcA4Layout } from './a4Layout';
 
 // --- HELPERS NUMÉRICOS ---
@@ -25,7 +25,7 @@ const rectMode = (order: Order): 'preciso' | 'economico' =>
 // distintos `order`).
 //
 // La lógica es una portación fiel del cálculo original que vivía en un useEffect.
-export function calcularPrecio(
+function calcularPrecioNeto(
   order: Order,
   config: Config,
   materials: Material[],
@@ -130,6 +130,149 @@ export function calcularPrecio(
   };
 }
 
+/** Normaliza la categoria del pedido (el catalogo usa Circulares/Formas; el
+ * rectangular vive aparte en customRectW/H). */
+function categoriaPedido(order: Order): string {
+  return order.shapeType === 'Rectangulares' ? 'Rectangulares' : String(order.shapeType || '');
+}
+
+/** Lados del sticker en cm (Infinity = desconocido). */
+function ladosCm(order: Order, shapesCatalog: ShapesCatalog): { w: number; h: number } {
+  if (order.shapeType === 'Rectangulares') {
+    const w = parseFloat(String(order.customRectW ?? '').replace(',', '.'));
+    const h = parseFloat(String(order.customRectH ?? '').replace(',', '.'));
+    return { w: Number.isFinite(w) && w > 0 ? w : Infinity, h: Number.isFinite(h) && h > 0 ? h : Infinity };
+  }
+  const item = shapesCatalog[order.shapeType]?.[order.sizeIndex];
+  const texto = String((item && item.size) || '').toLowerCase().replace(/,/g, '.');
+  const nums = (texto.match(/\d+(?:\.\d+)?|\.\d+/g) || []).map(Number).filter((n) => Number.isFinite(n) && n > 0);
+  if (nums.length === 0) return { w: Infinity, h: Infinity };
+  return { w: nums[0], h: nums.length > 1 ? nums[1] : nums[0] };
+}
+
+/** Lado dentro del rango declarado (extremo ausente = abierto). */
+function ladoEnRango(valor: number, min?: number, max?: number): boolean {
+  if (!Number.isFinite(valor)) return true;
+  if (typeof min === 'number' && Number.isFinite(min) && valor < min) return false;
+  if (typeof max === 'number' && Number.isFinite(max) && valor > max) return false;
+  return true;
+}
+
+/** Aplica esta promo a este pedido? (material + forma + TAMANO ambos lados + planchas) */
+export function promoAplicaA(
+  promo: Promo,
+  order: Order,
+  shapesCatalog: ShapesCatalog,
+  totalStickers?: number,
+): boolean {
+  if (promo.activa === false) return false;
+  if (clamp(safeNum(promo.pct), 0, 100) <= 0) return false;
+  const desde = Math.max(1, Math.round(safeNum(promo.desde)));
+  // La promo vieja (v4) declaraba UNIDADES; la nueva (v5) declara PLANCHAS.
+  const cantidad = promo.desdeUnidades
+    ? Math.max(0, Math.round(safeNum(totalStickers)))
+    : Math.max(1, Math.round(safeNum(order.sheetsQty, 1)));
+  if (cantidad < desde) return false;
+  const material = String(promo.material || 'todos');
+  if (material !== 'todos' && material !== String(order.materialId || '')) return false;
+  const forma = String(promo.forma || 'todas');
+  if (forma !== 'todas' && forma !== categoriaPedido(order)) return false;
+  const lados = ladosCm(order, shapesCatalog);
+  return ladoEnRango(lados.w, promo.tamMin, promo.tamMax) && ladoEnRango(lados.h, promo.tamMin, promo.tamMax);
+}
+
+/** Promos del config: la lista nueva o, si no hay, la vieja `promo` unica como
+ * lista de un elemento (compatibilidad con configs ya guardadas). */
+export function promosDe(config: Config): Promo[] {
+  const lista = Array.isArray(config.promos) ? config.promos.filter((p): p is Promo => !!p && typeof p === 'object') : [];
+  if (lista.length > 0) return lista;
+  const vieja = config.promo;
+  if (!vieja || !Number.isFinite(vieja.pct) || !Number.isFinite(vieja.desde)) return [];
+  return [{ id: 'legacy', material: 'todos', forma: 'todas', desde: vieja.desde, pct: vieja.pct, desdeUnidades: true }];
+}
+
+/**
+ * Promo que gana: la de **mayor pct** entre las que aplican (desempate: la primera
+ * declarada). Devuelve null si ninguna aplica.
+ */
+export function elegirPromo(order: Order, config: Config, shapesCatalog: ShapesCatalog, totalStickers?: number): Promo | null {
+  let mejor: Promo | null = null;
+  for (const promo of promosDe(config)) {
+    if (!promoAplicaA(promo, order, shapesCatalog, totalStickers)) continue;
+    if (!mejor || clamp(safeNum(promo.pct), 0, 100) > clamp(safeNum(mejor.pct), 0, 100)) mejor = promo;
+  }
+  return mejor;
+}
+/**
+ * Promocion del admin (spec 038, Enmienda v4): un descuento fijo en % que se aplica
+ * desde una cantidad de unidades. **Gana solo si supera** al descuento por cantidad
+ * (el cliente paga el mejor de los dos); si no, no se aplica.
+ *
+ * Se resuelve sobre el TOTAL del pedido (`sheetsQty` incluida), asi el carrito y la
+ * tabla de precios cobran lo mismo que la vidriera.
+ */
+/**
+ * Promo que se aplica a este pedido, ya validada contra el descuento por cantidad.
+ *
+ * `totalStickers` se mantiene en la firma por compatibilidad: hoy el filtro de
+ * cantidad mira `order.sheetsQty` (planchas), que es lo que el admin declara.
+ * Devuelve null si ninguna promo aplica o si el descuento por cantidad es mejor.
+ */
+export function promoAplicable(
+  order: Order,
+  config: Config,
+  shapesCatalog: ShapesCatalog,
+  totalStickers: number,
+): PromoElegida | null {
+  const elegida = elegirPromo(order, config, shapesCatalog, totalStickers);
+  if (!elegida) return null;
+  const desde = Math.max(1, Math.round(safeNum(elegida.desde)));
+  const pct = clamp(safeNum(elegida.pct), 0, 100);
+  if (pct <= 0 || totalStickers <= 0) return null;
+  return { id: String(elegida.id || ''), desde, pct, ahorroCantidad: 0 };
+}
+
+/**
+ * Precio final del pedido. Envuelve el calculo neto y le aplica la promo del admin
+ * cuando corresponde (spec 038, D8: `max(promo, descuento por cantidad)`).
+ *
+ * `promo` viaja en el resultado para que la interfaz pueda avisar que el precio ya
+ * viene con descuento (y `precioLista` es el de tabla, sin promo).
+ */
+export function calcularPrecio(
+  order: Order,
+  config: Config,
+  materials: Material[],
+  shapesCatalog: ShapesCatalog,
+  deliveryOptions: DeliveryOption[],
+  designOptions: DesignOption[],
+): PriceResult | null {
+  const neto = calcularPrecioNeto(order, config, materials, shapesCatalog, deliveryOptions, designOptions);
+  if (!neto) return null;
+
+  const promo = promoAplicable(order, config, shapesCatalog, neto.totalStickers);
+  if (!promo) return neto;
+
+  // El descuento por cantidad ya esta dentro de `neto.finalPrice` (baja por plancha);
+  // la promo se compara contra el precio de 1 plancha por unidad, que es la referencia
+  // que ve el cliente en la vidriera.
+  const base = calcularPrecioNeto({ ...order, sheetsQty: 1 }, config, materials, shapesCatalog, deliveryOptions, designOptions);
+  if (!base || base.pricePerSticker <= 0) return neto;
+  const ahorroCantidad = ((base.pricePerSticker - neto.pricePerSticker) / base.pricePerSticker) * 100;
+  if (promo.pct <= ahorroCantidad) return neto;
+
+  const finalPrice = round2(base.pricePerSticker * neto.totalStickers * (1 - promo.pct / 100));
+  if (!(finalPrice < neto.finalPrice)) return neto;
+
+  return {
+    ...neto,
+    precioLista: neto.finalPrice,
+    promo: { id: promo.id, desde: promo.desde, pct: promo.pct, ahorroCantidad: round2(ahorroCantidad * 100) / 100 },
+    finalPrice,
+    pricePerSheet: round2(finalPrice / Math.max(1, Math.round(safeNum(order.sheetsQty, 1)))),
+    pricePerSticker: round2(finalPrice / neto.totalStickers),
+  };
+}
 // Calcula la complejidad automática de corte según unidades por hoja (1..10).
 export function autoComplexity(qtyStickersPerSheet: number): number {
   return Math.max(1, Math.min(10, Math.ceil(qtyStickersPerSheet / 10)));
@@ -137,23 +280,7 @@ export function autoComplexity(qtyStickersPerSheet: number): number {
 
 // Precio de una foto de la galería para mostrarlo de forma marketinera: compara el
 // $/unidad a 1 plancha (caro) contra una cantidad de referencia (barato) y el ahorro.
-/**
- * Promocion del admin (spec 038, Enmienda v4): un descuento fijo en % que se aplica
- * desde una cantidad de unidades y **solo gana si supera** al descuento por
- * cantidad (FR: el cliente ve el mejor precio de los dos).
- */
-function resolverPromo(
-  order: Order,
-  config: Config,
-  totalStickers: number
-): { desde: number; pct: number } | null {
-  const promo = config.promo;
-  if (!promo || !Number.isFinite(promo.pct) || !Number.isFinite(promo.desde)) return null;
-  const desde = Math.max(1, Math.round(promo.desde as number));
-  const pct = clamp(promo.pct as number, 0, 100);
-  if (pct <= 0 || totalStickers < desde) return null;
-  return { desde, pct };
-}
+const resolverPromo = (order: Order, config: Config, shapesCatalog: ShapesCatalog, totalStickers: number) => promoAplicable(order, config, shapesCatalog, totalStickers);
 
 // La complejidad se recalcula sola (igual que al cargar el pedido), así no depende
 // del valor neutro que trae el código.
@@ -187,6 +314,8 @@ export function galleryPricing(
   );
   if (!base || !max || base.pricePerSticker <= 0) return null;
 
+  // Spec 038 (D8): `max` ya viene con la promo si gano (calcularPrecio la aplica), asi que
+  // el ahorro y el total de la vidriera coinciden con lo que se cobra.
   return {
     perUnit: max.pricePerSticker,
     perUnitBase: base.pricePerSticker,
@@ -194,7 +323,7 @@ export function galleryPricing(
     totalStickers: max.totalStickers,
     sheets: refSheets,
     savingsPct: ((base.pricePerSticker - max.pricePerSticker) / base.pricePerSticker) * 100,
-    promo: resolverPromo(order, config, max.totalStickers),
+    promo: max.promo ? { desde: max.promo.desde, pct: max.promo.pct } : null,
   };
 }
 

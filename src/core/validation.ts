@@ -6,6 +6,7 @@ import type {
   GalleryItem,
   Material,
   PlantillaCotizador,
+  Promo,
   RangoCm,
   ShapeItem,
   ShapesCatalog,
@@ -49,7 +50,7 @@ const CONFIG_FALLBACK: Config = {
 
 // [mínimo, máximo] por campo numérico de Config (mismos topes que el schema
 // anterior, pero ahora se recortan en lugar de rechazar todo el archivo).
-const CONFIG_LIMITS: Record<Exclude<keyof Config, 'calcSalaryMode' | 'promo'>, [number, number]> = {
+const CONFIG_LIMITS: Record<Exclude<keyof Config, 'calcSalaryMode' | 'promo' | 'promos'>, [number, number]> = {
   monthlySalary: [0, 1e9],
   weeklyHours: [0, 168],
   hourlyRate: [0, 1e7],
@@ -96,7 +97,7 @@ function sanitizeConfig(raw: Record<string, unknown>, warnings: string[]): Confi
   const config: Config = { ...CONFIG_FALLBACK };
   config.calcSalaryMode = bool(raw.calcSalaryMode, CONFIG_FALLBACK.calcSalaryMode);
 
-  for (const key of Object.keys(CONFIG_LIMITS) as Array<Exclude<keyof Config, 'calcSalaryMode' | 'promo'>>) {
+  for (const key of Object.keys(CONFIG_LIMITS) as Array<Exclude<keyof Config, 'calcSalaryMode' | 'promo' | 'promos'>>) {
     const [min, max] = CONFIG_LIMITS[key];
     const value = num(raw[key], CONFIG_FALLBACK[key], min, max);
     if (typeof raw[key] !== 'number' || !Number.isFinite(raw[key] as number) || value !== raw[key]) {
@@ -116,6 +117,32 @@ function sanitizeConfig(raw: Record<string, unknown>, warnings: string[]): Confi
     config.hourlyRate = Math.round(config.monthlySalary / (config.weeklyHours * 4.33));
   }
 
+  // Spec 038 (v5): lista de promos con filtros. Se sanea aparte porque no es un
+  // numero simple: cada fila es { material, forma, tamMin, tamMax, desde, pct, activa }.
+  const promosRaw = Array.isArray(raw.promos) ? raw.promos : [];
+  const promos: Promo[] = [];
+  promosRaw.forEach((fila, i) => {
+    if (!isRecord(fila)) return;
+    const pct = num(fila.pct, 0, 0, 100);
+    const desde = int(fila.desde, 1, 1, 100000);
+    if (pct <= 0) {
+      warnings.push(`config.promos[${i}] sin descuento valido; se ignoro.`);
+      return;
+    }
+    const tamMin = fila.tamMin === undefined || fila.tamMin === null ? undefined : num(fila.tamMin, 0, 0, 10000);
+    const tamMax = fila.tamMax === undefined || fila.tamMax === null ? undefined : num(fila.tamMax, 0, 0, 10000);
+    promos.push({
+      id: str(fila.id, '').trim() || `promo-${i + 1}`,
+      material: str(fila.material, 'todos').trim() || 'todos',
+      forma: str(fila.forma, 'todas').trim() || 'todas',
+      ...(tamMin && tamMin > 0 ? { tamMin } : {}),
+      ...(tamMax && tamMax > 0 ? { tamMax } : {}),
+      desde,
+      pct,
+      activa: fila.activa === undefined ? true : bool(fila.activa, true),
+    });
+  });
+  if (promos.length > 0) config.promos = promos;
   // Spec 038 (v4): promocion del admin (opcional). Se sanea aparte porque no es un
   // numero simple: { desde, pct }.
   const promoRaw = isRecord(raw.promo) ? raw.promo : null;

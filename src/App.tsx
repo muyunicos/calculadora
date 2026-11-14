@@ -972,6 +972,9 @@ const App = () => {
               <AdminCostsPanel
                 config={config}
                 handleConfigChange={handleConfigChange}
+                onConfigChange={setConfig}
+                materials={materials}
+                shapesCatalog={shapesCatalog}
               />
             )}
 

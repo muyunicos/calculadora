@@ -330,7 +330,7 @@ function mu_calc_decode_order($code, $config) {
  * Precio final del pedido (port de calcularPrecio). null si el pedido no se
  * puede cotizar (material/opción inexistente, 0 unidades por hoja, etc.).
  */
-function mu_calc_compute_price($order, $config) {
+function mu_calc_compute_price($order, $config, $sinPromo = false) {
     $cfg = isset($config['config']) && is_array($config['config']) ? $config['config'] : array();
     $materials = isset($config['materials']) && is_array($config['materials']) ? $config['materials'] : array();
     $catalog = isset($config['shapesCatalog']) && is_array($config['shapesCatalog']) ? $config['shapesCatalog'] : array();
@@ -441,15 +441,104 @@ function mu_calc_compute_price($order, $config) {
     $profitAmount = $totalCost * ($profitMargin / 100);
     $finalPrice = mu_calc_round2($totalCost + $profitAmount);
 
+// 7. Promos del admin (spec 038, v5): lista con filtros (material, forma, tamano
+    // ambos lados, planchas). Gana la de MAYOR pct; solo se aplica si supera al
+    // descuento por cantidad. Mantiene `promo` (v4) como lista de un elemento.
+    $precioLista = $finalPrice;
+    $promoAplicada = null;
+    $promos = array();
+    if (isset($cfg['promos']) && is_array($cfg['promos'])) {
+        $promos = $cfg['promos'];
+    } elseif (isset($cfg['promo']) && is_array($cfg['promo'])) {
+        $promos = array($cfg['promo'] + array('desdeUnidades' => true));
+    }
+    $mejor = null;
+    foreach ($promos as $promo) {
+        if (!is_array($promo)) { continue; }
+        if (mu_calc_promo_aplica($promo, $order, $catalog, $totalStickers) === false) { continue; }
+        $pct = mu_calc_clamp(mu_calc_num(isset($promo['pct']) ? $promo['pct'] : 0), 0, 100);
+        if ($mejor === null || $pct > $mejor['pct']) {
+            $mejor = array('desde' => max(1, (int) mu_calc_num(isset($promo['desde']) ? $promo['desde'] : 0)), 'pct' => $pct);
+        }
+    }
+    if ($sinPromo === false && $mejor !== null && $totalStickers > 0) {
+        $orderBase = $order;
+        $orderBase['sheetsQty'] = 1;
+        $base = mu_calc_compute_price($orderBase, $config, true);
+        if ($base !== null && $base['pricePerSticker'] > 0) {
+            $ahorroCantidad = (($base['pricePerSticker'] - $finalPrice / $totalStickers) / $base['pricePerSticker']) * 100;
+            if ($mejor['pct'] > $ahorroCantidad) {
+                $conPromo = mu_calc_round2($base['pricePerSticker'] * $totalStickers * (1 - $mejor['pct'] / 100));
+                if ($conPromo < $finalPrice) {
+                    $promoAplicada = array('desde' => $mejor['desde'], 'pct' => $mejor['pct'], 'ahorroCantidad' => mu_calc_round2($ahorroCantidad));
+                    $finalPrice = $conPromo;
+                }
+            }
+        }
+    }
     return array(
         'price' => $finalPrice,
+        'priceLista' => $precioLista,
+        'promo' => $promoAplicada,
         'totalStickers' => $totalStickers,
         'pricePerSticker' => $totalStickers > 0 ? mu_calc_round2($finalPrice / $totalStickers) : 0,
         'sheets' => $sheets,
     );
 }
 
-/** Atajo: código v1 -> precio recalculado en el servidor. null si no se puede. */
+/**
+ * Aplica esta promo al pedido? (spec 038, v5)
+ *
+ * Filtros: material, forma (categoria del catalogo), TAMANO ambos lados en cm y
+ * planchas minimas. `desdeUnidades` = true solo en la promo vieja (v4), que
+ * declaraba unidades en vez de planchas.
+ */
+function mu_calc_promo_aplica($promo, $order, $catalog, $totalStickers) {
+    if (isset($promo['activa']) && $promo['activa'] === false) { return false; }
+    $pct = mu_calc_clamp(mu_calc_num(isset($promo['pct']) ? $promo['pct'] : 0), 0, 100);
+    if ($pct <= 0) { return false; }
+    $desde = max(1, (int) mu_calc_num(isset($promo['desde']) ? $promo['desde'] : 0));
+    $cantidad = !empty($promo['desdeUnidades'])
+        ? (int) mu_calc_num($totalStickers)
+        : max(1, (int) mu_calc_num(isset($order['sheetsQty']) ? $order['sheetsQty'] : 1));
+    if ($cantidad < $desde) { return false; }
+
+    $material = isset($promo['material']) ? (string) $promo['material'] : 'todos';
+    if ($material !== 'todos' && $material !== (string) (isset($order['materialId']) ? $order['materialId'] : '')) { return false; }
+
+    $forma = isset($promo['forma']) ? (string) $promo['forma'] : 'todas';
+    $categoria = (isset($order['shapeType']) && $order['shapeType'] === 'Rectangulares')
+        ? 'Rectangulares' : (string) (isset($order['shapeType']) ? $order['shapeType'] : '');
+    if ($forma !== 'todas' && $forma !== $categoria) { return false; }
+
+    // Lados en cm (Infinity si no se pueden resolver: el rango queda abierto).
+    if ($categoria === 'Rectangulares') {
+        $w = (float) str_replace(',', '.', (string) (isset($order['customRectW']) ? $order['customRectW'] : ''));
+        $h = (float) str_replace(',', '.', (string) (isset($order['customRectH']) ? $order['customRectH'] : ''));
+        $ladoW = $w > 0 ? $w : INF;
+        $ladoH = $h > 0 ? $h : INF;
+    } else {
+        $item = isset($catalog[$categoria][(int) $order['sizeIndex']]) ? $catalog[$categoria][(int) $order['sizeIndex']] : null;
+        $texto = strtolower((string) (isset($item['size']) ? $item['size'] : ''));
+        $texto = str_replace(',', '.', $texto);
+        preg_match_all('/\\d+(?:\\.\\d+)?|\\.\\d+/', $texto, $m);
+        $nums = array();
+        foreach ($m[0] as $n) { if (is_numeric($n) && (float) $n > 0) { $nums[] = (float) $n; } }
+        if (count($nums) === 0) { $ladoW = INF; $ladoH = INF; }
+        else { $ladoW = $nums[0]; $ladoH = count($nums) > 1 ? $nums[1] : $nums[0]; }
+    }
+
+    $min = isset($promo['tamMin']) && $promo['tamMin'] !== null ? (float) $promo['tamMin'] : null;
+    $max = isset($promo['tamMax']) && $promo['tamMax'] !== null ? (float) $promo['tamMax'] : null;
+    foreach (array($ladoW, $ladoH) as $lado) {
+        if (is_infinite($lado)) { continue; }
+        if ($min !== null && $min > 0 && $lado < $min) { return false; }
+        if ($max !== null && $max > 0 && $lado > $max) { return false; }
+    }
+    return true;
+}
+
+/** Atajo: código v1 -> precio recalculado en el servidor. null si no se puede. *//** Atajo: código v1 -> precio recalculado en el servidor. null si no se puede. */
 function mu_calc_price_from_code($orderCode) {
     $config = mu_calc_load_config();
     if ($config === null) {

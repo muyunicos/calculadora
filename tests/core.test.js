@@ -577,7 +577,7 @@ test('spec 038 (v4): la promo gana solo si supera al descuento por cantidad', ()
   // Promo por debajo del descuento por cantidad: NO gana (sigue el de cantidad).
   const menor = galleryPricing(tinyOrder, { ...tinyConfig, promo: { desde: 40, pct: 1 } }, [tinyMaterial], tinyCatalog, tinyDelivery, tinyDesign, 2);
   assert.ok(menor);
-  assert.equal(menor.promo.pct, 1);
+  assert.equal(menor.promo, null, 'no gana: no se reporta (el total sigue con el descuento por cantidad)');
   const metaMenor = mu.metaDeItem({ id: '1', image: 'a.png', order: 'v1' }, menor);
   assert.equal(metaMenor.badge.texto, '-' + Math.round(menor.savingsPct) + '%', 'gana el descuento por cantidad');
   assert.equal(metaMenor.badge.tono, 'tienda');
@@ -596,6 +596,106 @@ test('spec 038 (v4): la promo gana solo si supera al descuento por cantidad', ()
   assert.equal(poca.promo, null, 'no llega al minimo de unidades');
 });
 
+
+test('spec 038 (v5): las promos filtran por material, forma, tamano y planchas', () => {
+  const pe = loadModule('src/core/priceEngine.ts');
+  // Mismo pedido del caso base: Circulares, 5 cm, 20 u por plancha, material m1.
+  const orden = { ...tinyOrder, shapeType: 'Circulares', sizeIndex: 0, sheetsQty: 3 };
+  const catalogo = { Circulares: [{ size: '5,0 cm', qty: 20, code: 10, visible: true }] };
+  const base = { ...tinyConfig, promos: [] };
+
+  // Sin promos: no aplica nada.
+  assert.equal(pe.elegirPromo(orden, base, catalogo), null);
+
+  // Filtro por material que no coincide.
+  const otroMaterial = { ...base, promos: [{ id: 'p1', material: 'otro', forma: 'todas', desde: 1, pct: 50 }] };
+  assert.equal(pe.elegirPromo(orden, otroMaterial, catalogo), null, 'material distinto no aplica');
+
+  // Filtro por forma que no coincide (el pedido es Circulares).
+  const otraForma = { ...base, promos: [{ id: 'p2', material: 'todos', forma: 'Rectangulares', desde: 1, pct: 50 }] };
+  assert.equal(pe.elegirPromo(orden, otraForma, catalogo), null, 'forma distinta no aplica');
+
+  // Filtro por tamano: 5 cm esta fuera de 3..4.
+  const tamFuera = { ...base, promos: [{ id: 'p3', material: 'todos', forma: 'todas', tamMin: 3, tamMax: 4, desde: 1, pct: 50 }] };
+  assert.equal(pe.elegirPromo(orden, tamFuera, catalogo), null, 'tama\u00f1o fuera de rango no aplica');
+
+  // Filtro por tamano: 5 cm entra en 4..6.
+  const tamDentro = { ...base, promos: [{ id: 'p4', material: 'todos', forma: 'todas', tamMin: 4, tamMax: 6, desde: 1, pct: 50 }] };
+  assert.ok(pe.elegirPromo(orden, tamDentro, catalogo), 'tama\u00f1o dentro de rango aplica');
+
+  // Filtro por planchas: 3 planchas no llegan a 5.
+  const pocas = { ...base, promos: [{ id: 'p5', material: 'todos', forma: 'todas', desde: 5, pct: 50 }] };
+  assert.equal(pe.elegirPromo(orden, pocas, catalogo), null, 'no llega a las planchas minimas');
+
+  // Gana la de MAYOR pct (no la primera declarada).
+  const dos = { ...base, promos: [
+    { id: 'menor', material: 'todos', forma: 'todas', desde: 1, pct: 10 },
+    { id: 'mayor', material: 'todos', forma: 'todas', desde: 1, pct: 40 },
+  ] };
+  assert.equal(pe.elegirPromo(orden, dos, catalogo).id, 'mayor', 'gana la de mayor descuento');
+
+  // Promo inactiva no aplica.
+  const inactiva = { ...base, promos: [{ id: 'off', material: 'todos', forma: 'todas', desde: 1, pct: 90, activa: false }] };
+  assert.equal(pe.elegirPromo(orden, inactiva, catalogo), null, 'inactiva no aplica');
+
+  // El rectangular resuelve sus lados con customRectW/H (ambos dentro del rango).
+  const rect = { ...tinyOrder, shapeType: 'Rectangulares', sizeIndex: -1, customRectW: 7, customRectH: 5, sheetsQty: 2 };
+  const rectOk = { ...base, promos: [{ id: 'r1', material: 'todos', forma: 'Rectangulares', tamMin: 4, tamMax: 8, desde: 1, pct: 30 }] };
+  assert.ok(pe.elegirPromo(rect, rectOk, catalogo), 'rectangular dentro del rango por ambos lados');
+  const rectFuera = { ...base, promos: [{ id: 'r2', material: 'todos', forma: 'Rectangulares', tamMin: 6, tamMax: 8, desde: 1, pct: 30 }] };
+  assert.equal(pe.elegirPromo(rect, rectFuera, catalogo), null, 'un lado fuera alcanza para descartar');
+});
+
+test('spec 038 (v5): paridad TS/PHP con promos (gana, no gana y desempate)', () => {
+  if (!phpAvailable) return;
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'assets/datos_config.json'), 'utf8'));
+  const order = (code) => decodeAnyOrder(code, data.materials, data.shapesCatalog, data.deliveryOptions, data.designOptions);
+  // Circulares 5 cm (code 50), material m2 (code 10): 5 planchas de 21 u.
+  const circulares = 'v1.m10.s50.q5.f1.d0.c7';
+  const phpCon = (promos) => {
+    const raw = execFileSync('php', [path.join(__dirname, 'precio-paridad.php'), circulares, JSON.stringify({ promos })], { cwd: root, encoding: 'utf8' });
+    return JSON.parse(raw);
+  };
+  const tsCon = (promos) => {
+    const o = order(circulares);
+    const pricing = calcularPrecio(o, { ...data.config, promos }, data.materials, data.shapesCatalog, data.deliveryOptions, data.designOptions);
+    return pricing;
+  };
+
+  // 1) Sin promos: los dos coinciden y no hay descuento.
+  const phpVacio = phpCon([]);
+  const tsVacio = tsCon([]);
+  assert.ok(!phpVacio.promo, 'PHP: sin promos no hay descuento');
+  assert.ok(!tsVacio.promo, 'TS: sin promos no hay descuento');
+  assert.ok(Math.abs(phpVacio.price - tsVacio.finalPrice) <= 0.01, 'sin promo: TS ' + tsVacio.finalPrice + ' vs PHP ' + phpVacio.price);
+
+  // 2) 40%: el descuento por cantidad es mayor (42%) -> NO aplica en ninguno.
+  const plaza40 = [{ id: 'p40', material: 'todos', forma: 'Circulares', tamMin: 3, tamMax: 6, desde: 1, pct: 40 }];
+  assert.equal(phpCon(plaza40).promo, null, 'PHP: 40% no supera al descuento por cantidad');
+  assert.ok(!tsCon(plaza40).promo, 'TS: 40% no supera al descuento por cantidad');
+
+  // 3) 60%: gana en los dos y el precio coincide.
+  const plaza60 = [{ id: 'p60', material: 'todos', forma: 'Circulares', tamMin: 3, tamMax: 6, desde: 1, pct: 60 }];
+  const php60 = phpCon(plaza60);
+  const ts60 = tsCon(plaza60);
+  assert.equal(php60.promo.pct, 60);
+  assert.ok(ts60.promo, 'TS: la promo viaja en el resultado');
+  assert.equal(ts60.promo.pct, 60);
+  assert.ok(Math.abs(php60.price - ts60.finalPrice) <= 0.01, 'con promo: TS ' + ts60.finalPrice + ' vs PHP ' + php60.price);
+  assert.ok(ts60.precioLista > ts60.finalPrice, 'el precio de lista queda arriba');
+
+  // 4) Desempate: con 60% y 75% gana el 75% en los dos.
+  const dos = [plaza60[0], { id: 'p75', material: 'todos', forma: 'Circulares', tamMin: 3, tamMax: 6, desde: 1, pct: 75 }];
+  assert.equal(phpCon(dos).promo.pct, 75, 'PHP: gana la mayor');
+  assert.ok(tsCon(dos).promo, 'TS: hay promo en el desempate');
+  assert.equal(tsCon(dos).promo.pct, 75, 'TS: gana la mayor');
+  assert.ok(Math.abs(phpCon(dos).price - tsCon(dos).finalPrice) <= 0.01);
+
+  // 5) Forma que no coincide: no aplica en ninguno.
+  const otra = [{ id: 'r', material: 'todos', forma: 'Rectangulares', tamMin: 3, tamMax: 6, desde: 1, pct: 90 }];
+  assert.equal(phpCon(otra).promo, null, 'PHP: forma distinta no aplica');
+  assert.ok(!tsCon(otra).promo, 'TS: forma distinta no aplica');
+});
 test('spec 038 (C): mockupsDePlantilla ordena PDF primero y filtra por requiere', () => {
   const mu = loadModule('src/core/mockups.ts');
   const payload = (pdf, n) => ({ activo: true, pdf, mockups: Array.from({ length: n }, (_, i) => ({ id: `${pdf}-${i}`, capas: [] })), grupos: [], imagenes: {}, revision: pdf });

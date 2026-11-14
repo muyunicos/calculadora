@@ -1,5 +1,42 @@
 // Tipos centrales de la calculadora. Antes todo era `any` implícito.
 
+/**
+ * Promocion del admin (spec 038, Enmienda v5). Un % de descuento que se aplica
+ * **solo si supera** al descuento por cantidad, y unicamente a los pedidos que
+ * cumplen TODOS los filtros declarados.
+ *
+ * - `material`: `todos` o el id de un material del catalogo.
+ * - `forma`: `todas`, `Circulares`, `Formas` o `Rectangulares` (la categoria del
+ *   pedido; `Rectangulares` se resuelve por `customRectW/H`).
+ * - `tamMin`/`tamMax`: cm. Vals **ambos lados** del sticker (en circulos y
+ *   figuras de un solo numero, ese valor va en los dos). Ausente = abierto.
+ * - `desde`: planchas minimas (`order.sheetsQty`).
+ * - `pct`: 0..100.
+ * - `activa`: por defecto true.
+ *
+ * Con varias promos que matchean gana la de **mayor `pct`** (desempate: la primera).
+ */
+export interface Promo {
+  id: string;
+  material: string;
+  forma: string;
+  tamMin?: number;
+  tamMax?: number;
+  desde: number;
+  pct: number;
+  activa?: boolean;
+  /** v4: el `desde` declaraba UNIDADES (no planchas). Solo para la promo vieja. */
+  desdeUnidades?: boolean;
+}
+
+/** Resultado de `promoAplicable`: la promo elegida + el ahorro por cantidad. */
+export interface PromoElegida {
+  id: string;
+  desde: number;
+  pct: number;
+  ahorroCantidad: number;
+}
+
 export interface Config {
   calcSalaryMode: boolean;
   monthlySalary: number;
@@ -16,9 +53,11 @@ export interface Config {
   timeDesignBasic: number;
   timeDesignCustom: number;
   galleryRefSheets: number;
-  // Spec 038 (v4): promocion del admin. Un % de descuento fijo desde N unidades;
-  // gana solo si supera al descuento por cantidad (ver core/priceEngine).
+  // Spec 038 (v4/v5): promo UNICA (deprecada). Se mantiene como alias de una sola
+  // promo para no romper configs guardadas; el motor lee primero `promos`.
   promo?: { desde: number; pct: number } | null;
+  // Spec 038 (v5): lista de promos con filtros (material, forma, tamano, planchas).
+  promos?: Promo[] | null;
 }
 
 export interface Material {
@@ -365,4 +404,8 @@ export interface PriceResult {
   finalPrice: number;
   pricePerSheet: number;
   pricePerSticker: number;
+  /** Spec 038 (D8): precio de lista SIN la promo (solo cambia si la promo gano). */
+  precioLista?: number;
+  /** Spec 038 (D8): promo aplicada (solo si gano al descuento por cantidad). */
+  promo?: PromoElegida | null;
 }
