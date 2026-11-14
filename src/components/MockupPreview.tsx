@@ -23,6 +23,8 @@ interface MockupPreviewProps {
   mockupsPdf: MockupsPdf | null;
   /** URL del arte del comprador (original). Sin arte se pinta el hueco. */
   arteUrl?: string;
+  /** Spec 038 (D3): cual de los mockups del payload se dibuja (default 0). */
+  indice?: number;
   lado?: number;
   className?: string;
 }
@@ -38,6 +40,7 @@ interface MockupPreviewProps {
  */
 export const MockupPreview: React.FC<MockupPreviewProps> = ({
   mockupsPdf,
+  indice = 0,
   arteUrl,
   lado = 300,
   className = '',
@@ -45,7 +48,7 @@ export const MockupPreview: React.FC<MockupPreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState('');
 
-  const capas: MockupCapaPdf[] = mockupsPdf?.mockups?.[0]?.capas ?? [];
+  const capas: MockupCapaPdf[] = mockupsPdf?.mockups?.[indice ?? 0]?.capas ?? [];
   const imagenes = mockupsPdf?.imagenes ?? {};
   const primerHueco = capas.find((c) => c && c.tipo === 'placeholder');
 

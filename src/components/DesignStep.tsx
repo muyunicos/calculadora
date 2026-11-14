@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-import { sizeToPx } from '../core/mockups';
+import { mockupsDePlantilla, sizeToPx } from '../core/mockups';
 import type { Diseno, MockupsPdf } from '../types';
 import type { PmuAssetsApi } from '../hooks/usePmuAssets';
 import { DesignFields } from './DesignFields';
@@ -23,6 +23,10 @@ export interface DesignStepProps {
   size: string;
   forma?: string;
   mockupsPdf: MockupsPdf | null;
+  /** Spec 038 (C): mockup propio de la plantilla (sin PDF). */
+  mockupLocal?: MockupsPdf | null;
+  /** Spec 038 (D5): condicion de VISIBILIDAD del mockup. */
+  requiere?: 'arte' | 'pdf' | null;
   /** Plantilla importada para esta categoria+tamano ('' = sin PDF). */
   pdf: string;
   /** Spec 038 (D1): grupo(s) del PDF que reciben el arte. */
@@ -44,6 +48,8 @@ export const DesignStep: React.FC<DesignStepProps> = ({
   size,
   forma,
   mockupsPdf,
+  mockupLocal,
+  requiere,
   pdf,
   grupo,
   diseno,
@@ -54,6 +60,17 @@ export const DesignStep: React.FC<DesignStepProps> = ({
   onSubiendo,
 }) => {
   const [itemKey, setItemKey] = useState(diseno?.itemKey ?? '');
+  // Spec 038 (D3/D5): mockups aplicables (PDF primero, despues el local) y el elegido.
+  const [sel, setSel] = useState(0);
+  const lista = mockupsDePlantilla(mockupsPdf, mockupLocal, {
+    requiere: requiere ?? null,
+    tieneArte: !!diseno,
+    tienePdf: pdf !== '',
+  });
+  const activo = lista.length > 0 ? Math.min(sel, lista.length - 1) : 0;
+  useEffect(() => {
+    if (sel > lista.length - 1) setSel(0);
+  }, [lista.length, sel]);
 
   useEffect(() => {
     onAbrir?.();
@@ -81,7 +98,27 @@ export const DesignStep: React.FC<DesignStepProps> = ({
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start">
-      <MockupPreview mockupsPdf={mockupsPdf} arteUrl={diseno?.url} />
+      <div className="space-y-2">
+        <MockupPreview
+          mockupsPdf={lista[activo]?.payload ?? null}
+          indice={lista[activo]?.indice ?? 0}
+          arteUrl={diseno?.url}
+        />
+        {lista.length > 1 && (
+          <div className="flex flex-wrap gap-1">
+            {lista.map((m, i) => (
+              <button
+                key={`${m.payload.pdf}-${m.indice}`}
+                type="button"
+                onClick={() => setSel(i)}
+                className={`px-2 py-1 rounded-md text-[11px] font-semibold border ${i === activo ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'}`}
+              >
+                {m.payload.mockups[m.indice]?.titulo || `Vista ${i + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <DesignFields
         categoria={categoria}
         size={size}

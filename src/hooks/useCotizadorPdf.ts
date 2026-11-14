@@ -103,6 +103,71 @@ export function useMockupsPdf(pdf: string): MockupsPdfApi {
   return { datos, cargando, error, recargar };
 }
 
+
+/** Definicion del mockup PROPIO (spec 038, C): lo que viaja a `op=mockups&local`. */
+export interface MockupLocalDef {
+  fondo: number;
+  hueco: { x: number; y: number; w: number; h: number; rot?: number };
+  forma: string;
+}
+
+/** Cache por definicion: la clave es el JSON del mockup local. */
+const cacheLocal = new Map<string, MockupsPdf>();
+
+/**
+ * Mockup PROPIO de la plantilla (spec 038, C): `op=mockups&local=<json>`.
+ *
+ * El servidor valida (fondo del catalogo, hueco 0..300, forma) y **sintetiza**
+ * el payload con la MISMA forma que `mockups_de_pdf`: el preview no cambia.
+ * Sin definicion (o sin puente) devuelve null y el paso sigue funcionando.
+ */
+export function useMockupLocal(def: MockupLocalDef | null | undefined): MockupsPdfApi {
+  const clave = def ? JSON.stringify(def) : '';
+  const [datos, setDatos] = useState<MockupsPdf | null>(() => (clave ? cacheLocal.get(clave) ?? null : null));
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!clave || !PMU_DISPONIBLE) {
+      setDatos(null);
+      return;
+    }
+    const previo = cacheLocal.get(clave);
+    if (previo) {
+      setDatos(previo);
+      return;
+    }
+    let vivo = true;
+    setCargando(true);
+    setError('');
+    post('mockups', { local: clave })
+      .then((respuesta) => {
+        if (!vivo) return;
+        const datosNuevos = respuesta as unknown as MockupsPdf;
+        cacheLocal.set(clave, datosNuevos);
+        setDatos(datosNuevos);
+      })
+      .catch((e) => {
+        if (!vivo) return;
+        setError(e instanceof Error ? e.message : String(e));
+        setDatos(null);
+      })
+      .finally(() => {
+        if (vivo) setCargando(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [clave, tick]);
+
+  const recargar = useCallback(() => {
+    if (clave) cacheLocal.delete(clave);
+    setTick((n) => n + 1);
+  }, [clave]);
+
+  return { datos, cargando, error, recargar };
+}
 /** Catalogo de PDFs importados con mockups (admin). */
 export async function listarPdfs(): Promise<PdfPlantilla[]> {
   const datos = await post('pdfs');

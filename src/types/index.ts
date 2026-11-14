@@ -191,6 +191,14 @@ export interface PlantillaCotizador {
   pdf: string;
   /** Spec 038 (D1): a que grupo(s) del PDF va el arte. 'todos' = todos (default). */
   grupo?: 'todos' | 'auto' | string;
+  /** Spec 038 (C): mockup PROPIO (sin PDF): fondo del catalogo + hueco + forma. */
+  mockup?: {
+    fondo: number;
+    hueco: { x: number; y: number; w: number; h: number; rot?: number };
+    forma: 'rectangulo' | 'circulo' | 'cuadrado' | 'ovalo';
+  };
+  /** Spec 038 (D5): condicion de VISIBILIDAD del mockup. */
+  requiere?: 'arte' | 'pdf' | null;
   /** Opcional: aplica solo si el PH cae dentro (los intermedios se resuelven solos). */
   rango?: RangoCm;
   visible?: boolean;

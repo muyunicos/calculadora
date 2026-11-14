@@ -14,7 +14,7 @@
 // Si una de las dos implementaciones cambia, una de las dos puertas falla.
 
 import { hex6Mayus } from './sha1';
-import type { GalleryPricing, TiraItem } from '../types';
+import type { GalleryPricing, MockupsPdf, TiraItem } from '../types';
 
 /** Lado maximo del lienzo: espejo de `PMU_Sesion::PH_MAX` y `Compositor::PH_MAX`. */
 export const PH_MAX = 3000;
@@ -147,4 +147,35 @@ export function formaDeCategoria(categoria: string, size?: string): 'auto' | 're
     return 'rectangulo';
   }
   return 'auto';
+}
+
+/** Seleccion de mockup: el payload que trae sus grupos/imagenes + el indice. */
+export interface MockupSeleccion {
+  payload: MockupsPdf;
+  indice: number;
+}
+
+/**
+ * Lista de mockups aplicables (spec 038, D3/D5).
+ *
+ * - Primero los del **PDF** (Editor, en su orden); despues el **local**.
+ * - `requiere` filtra por VISIBILIDAD: `arte` exige arte subido, `pdf` exige PDF.
+ * - Sin payloads devuelve [] (el preview cae al marco neutro, FR-036).
+ */
+export function mockupsDePlantilla(
+  pdfPayload: MockupsPdf | null | undefined,
+  localPayload: MockupsPdf | null | undefined,
+  opciones: { requiere?: 'arte' | 'pdf' | null; tieneArte?: boolean; tienePdf?: boolean } = {},
+): MockupSeleccion[] {
+  const requiere = opciones.requiere ?? null;
+  if (requiere === 'arte' && opciones.tieneArte === false) return [];
+  if (requiere === 'pdf' && opciones.tienePdf === false) return [];
+  const out: MockupSeleccion[] = [];
+  const sumar = (p: MockupsPdf | null | undefined) => {
+    if (!p || !Array.isArray(p.mockups)) return;
+    p.mockups.forEach((_, i) => out.push({ payload: p, indice: i }));
+  };
+  sumar(pdfPayload);
+  sumar(localPayload);
+  return out;
 }

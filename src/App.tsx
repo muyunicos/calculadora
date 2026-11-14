@@ -36,7 +36,7 @@ import { usePmuAssets } from './hooks/usePmuAssets';
 import { useClientIdeas } from './hooks/useClientIdeas';
 import { resolvePlantillaFor } from './core/plantillas';
 import { formaDeCategoria } from './core/mockups';
-import { useMockupsPdf } from './hooks/useCotizadorPdf';
+import { useMockupLocal, useMockupsPdf } from './hooks/useCotizadorPdf';
 import { SaveIndicator } from './components/SaveIndicator';
 import { infoBtnClass, resolveImage } from './utils/ui';
 
@@ -128,6 +128,7 @@ const App = () => {
   );
   const pdfSlug = plantillaActual?.pdf ?? '';
   const mockupsPdfApi = useMockupsPdf(pdfSlug);
+  const mockupLocalApi = useMockupLocal(plantillaActual?.mockup);
   // Modo de cálculo para formas rectangulares: 'preciso' (203x271mm) o 'economico' (210x297mm)
   // Usamos directamente order.rectCalcMode como fuente de verdad para evitar loops
   const rectCalcMode = order.rectCalcMode || 'preciso';
@@ -831,6 +832,8 @@ const App = () => {
                     size={sizeMockup}
                     forma={formaDiseno}
                     mockupsPdf={mockupsPdfApi.datos}
+                    mockupLocal={mockupLocalApi.datos}
+                    requiere={plantillaActual?.requiere ?? null}
                     pdf={pdfSlug}
                     grupo={plantillaActual?.grupo ?? 'todos'}
                     diseno={diseno}

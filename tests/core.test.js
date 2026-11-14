@@ -565,4 +565,18 @@ test('spec 038 (B): forma de la guia del cargador por categoria', () => {
   assert.equal(mu.formaDeCategoria('A Medida', '10x3 cm'), 'auto');
   assert.equal(mu.formaDeCategoria('Formas', '3 cm'), 'auto');
 });
+
+test('spec 038 (C): mockupsDePlantilla ordena PDF primero y filtra por requiere', () => {
+  const mu = loadModule('src/core/mockups.ts');
+  const payload = (pdf, n) => ({ activo: true, pdf, mockups: Array.from({ length: n }, (_, i) => ({ id: `${pdf}-${i}`, capas: [] })), grupos: [], imagenes: {}, revision: pdf });
+  const pdfP = payload('pdf', 2);
+  const localP = payload('', 1);
+  const lista = mu.mockupsDePlantilla(pdfP, localP, {});
+  assert.equal(lista.length, 3, 'suma los del PDF y el local');
+  assert.equal(lista[0].payload.pdf, 'pdf');
+  assert.equal(lista[2].payload.pdf, '');
+  assert.equal(mu.mockupsDePlantilla(pdfP, localP, { requiere: 'pdf', tienePdf: false }).length, 0);
+  assert.equal(mu.mockupsDePlantilla(pdfP, localP, { requiere: 'arte', tieneArte: false }).length, 0);
+  assert.equal(mu.mockupsDePlantilla(null, null, {}).length, 0);
+});
 console.log(`\n${passed} tests OK`);
