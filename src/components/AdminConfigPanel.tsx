@@ -31,18 +31,6 @@ export const AdminConfigPanel: React.FC<AdminConfigPanelProps> = ({
             <input type="number" name="packagingCost" value={config.packagingCost} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 transition-all" />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-600 mb-1.5">Promo de la Galería (% desde N unidades)</label>
-            <p className="text-xs text-slate-500 mb-2">Descuento fijo que gana solo si supera al descuento por cantidad (spec 038 v4).</p>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">% de descuento
-                <input type="number" name="promoPct" value={config.promo?.pct ?? 0} onChange={handleConfigChange} className="mt-1 w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" min="0" max="100" />
-              </label>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">Desde (unidades)
-                <input type="number" name="promoDesde" value={config.promo?.desde ?? 0} onChange={handleConfigChange} className="mt-1 w-full p-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50" min="1" />
-              </label>
-            </div>
-          </div>
-          <div>
             <label className="block text-sm font-semibold text-slate-600 mb-1.5">Planchas de Referencia (Galería)</label>
             <p className="text-xs text-slate-500 mb-2">Cantidad por defecto para mostrar precio de mayorista en la mini-galería (10 recomendado).</p>
             <input type="number" name="galleryRefSheets" value={config.galleryRefSheets} onChange={handleConfigChange} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-slate-50 transition-all" min="1" />
