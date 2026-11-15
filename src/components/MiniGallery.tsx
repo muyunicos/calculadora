@@ -15,6 +15,12 @@ interface MiniGalleryProps {
   // Descripcion automatica de la idea ("vinilo · circulares · 5cm"); opcional: si el
   // consumidor no la provee, la tira muestra solo el titulo y el precio.
   describe?: (orderCode: string) => string;
+  /** Spec 038 (K): categorias de la tira (las filtra el <select> del visor). */
+  categorias?: { id: string; titulo: string }[];
+  /** Spec 038 (K): estrella de favorito por item (indice) y borrado (opcionales). */
+  favoritos?: Record<number, boolean>;
+  onFavorito?: (indice: number, valor: boolean) => void;
+  onEliminar?: (indice: number) => void;
 }
 
 const fmt = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 2 });
@@ -84,7 +90,7 @@ function categoriaDe(it: GalleryItem, promo?: { pct: number } | null): string | 
 // una foto se abre un lightbox para verla en grande, con el precio destacado y un
 // botón para personalizar (cargar ese pedido como base). Pensada para el cliente
 // que no sabe qué elegir.
-const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, getPricing, describe }) => {
+const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, getPricing, describe, favoritos, onFavorito, onEliminar }) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   // Tira del MOTOR DEL TEMA (spec 019/020): `MU.coleccion` la pinta con el tema del
   // contenedor; sin motor (tema ausente) queda la tira propia de abajo.
@@ -122,7 +128,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         };
       }),
       indice: idx,
-      titulo: 'Ideas',
+      titulo: 'Sugerencias',
       // Spec 038 (D6): el <select> del visor filtra por categoria (Todos + las que existan).
       filtros: 'categoria',
       tono: 'claro',
@@ -164,7 +170,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
   useEffect(() => {
     const el = tiraRef.current;
     if (!el) return;
-    const datos = visibleItems.map((it) => {
+    const datos = visibleItems.map((it, idx) => {
       const p = getPricing(it.order, extractSheetsFromCode(it.order));
       return {
         url: resolveImage(it.image),
@@ -172,6 +178,15 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         etiqueta: it.title || it.caption || '',
         // Spec 038 (D6): categoria de la tarjeta.
         categoria: categoriaDe(it, p ? p.promo : null),
+        // Spec 038 (K): estrella de favorito (☆/★) sobre la foto.
+        favorito: favoritos ? favoritos[idx] === true : undefined,
+        // Spec 038 (K): boton de accion de la tarjeta (la misma que usa el visor).
+        acciones: [
+          {
+            etiqueta: 'Personalizar',
+            onAccion: () => onUse(it.order),
+          },
+        ],
         // Tema `cotizador`: descripcion automatica (material · forma · medida) y el
         // precio por unidades ("500 u x $16.720") en la misma linea.
         descripcion: describe ? describe(it.order) : '',
@@ -197,12 +212,12 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         layout: 'fila',
         navegable: true,
         preset: 'tarjeta',
-        // El titulo va en el velo (sobre la foto); el cuerpo lleva la descripcion
-        // automatica y el precio con unidades. Sin duplicar el titulo.
-        // Spec 038 (D6): `categoria` pinta la pastilla (PROMO/GUARDADO/COMPRADO).
-        slots: { titulo: false, etiqueta: true, categoria: true, descripcion: true, precio: true },
-        tamano: { ancho: 168, alto: 104 },
+        // Spec 038 (K): el boton Personalizar y la estrella van EN la tarjeta.
+        slots: { titulo: false, etiqueta: true, categoria: true, descripcion: true, precio: true, acciones: true },
+        tamano: { ancho: 168, alto: 150 },
         onAbrir: (i: number) => abrir(i),
+        onFavorito: onFavorito ? (i: number, valor: boolean) => onFavorito(i, valor) : undefined,
+        onEliminar: onEliminar ? (i: number) => onEliminar(i) : undefined,
       })
     );
     // `firmaTira` es la dependencia REAL: `visibleItems` es un array nuevo en cada render.
@@ -214,7 +229,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
     <div className="cl-card p-4" data-mu-tema="cotizador">
       <div className="flex items-center gap-2">
         <Images className="w-5 h-5 text-blue-600" />
-        <h4 className="font-bold text-slate-800 m-0">Ideas (opcional)</h4>
+        <h4 className="font-bold text-slate-800 m-0">Sugerencias</h4>
       </div>
       <p className="text-sm text-slate-500 mb-4">Podés elegir una base para personalizar a tu gusto.</p>
       <div ref={tiraRef} className={motor ? 'mu-gal-tira-cotizador' : 'hidden'} />

@@ -752,7 +752,18 @@ const App = () => {
               className="mb-4"
             />
           ) : (
-            <MiniGallery items={gallery} resolveImage={resolveImage} onUse={loadOrderFromCode} getPricing={getGalleryPricing} describe={describeOrder} />
+            <MiniGallery
+              items={gallery}
+              resolveImage={resolveImage}
+              onUse={loadOrderFromCode}
+              getPricing={getGalleryPricing}
+              describe={describeOrder}
+              favoritos={Object.fromEntries(gallery.map((g, i) => [i, ideas.favoritos.some((f) => f.tipo === 'tienda' && f.ref === g.id)]))}
+              onFavorito={(i, valor) => {
+                const g = gallery[i];
+                if (g) { void ideas.favorito('tienda', g.id, valor); }
+              }}
+            />
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

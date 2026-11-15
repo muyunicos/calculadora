@@ -38,7 +38,18 @@ export type MuItemColeccion = {
   descripcion?: string;
   // Precio por UNIDADES: `unidades` + `precio.total` pintan "500 u x $16.720".
   unidades?: number;
-  precio?: { valor: number; anterior?: number; total?: number };
+  precio?: { valor: number; anterior?: number; total?: number; promo?: string; promoOro?: boolean };
+  /** Spec 038 (D6): categoria de la celda (PROMO/GUARDADO/COMPRADO). */
+  categoria?: string;
+  /** Spec 038 (K): botones de accion de la celda. */
+  acciones?: { etiqueta: string; onAccion: (indice: number) => void }[];
+  /** Spec 038 (K): estrella de favorito de la celda. */
+  favorito?: boolean;
+};
+
+export type MuOpcionesColeccionAcc = MuOpcionesColeccion & {
+  onFavorito?: (indice: number, valor: boolean, item: MuItemColeccion) => void;
+  onEliminar?: (indice: number, item: MuItemColeccion) => void;
 };
 
 export type MuOpcionesColeccion = {
@@ -56,7 +67,7 @@ export type MuOpcionesColeccion = {
  * Monta la TIRA con el motor del tema (`MU.coleccion`, ambito 1). Devuelve false si el
  * motor no esta (dependencia blanda: queda la tira propia del componente).
  */
-export function montarColeccion(el: HTMLElement | null, opciones: MuOpcionesColeccion): boolean {
+export function montarColeccion(el: HTMLElement | null, opciones: MuOpcionesColeccionAcc): boolean {
   const mu = motorGaleria();
   if (!el || !mu || typeof mu.coleccion !== 'function') return false;
   el.innerHTML = '';
