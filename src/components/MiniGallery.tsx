@@ -200,8 +200,9 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
               // Badge de descuento con el formato de la tabla de ahorro ("-23%").
               // Spec 038 (v6): si manda la PROMO del admin, el badge va en ORO.
               promo: p.savingsPct > 0.5 ? '-' + Math.round(p.savingsPct) + '%' : undefined,
-              // Spec 038 (v6): ORO desde que la promo esta vigente (aunque la escala sea mayor).
-              promoOro: p.promoActiva === true || p.promoManda === true,
+              // Spec 038 (v6): ORO solo cuando la promo del admin es la que MANDA (el
+              // descuento efectivo es el de la promo). Si gana la escala, esmeralda.
+              promoOro: p.promoManda === true,
             }
           : undefined,
       };
