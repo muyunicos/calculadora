@@ -763,4 +763,48 @@ test('spec 038 (D10): el paso de diseno carga 6 modulos y NUNCA tienda.js/campo-
   assert.ok(!hook.includes('campo-montar.js'), 'NUNCA carga campo-montar.js');
 });
 
+test('spec 038 (N): titulo de la tira (el valor viejo pasa a Sugerencias)', () => {
+  const td = loadModule('src/core/tiraDatos');
+  assert.equal(td.normalizarTitulo('Ideas y favoritos'), 'Sugerencias');
+  assert.equal(td.normalizarTitulo(''), 'Sugerencias');
+  assert.equal(td.normalizarTitulo(null), 'Sugerencias');
+  assert.equal(td.normalizarTitulo('Mi tira'), 'Mi tira');
+});
+
+test('spec 038 (N): categoria con la precedencia comprado > guardado > promo > nada', () => {
+  const td = loadModule('src/core/tiraDatos');
+  const promo = { pct: 40 };
+  assert.equal(td.categoriaTira('historial', promo), 'COMPRADO');
+  assert.equal(td.categoriaTira('custom', promo), 'GUARDADO');
+  assert.equal(td.categoriaTira('tienda', promo), 'PROMO');
+  assert.equal(td.categoriaTira('tienda', null), undefined);
+  assert.equal(td.categoriaTira('tienda'), undefined);
+});
+
+test('spec 038 (N): la descripcion que repite el titulo no se pinta', () => {
+  const td = loadModule('src/core/tiraDatos');
+  assert.equal(td.descripcionVisible('Formas en Vinilo', 'Formas en Vinilo'), '');
+  assert.equal(td.descripcionVisible('Formas en Vinilo', '  formas en vinilo '), '');
+  assert.equal(td.descripcionVisible('Formas en Vinilo', 'Vinilo · circulares · 4 cm'), 'Vinilo · circulares · 4 cm');
+  assert.equal(td.descripcionVisible('A', ''), '');
+  assert.equal(td.descripcionVisible('A', null), '');
+});
+
+test('spec 038 (N): precioTira (total del lote, tachado y promo en oro)', () => {
+  const td = loadModule('src/core/tiraDatos');
+  const base = { perUnitBase: 100, totalStickers: 30, total: 2100, savingsPct: 30, promoManda: true };
+  const p = td.precioTira(base);
+  assert.equal(p.valor, 2100);
+  assert.equal(p.anterior, 3000);
+  assert.equal(p.promo, '-30%');
+  assert.equal(p.promoOro, true);
+  // Sin ahorro no hay badge; con ahorro por escala (no promo) el tono no es oro.
+  const sinAhorro = td.precioTira({ ...base, total: 3000, savingsPct: 0, promoManda: false });
+  assert.equal(sinAhorro.promo, undefined);
+  const escala = td.precioTira({ ...base, total: 2400, savingsPct: 20, promoManda: false });
+  assert.equal(escala.promo, '-20%');
+  assert.equal(escala.promoOro, false);
+  assert.equal(td.precioTira(null), undefined);
+});
+
 console.log(`\n${passed} tests OK`);

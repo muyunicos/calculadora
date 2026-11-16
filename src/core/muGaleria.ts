@@ -28,6 +28,8 @@ export type MuOpcionesVisor = {
   filtros?: string | string[];
   filtroActivo?: string;
   alCerrar?: () => void;
+  /** Spec 038 (D7): renombrar el item desde el titulo del visor (solo cliente). */
+  onEditarTitulo?: (indice: number, texto: string) => void;
 };
 
 export type MuItemColeccion = {
