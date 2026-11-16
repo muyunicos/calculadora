@@ -164,8 +164,11 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
         }
       },
       urlDe: (id: string) => urlsRef.current[id] ?? '',
-      onChange: (estado: { ranuras?: Array<{ ids?: string[] }> }) => {
-        const ids = (estado?.ranuras ?? []).flatMap((r) => r.ids ?? []);
+      // `CargadorPMU.prototype.estadoActual()` devuelve `{ids, listo, faltan, ...}`
+      // (no `{ranuras}`: ese campo es la CANTIDAD de ranuras). El contrato de la
+      // ficha es `PMU_API.montarCargador`, que si expone `ranuras[]`.
+      onChange: (estado: { ids?: string[] }) => {
+        const ids = estado?.ids ?? [];
         if (ids.length > 0) publicarDiseno(String(ids[0]));
       },
     });

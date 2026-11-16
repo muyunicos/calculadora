@@ -312,6 +312,10 @@ function sanitizeDesignOptions(raw: unknown, warnings: string[]): DesignOption[]
       image: optionalStr(item.image),
       designMinutes: num(item.designMinutes, def?.designMinutes ?? 0, 0, 100000),
       isCustomTime: bool(item.isCustomTime, def?.isCustomTime ?? false),
+      // Spec 038 (F2): sin esta linea el checkbox "Pide arte al cliente" se descarta
+      // al guardar y vuelve SIEMPRE desmarcado (el dato lo pierde el saneador, no
+      // el PHP: `guardar_datos.php` conserva el objeto completo).
+      pideArte: bool(item.pideArte, def?.pideArte ?? false),
       customerVisible:
         item.customerVisible === undefined ? def?.customerVisible : bool(item.customerVisible, true),
       visible: bool(item.visible, def?.visible ?? true),

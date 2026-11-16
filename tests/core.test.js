@@ -747,4 +747,20 @@ test('spec 038 (C): mockupsDePlantilla ordena PDF primero y filtra por requiere'
   assert.equal(mu.mockupsDePlantilla(pdfP, localP, { requiere: 'arte', tieneArte: false }).length, 0);
   assert.equal(mu.mockupsDePlantilla(null, null, {}).length, 0);
 });
+
+test('spec 038 (D10): el paso de diseno carga 6 modulos y NUNCA tienda.js/campo-montar.js', () => {
+  // El plugin declaro esta lista en `PMU_Cotizador::assets()` (retirado: nada lo
+  // llamaba). La fuente unica pasa a ser el hook que realmente carga los modulos.
+  // Se ignoran los comentarios: el archivo MENCIONA los modulos prohibidos para
+  // explicar por que no los pide.
+  const crudo = fs.readFileSync(path.join(root, 'src/hooks/usePmuAssets.ts'), 'utf8');
+  const hook = crudo.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  const modulos = ['mockup-render.js', 'selector-pmu.js', 'visor-pmu.js', 'biblioteca-pmu.js', 'cargador-pmu.js', 'fotos-pmu.js'];
+  for (const m of modulos) {
+    assert.ok(hook.includes(m), `usePmuAssets declara ${m}`);
+  }
+  assert.ok(!hook.includes('tienda.js'), 'NUNCA carga tienda.js (107 KB)');
+  assert.ok(!hook.includes('campo-montar.js'), 'NUNCA carga campo-montar.js');
+});
+
 console.log(`\n${passed} tests OK`);

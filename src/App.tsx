@@ -738,7 +738,7 @@ const App = () => {
               Sin puente se degrada a la galeria de la tienda (D9). */}
           {ideas.disponible ? (
             <TiraIdeas
-              titulo={tiraNombre.trim() || 'Ideas y favoritos'}
+              titulo={tiraNombre.trim() || 'Sugerencias'}
               tienda={gallery}
               ideas={ideas.ideas}
               favoritos={ideas.favoritos}
