@@ -131,6 +131,7 @@ export const DesignStep: React.FC<DesignStepProps> = ({
         onSubiendo={(v) => onSubiendo?.(v)}
         assets={assets}
         hayDiseno={!!diseno}
+        idInicial={diseno?.id}
         onQuitar={() => {
           onDiseno(null);
           setItemKey('');

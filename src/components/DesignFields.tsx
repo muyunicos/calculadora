@@ -53,6 +53,8 @@ export interface DesignFieldsProps {
   onSubiendo: (subiendo: boolean) => void;
   assets: PmuAssetsApi;
   hayDiseno: boolean;
+  /** Id ya subido (si hay): repoblala ranura tras un re-render del padre. */
+  idInicial?: string;
   onQuitar: () => void;
 }
 
@@ -68,6 +70,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   onSubiendo,
   assets,
   hayDiseno,
+  idInicial,
   onQuitar,
 }) => {
   const [montado, setMontado] = useState(false);
@@ -153,6 +156,10 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
         min: 0,
         max: 1,
       }],
+      // Tras un re-render el padre publica el `diseno` y React puede REMONTAR el
+      // cargador (sus deps cambian): sin esto la ranura arrancaba vacia y el
+      // preview decia "Faltan 1 imagen(es)" aunque la subida ya existia.
+      idsIniciales: idInicial ? [[idInicial]] : [],
       tecnico: false,
       subir: async (blob: Blob, meta?: { params?: Record<string, unknown> }) => {
         marcarSubiendo(true);
