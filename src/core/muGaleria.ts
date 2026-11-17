@@ -47,11 +47,15 @@ export type MuItemColeccion = {
   acciones?: { etiqueta: string; onAccion: (indice: number) => void }[];
   /** Spec 038 (K): estrella de favorito de la celda. */
   favorito?: boolean;
+  /** Spec 038 (O): `false` retira el boton de borrar (items que no se pueden quitar). */
+  eliminable?: boolean;
 };
 
 export type MuOpcionesColeccionAcc = MuOpcionesColeccion & {
   onFavorito?: (indice: number, valor: boolean, item: MuItemColeccion) => void;
   onEliminar?: (indice: number, item: MuItemColeccion) => void;
+  /** Spec 038 (O): ventana de confirmacion del borrado (una sola, del motor). */
+  confirmar?: (indice: number, item: MuItemColeccion) => boolean;
 };
 
 export type MuOpcionesColeccion = {

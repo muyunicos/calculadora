@@ -303,6 +303,8 @@ export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
           unidades: d.unidades,
           precio: d.precio,
           favorito: d.favorito,
+          // Spec 038 (O): solo se puede borrar lo que guardo el cliente.
+          eliminable: d.item.origen === 'custom',
           acciones: [{ etiqueta: 'Personalizar', onAccion: () => props.onUsar(d.item) }],
         })),
         layout: 'fila',
@@ -321,11 +323,18 @@ export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
             props.onEstrella!(tipoDe(it), referencia(it), valor);
           }
           : undefined,
+        // Spec 038 (O): la confirmacion la hace EL MOTOR (una sola, con el texto
+        // correcto). Antes preguntaba el motor y otra vez el componente.
+        confirmar: (i: number) => {
+          const it = datos[i] && datos[i].item;
+          if (!it || it.origen !== 'custom') return false;
+          if (typeof window !== 'undefined' && !window.confirm('Borrar esta idea guardada?')) return false;
+          return true;
+        },
         onEliminar: props.onBorrar
           ? (i: number) => {
             const it = datos[i] && datos[i].item;
             if (!it || !it.idea) return;
-            if (typeof window !== 'undefined' && !window.confirm('Borrar esta idea guardada?')) return;
             props.onBorrar!(it.idea.id);
           }
           : undefined,
@@ -341,6 +350,9 @@ export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
     if (!d) return;
     const precio = pricingDe(d.item);
     const meta: Record<string, unknown> = metaDeItem(
+      // `metaDeItem` solo lee `title` y `caption`: el TiraItem ya trae el titulo y la
+      // descripcion resueltos, se le pasan con esa forma (el cast evita duplicar la
+      // logica de precios y badges del motor).
       { title: d.item.titulo, caption: d.descripcion } as never,
       precio,
       undefined,

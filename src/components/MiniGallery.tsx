@@ -15,8 +15,6 @@ interface MiniGalleryProps {
   // Descripcion automatica de la idea ("vinilo · circulares · 5cm"); opcional: si el
   // consumidor no la provee, la tira muestra solo el titulo y el precio.
   describe?: (orderCode: string) => string;
-  /** Spec 038 (K): categorias de la tira (las filtra el <select> del visor). */
-  categorias?: { id: string; titulo: string }[];
   /** Spec 038 (K): estrella de favorito por item (indice) y borrado (opcionales). */
   favoritos?: Record<number, boolean>;
   onFavorito?: (indice: number, valor: boolean) => void;
