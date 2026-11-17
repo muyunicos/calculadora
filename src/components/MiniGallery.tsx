@@ -117,7 +117,7 @@ const MiniGallery: React.FC<MiniGalleryProps> = ({ items, resolveImage, onUse, g
         return {
           url: resolveImage(it.image),
           thumb: resolveImage(it.image),
-          etiqueta: it.title || it.caption || ' + ' + ' + ', 
+          etiqueta: it.title || it.caption || '', 
         // Spec 038 (D6): la categoria del visor sale del MISMO criterio que la tarjeta.
         categoria: categoriaDe(it, pi ? pi.promo : null),
         // Spec 020 (D26): la meta va POR ITEM, asi al navegar cambian tambien el titulo,

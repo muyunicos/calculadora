@@ -345,28 +345,44 @@ export const TiraIdeas: React.FC<TiraIdeasProps> = (props) => {
   // Visor del MOTOR (spec 020 D26): tono claro + tema `cotizador` + filtro por
   // categoria (TODOS/GUARDADO/COMPRADO/PROMO). El titulo se puede editar si la
   // idea es del cliente (spec 038 D7).
+  // Spec 020 (D26) + spec 038 (F5c): la META va POR ITEM. Antes se mandaba una sola
+  // (la del item clickeado) y al navegar solo cambiaba la foto: titulo, descripcion,
+  // precios y badge se quedaban clavados. `metaDeItem` solo lee `title`/`caption`.
+  const metaItem = (x: (typeof datos)[number]): Record<string, unknown> => {
+    const meta = metaDeItem(
+      { title: x.item.titulo, caption: x.descripcion } as never,
+      pricingDe(x.item),
+      undefined,
+    ) || {};
+    if (x.item.origen === 'custom' && props.onRenombrar) meta.tituloEditable = true;
+    return meta;
+  };
+
   const abrir = (i: number) => {
     const d = datos[i];
     if (!d) return;
-    const precio = pricingDe(d.item);
-    const meta: Record<string, unknown> = metaDeItem(
-      // `metaDeItem` solo lee `title` y `caption`: el TiraItem ya trae el titulo y la
-      // descripcion resueltos, se le pasan con esa forma (el cast evita duplicar la
-      // logica de precios y badges del motor).
-      { title: d.item.titulo, caption: d.descripcion } as never,
-      precio,
-      undefined,
-    ) || {};
-    if (d.item.origen === 'custom' && props.onRenombrar) meta.tituloEditable = true;
     const ok = abrirVisor({
-      items: datos.map((x) => ({ url: x.imagen, thumb: x.imagen, etiqueta: x.etiqueta })),
+      items: datos.map((x) => ({
+        url: x.imagen,
+        thumb: x.imagen,
+        etiqueta: x.etiqueta,
+        meta: metaItem(x),
+      })),
       indice: i,
       titulo,
       filtros: 'categoria',
       tono: 'claro',
       tema: 'cotizador',
-      meta,
-      acciones: [{ etiqueta: 'Personalizar', onAccion: () => { cerrarVisor(); props.onUsar(d.item); } }],
+      // La accion usa el INDICE actual del visor (no el del click original): al
+      // navegar, "Personalizar" carga la idea que se esta viendo.
+      acciones: [{
+        etiqueta: 'Personalizar',
+        onAccion: (idx: number) => {
+          const it = datos[idx] && datos[idx].item;
+          cerrarVisor();
+          if (it) props.onUsar(it);
+        },
+      }],
       onEditarTitulo: props.onRenombrar
         ? (idx: number, texto: string) => {
           const it = datos[idx] && datos[idx].item;
