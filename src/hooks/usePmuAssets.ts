@@ -10,7 +10,7 @@
 // no injecto el puente) el paso se degrada: el cotizador sigue cotizando.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PMU_AJAX, PMU_BASE, PMU_DISPONIBLE, PMU_NONCE, PMU_POST } from '../core/wp';
+import { PMU_AJAX, PMU_BASE, PMU_DISPONIBLE, PMU_NONCE, PMU_POST, PMU_VERSION } from '../core/wp';
 
 export type PmuModulo = 'mockup-render' | 'selector' | 'visor' | 'biblioteca' | 'cargador' | 'fotos';
 
@@ -31,6 +31,12 @@ const ORDEN_IMAGEN: PmuModulo[] = ['visor', 'biblioteca', 'cargador', 'fotos'];
 
 /** Promesas por URL: dos pasos abiertos no descargan el mismo archivo dos veces. */
 const cache = new Map<string, Promise<void>>();
+
+// Spec 038 (F-RECETA): los modulos diferidos se piden por URL suelta: sin version el
+// navegador los cachea y un deploy no llega hasta vaciar la cache manualmente.
+function cacheBust(): string {
+  return PMU_VERSION ? `?v=${encodeURIComponent(PMU_VERSION)}` : ``;
+}
 
 function cargar(src: string): Promise<void> {
   const previa = cache.get(src);
@@ -102,7 +108,7 @@ export function usePmuAssets(): PmuAssetsApi {
     const trabajo = (async () => {
       // Secuencial: `selector` usa `PMUMockup` (mismo orden que la ficha).
       for (const modulo of ORDEN_PASO) {
-        await cargar(`${PMU_BASE}assets/${ARCHIVOS[modulo]}`);
+        await cargar(`${PMU_BASE}assets/${ARCHIVOS[modulo]}${cacheBust()}`);
       }
     })();
     pedido.current = trabajo;
@@ -124,7 +130,7 @@ export function usePmuAssets(): PmuAssetsApi {
     setError('');
     try {
       for (const modulo of ORDEN_IMAGEN) {
-        await cargar(`${PMU_BASE}assets/${ARCHIVOS[modulo]}`);
+        await cargar(`${PMU_BASE}assets/${ARCHIVOS[modulo]}${cacheBust()}`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

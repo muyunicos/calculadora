@@ -19,6 +19,8 @@ interface WpStickerData {
     postUrl?: string;
     ajaxUrl?: string;
     nonce?: string;
+    /** Spec 038 (F-RECETA): version del plugin (cache-bust de los modulos diferidos). */
+    version?: string;
   };
 }
 
@@ -62,5 +64,7 @@ export const PMU_BASE = WP.pmu?.baseUrl || '';
 export const PMU_POST = WP.pmu?.postUrl || '';
 export const PMU_AJAX = WP.pmu?.ajaxUrl || '';
 export const PMU_NONCE = WP.pmu?.nonce || '';
+// Spec 038 (F-RECETA): version del plugin para romper la cache de los modulos diferidos.
+export const PMU_VERSION = WP.pmu?.version || '';
 /** Sin `baseUrl` o sin nonce no hay puente: el paso de diseno se oculta. */
 export const PMU_DISPONIBLE = !!(PMU_BASE && (PMU_POST || PMU_AJAX) && PMU_NONCE);
