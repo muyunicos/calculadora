@@ -36,7 +36,7 @@ check('el nombre del item usa cotizadorUrl', /esc_url\(\$calculator_data\['cotiz
 check('_calculator_order_code usa orderCode', /_calculator_order_code', \$calculator_data\['orderCode'\]/.test(php));
 check('_calculator_url usa cotizadorUrl', /_calculator_url', \$calculator_data\['cotizadorUrl'\]/.test(php));
 check('la ficha del admin usa cotizadorUrl', /calculator_data'\]\['cotizadorUrl'\]/.test(php));
-check('version del plugin subio (cache-bust)', /Version: 1\.1/.test(php) && /'1\.1'/.test(php));
+check('version del plugin subio (cache-bust)', /Version: 1\.[2-9]/.test(php) && /'1\.[2-9]'/.test(php));
 
 const fallos = resultados.filter((r) => !r.ok).length;
 console.log('\n' + (fallos ? 'CARRITO CONTRATO: ' + fallos + ' fallo(s)' : 'CARRITO CONTRATO OK (' + resultados.length + ' checks)'));
