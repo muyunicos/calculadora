@@ -1,9 +1,10 @@
 /**
  * Contrato del carrito (spec 038, F-COD).
  *
- * El bundle manda `calculator_data` con camelCase (`orderCode`, `cotizadorUrl`) y el
+ * El bundle manda `calculator_data` en camelCase (`orderCode`, `cotizadorUrl`) y el
  * PHP del carrito leia SOLO snake_case (`order_code`, `cotizador_url`): la compra
- * fallaba SIEMPRE con "Falta el codigo de pedido". Esta puerta fija el contrato.
+ * fallaba SIEMPRE con "Falta el codigo de pedido". Se deja UNA sola forma (la del
+     * bundle), sin repliegues: el contrato es uno.
  *
  * Uso: node tests/carrito-contrato.test.js
  */
@@ -27,13 +28,15 @@ grupo('El cliente manda camelCase');
 check('cart-integration.js manda orderCode', /orderCode/.test(js));
 check('cart-integration.js manda cotizadorUrl', /cotizadorUrl/.test(js));
 
-grupo('El PHP acepta las dos claves');
-check('acepta orderCode y order_code', /array\('orderCode', 'order_code'\)/.test(php));
-check('ya NO lee solo order_code', !/isset\(\$decoded_data\['order_code'\]\)/.test(php));
-check('cotizador_url acepta cotizadorUrl', /isset\(\$decoded_data\['cotizadorUrl'\]\)/.test(php));
-check('el nombre del item usa cotizadorUrl', /esc_url\(\$calculator_data\['cotizadorUrl'\] \/\*\*/.test(php) || /calculator_data\['cotizadorUrl'\] \?\? \$calculator_data\['cotizador_url'\]/.test(php));
-check('_calculator_order_code acepta orderCode', /_calculator_order_code', \$calculator_data\['orderCode'\]/.test(php));
-check('_calculator_url acepta cotizadorUrl', /_calculator_url', \$calculator_data\['cotizadorUrl'\]/.test(php));
+grupo('El PHP lee exactamente esas claves');
+check('lee orderCode del payload', /isset\(\$decoded_data\['orderCode'\]\)/.test(php));
+check('ya NO lee order_code del payload', !/isset\(\$decoded_data\['order_code'\]\)/.test(php));
+check('cotizador_url sale de cotizadorUrl', /isset\(\$decoded_data\['cotizadorUrl'\]\)/.test(php));
+check('el nombre del item usa cotizadorUrl', /esc_url\(\$calculator_data\['cotizadorUrl'\]\)/.test(php));
+check('_calculator_order_code usa orderCode', /_calculator_order_code', \$calculator_data\['orderCode'\]/.test(php));
+check('_calculator_url usa cotizadorUrl', /_calculator_url', \$calculator_data\['cotizadorUrl'\]/.test(php));
+check('la ficha del admin usa cotizadorUrl', /calculator_data'\]\['cotizadorUrl'\]/.test(php));
+check('version del plugin subio (cache-bust)', /Version: 1\.1/.test(php) && /'1\.1'/.test(php));
 
 const fallos = resultados.filter((r) => !r.ok).length;
 console.log('\n' + (fallos ? 'CARRITO CONTRATO: ' + fallos + ' fallo(s)' : 'CARRITO CONTRATO OK (' + resultados.length + ' checks)'));

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Calculadora Cart Integration
  * Description: Integra la calculadora con el carrito de WooCommerce para productos personalizados
- * Version: 1.0
+ * Version: 1.1
  * Author: Tu Nombre
  * Requires at least: 5.0
  */
@@ -64,7 +64,7 @@ class CalculadoraCartIntegration {
                 'calculadora-cart-integration',
                 plugin_dir_url(__FILE__) . 'cart-integration.js',
                 array('jquery'),
-                '1.0',
+                '1.1',
                 true
             );
             
@@ -114,16 +114,10 @@ class CalculadoraCartIntegration {
         // --- PRECIO RECALCULADO EN EL SERVIDOR ---
         // El `price` que manda el navegador se IGNORA: cualquiera podría enviar
         // price=1. Se recalcula a partir del código de pedido y datos_config.json.
-        // Spec 038 (F-COD): el bundle manda `orderCode` (camelCase); se acepta tambien
-        // `order_code` por compatibilidad con payloads/carritos viejos. Antes se leia
-        // SOLO la snake_case y la compra fallaba SIEMPRE con "Falta el codigo de pedido".
-        $order_code = '';
-        foreach (array('orderCode', 'order_code') as $clave_codigo) {
-            if (isset($decoded_data[$clave_codigo]) && trim((string) $decoded_data[$clave_codigo]) !== '') {
-                $order_code = sanitize_text_field((string) $decoded_data[$clave_codigo]);
-                break;
-            }
-        }
+        // Spec 038 (F-COD): el bundle manda `orderCode` (camelCase). Antes se leia
+        // `order_code`: el desajuste hacia que la compra fallara SIEMPRE con
+        // "Falta el codigo de pedido" (el payload traia el codigo, pero nadie lo leia).
+        $order_code = isset($decoded_data['orderCode']) ? sanitize_text_field((string) $decoded_data['orderCode']) : '';
         if ($order_code === '') {
             wp_send_json_error(array('error' => 'Falta el código de pedido.'));
         }
@@ -165,8 +159,7 @@ class CalculadoraCartIntegration {
             'order_code' => $order_code,
             'price' => $pricing['price'],
             'description' => isset($decoded_data['description']) ? sanitize_text_field((string) $decoded_data['description']) : '',
-            'cotizador_url' => isset($decoded_data['cotizadorUrl']) ? esc_url_raw((string) $decoded_data['cotizadorUrl'])
-            : (isset($decoded_data['cotizador_url']) ? esc_url_raw((string) $decoded_data['cotizador_url']) : ''),
+            'cotizador_url' => isset($decoded_data['cotizadorUrl']) ? esc_url_raw((string) $decoded_data['cotizadorUrl']) : '',
             'material' => isset($decoded_data['material']) ? sanitize_text_field((string) $decoded_data['material']) : '',
             'formato' => isset($decoded_data['formato']) ? sanitize_text_field((string) $decoded_data['formato']) : '',
             'medida' => isset($decoded_data['medida']) ? sanitize_text_field((string) $decoded_data['medida']) : '',
@@ -247,8 +240,8 @@ class CalculadoraCartIntegration {
             $name .= '<div class="calculator-item-description" style="font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4;">' . esc_html($description) . '</div>';
             
             // Agregar URL del cotizador como texto oculto
-            if (!empty($calculator_data['cotizadorUrl']) || !empty($calculator_data['cotizador_url'])) {
-                $name .= '<div class="calculator-order-code" style="display: none;">' . esc_url($calculator_data['cotizadorUrl'] ?? $calculator_data['cotizador_url'] ?? '') . '</div>';
+            if (!empty($calculator_data['cotizadorUrl'])) {
+                $name .= '<div class="calculator-order-code" style="display: none;">' . esc_url($calculator_data['cotizadorUrl']) . '</div>';
             }
         }
         
@@ -262,10 +255,10 @@ class CalculadoraCartIntegration {
         if (isset($values['calculator_data'])) {
             $calculator_data = $values['calculator_data'];
             
-            $item->add_meta_data('_calculator_order_code', $calculator_data['orderCode'] ?? $calculator_data['order_code'] ?? '', true);
+            $item->add_meta_data('_calculator_order_code', $calculator_data['orderCode'] ?? '', true);
             $item->add_meta_data('_calculator_price', $calculator_data['price'] ?? 0, true);
             $item->add_meta_data('_calculator_description', $calculator_data['description'] ?? '', true);
-            $item->add_meta_data('_calculator_url', $calculator_data['cotizadorUrl'] ?? $calculator_data['cotizador_url'] ?? '', true);
+            $item->add_meta_data('_calculator_url', $calculator_data['cotizadorUrl'] ?? '', true);
             // Spec 037: el plugin Personalizador PDF promueve el item del
             // cotizador con ESTAS metas (`_mu_origen` decide que NO se entregue PDF).
             if (!empty($calculator_data['diseno']) && is_array($calculator_data['diseno'])) {
@@ -309,7 +302,7 @@ class CalculadoraCartIntegration {
             return;
         }
         
-        $calculator_url = $cart_item['calculator_data']['cotizador_url'] ?? '';
+        $calculator_url = $cart_item['calculator_data']['cotizadorUrl'] ?? '';
         
         if ($calculator_url) {
             echo '<a href="' . esc_url($calculator_url) . '" class="button edit-calculator-item" style="font-size: 11px; padding: 4px 8px; margin-left: 8px; background: #10b981; color: white; border: none; border-radius: 3px; text-decoration: none; line-height: 1;">✏️ Editar</a>';
