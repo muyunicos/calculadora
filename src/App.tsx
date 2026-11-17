@@ -903,6 +903,7 @@ const App = () => {
             formatoLabel={formatoLabel}
             designLabel={designLabel}
             orderCode={orderCode}
+            codigoFaltante={causaCodigo}
             shareUrl={shareUrl}
             diseno={diseno}
             subiendo={disenoSubiendo}
