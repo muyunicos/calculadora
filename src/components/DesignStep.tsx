@@ -37,8 +37,6 @@ export interface DesignStepProps {
   disponible: boolean;
   /** Modulos del paso (carga diferida). */
   assets: PmuAssetsApi;
-  /** Pide los modulos al abrir el paso. */
-  onAbrir?: () => void;
   /** Subida en curso (gobierna el boton COMPRAR, FR-014). */
   onSubiendo?: (subiendo: boolean) => void;
 }
@@ -56,7 +54,6 @@ export const DesignStep: React.FC<DesignStepProps> = ({
   onDiseno,
   disponible,
   assets,
-  onAbrir,
   onSubiendo,
 }) => {
   const [itemKey, setItemKey] = useState(diseno?.itemKey ?? '');
@@ -72,9 +69,6 @@ export const DesignStep: React.FC<DesignStepProps> = ({
     if (sel > lista.length - 1) setSel(0);
   }, [lista.length, sel]);
 
-  useEffect(() => {
-    onAbrir?.();
-  }, [onAbrir]);
 
   // Cambiar forma/tamano recalcula el lienzo sin volver a subir (FR-005/FR-007).
   useEffect(() => {

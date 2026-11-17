@@ -853,7 +853,6 @@ const App = () => {
                     disponible={pmuAssets.disponible}
                     assets={pmuAssets}
                     onSubiendo={setDisenoSubiendo}
-                    onAbrir={() => { void pmuAssets.abrir(); }}
                   />
                   {ideas.error !== '' && (
                     <p className="mt-2 text-xs text-amber-700" role="status">
