@@ -171,6 +171,26 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
         }
       },
       urlDe: (id: string) => urlsRef.current[id] ?? '',
+      // Spec 038 (A/FR-009): reutilizar la familia ya subida (0 bytes). Sin esto el
+      // cotizador mandaba los bytes otra vez y nunca aparecia "Elegir ya subida".
+      usar: async (madre: string, params?: Record<string, unknown>) => {
+        const bib = (window as unknown as {
+          PMUBiblioteca?: { usar?: (m: string, d: Record<string, unknown>) => Promise<unknown> };
+        }).PMUBiblioteca;
+        if (!bib || typeof bib.usar !== 'function') return { coincide: false };
+        try {
+          return await bib.usar(String(madre || ''), {
+            item_key: claveRef.current,
+            pdf: pdf || '',
+            grupo: gidPara(categoria, size),
+            indice: 0,
+            params: params || {},
+          });
+        } catch {
+          // Si la familia no coincide, el selector cae al camino normal (subir).
+          return { coincide: false };
+        }
+      },
       // `CargadorPMU.prototype.estadoActual()` devuelve `{ids, listo, faltan, ...}`
       // (no `{ranuras}`: ese campo es la CANTIDAD de ranuras). El contrato de la
       // ficha es `PMU_API.montarCargador`, que si expone `ranuras[]`.
