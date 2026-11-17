@@ -80,6 +80,9 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   const urlsRef = useRef<Record<string, string>>({});
   const filasRef = useRef<Record<string, FilaSubida>>({});
   const claveRef = useRef<string>(itemKey);
+  // Spec 038 (T116): el sid del item (para el mockup cuando la fila no paso por
+        // `subir`: la re-subida de una foto ya conocida entra por el camino `usado`).
+  const sidRef = useRef('');
   // Spec 038 (F5h): URL del mockup 300x300 guardado en el item (preview aprobado).
   const previaRef = useRef('');
 
@@ -97,7 +100,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     fd.append('action', 'pmu_cotizador');
     fd.append('op', 'mockup_guardar');
     fd.append('_wpnonce', PMU_NONCE);
-    fd.append('sid', String(filaMock.sid || ''));
+    fd.append('sid', String(filaMock.sid || sidRef.current || ''));
     fd.append('item_key', itemKey);
     fd.append('mockup', blob, 'mockup.webp');
     try {
@@ -139,6 +142,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     }
     const fila = json.data;
     const id = String(fila.id ?? '');
+    if (fila.sid) { sidRef.current = String(fila.sid); }
     if (id) {
       fila.params = params ?? {};
       filasRef.current[id] = fila;
@@ -156,7 +160,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     onDiseno({
       id,
       itemKey: String(fila.item_key ?? claveRef.current ?? ''),
-      sid: String(fila.sid ?? ''),
+      sid: String(fila.sid ?? sidRef.current ?? ''),
       w: Number(params.w ?? 0) || 0,
       h: Number(params.h ?? 0) || 0,
       receta: String(fila.receta ?? ''),
