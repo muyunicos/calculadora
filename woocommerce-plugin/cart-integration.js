@@ -130,9 +130,8 @@
         if (data.sheets) {
             parts.push('Planchas: ' + data.sheets);
         }
-        if (data.orderCode) {
-            parts.push('Código: ' + data.orderCode);
-        }
+        // Spec 038 (F5f): el codigo NO se muestra al comprador (no le dice nada);
+        // el admin lo tiene en la ficha del pedido y en el PDF.
 
         return parts.join(' | ');
     }

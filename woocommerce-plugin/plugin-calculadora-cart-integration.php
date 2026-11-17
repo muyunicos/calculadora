@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Calculadora Cart Integration
  * Description: Integra la calculadora con el carrito de WooCommerce para productos personalizados
- * Version: 1.1
+ * Version: 1.2
  * Author: Tu Nombre
  * Requires at least: 5.0
  */
@@ -64,7 +64,7 @@ class CalculadoraCartIntegration {
                 'calculadora-cart-integration',
                 plugin_dir_url(__FILE__) . 'cart-integration.js',
                 array('jquery'),
-                '1.1',
+                '1.2',
                 true
             );
             
