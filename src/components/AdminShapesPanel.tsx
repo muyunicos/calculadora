@@ -32,6 +32,10 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
   isDeleteMode = false,
 }) => {
   const duplicateCodes = findShapeCodeDuplicates(shapesCatalog);
+  // Spec 038 (F-COD): tamanos sin codigo (no se pueden vender).
+  const shapesSinCodigo = Object.keys(shapesCatalog || {}).flatMap((cat) =>
+    (shapesCatalog[cat] || []).filter((it) => it.code == null).map((it) => it.size + ' (' + cat + ')'),
+  );
   return (
     <div className="cl-card bg-white p-6">
       <h2 className="text-xl font-bold text-slate-800 flex items-center cl-gap-md border-b border-slate-100 pb-4 cl-mb-lg">
@@ -45,6 +49,13 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
             <strong>Hay códigos de tamaño repetidos:</strong>{' '}
             {duplicateCodes.map((group) => `#${group.code} (${group.items.join(' / ')})`).join(' · ')}.
             El código identifica forma+tamaño en los links y la galería: con duplicados se carga el tamaño equivocado y el guardado se bloquea.
+          </div>
+        )}
+        {shapesSinCodigo.length > 0 && (
+          <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <strong>{shapesSinCodigo.length} tamanio(s) sin codigo:</strong>{' '}
+            {shapesSinCodigo.slice(0, 8).join(' · ')}.
+            Sin codigo ese tamanio no se puede vender: el cliente ve "falta el codigo del pedido".
           </div>
         )}
         {Object.keys(shapesCatalog).map((category) => {
@@ -73,7 +84,7 @@ export const AdminShapesPanel: React.FC<AdminShapesPanelProps> = ({
                         <button onClick={() => moveShapeItem(category, idx, -1)} disabled={idx === 0} className={`p-1 rounded-md bg-white border shadow-sm ${idx === 0 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Subir"><ArrowUp className="w-3 h-3" /></button>
                         <button onClick={() => moveShapeItem(category, idx, 1)} disabled={idx === shapesCatalog[category].length - 1} className={`p-1 rounded-md bg-white border shadow-sm ${idx === shapesCatalog[category].length - 1 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Bajar"><ArrowDown className="w-3 h-3" /></button>
                       </div>
-                      <input type="number" value={item.code ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'code', e.target.value)} className="w-16 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center font-mono transition-all" title="Código estable (único)" placeholder="cód." />
+                      <input type="number" value={item.code ?? ''} onChange={(e) => updateShapeCatalog(category, idx, 'code', e.target.value)} className={`w-16 p-2 text-sm border rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center font-mono transition-all ${item.code == null ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-300'}`} title="Codigo estable (obligatorio para vender)" placeholder="cod." />
                       <input type="text" value={item.size} onChange={(e) => updateShapeCatalog(category, idx, 'size', e.target.value)} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Ej: 4,0 cm" />
                       <input type="number" value={item.qty} onChange={(e) => updateShapeCatalog(category, idx, 'qty', e.target.value)} className="w-20 p-2 text-sm border border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none text-center transition-all" title="Stickers por hoja" />
                       <div className="flex flex-col gap-2">

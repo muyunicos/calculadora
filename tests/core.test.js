@@ -807,4 +807,20 @@ test('spec 038 (N): precioTira (total del lote, tachado y promo en oro)', () => 
   assert.equal(td.precioTira(null), undefined);
 });
 
+test('spec 038 (F-COD): codigoFaltante nombra la causa', () => {
+  const oc = loadModule('src/core/orderCodec');
+  const mats = [{ id: 'm1', name: 'Vinilo', code: 1 }];
+  const cat = { Circulares: [{ size: '6,0 cm', qty: 30, code: 50 }] };
+  const order = { materialId: 'm1', shapeType: 'Circulares', sizeIndex: 0 };
+  assert.equal(oc.codigoFaltante(order, mats, cat), '');
+  // Material sin codigo
+  assert.equal(oc.codigoFaltante(order, [{ id: 'm1', name: 'Vinilo' }], cat), 'material «Vinilo»');
+  // Tamano sin codigo
+  const cat2 = { Circulares: [{ size: '6,0 cm', qty: 30 }] };
+  assert.equal(oc.codigoFaltante(order, mats, cat2), 'tamanio «6,0 cm» (Circulares)');
+  // Rectangulo sin medidas
+  const rect = { ...order, shapeType: 'Rectangulares', customRectW: '0', customRectH: '5' };
+  assert.equal(oc.codigoFaltante(rect, mats, cat), 'medidas del rectangulo');
+});
+
 console.log(`\n${passed} tests OK`);

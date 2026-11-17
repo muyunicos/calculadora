@@ -32,6 +32,8 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
   setMaterialsShowMoreIndex,
 }) => {
   const duplicateCodes = findMaterialCodeDuplicates(materials);
+  // Spec 038 (F-COD): materiales sin codigo (no se pueden vender).
+  const materialsSinCodigo = materials.filter((m) => m.code == null);
   return (
     <div className="cl-card bg-white p-6">
       <div className="flex flex-col sm:flex-row cl-flex-between items-start sm:items-center cl-mb-lg cl-gap-md">
@@ -53,6 +55,13 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
             Los links compartidos y la galería cargarían el material equivocado y el guardado se bloquea hasta corregirlo.
           </div>
         )}
+        {materialsSinCodigo.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <strong>{materialsSinCodigo.length} material(es) sin codigo:</strong>{' '}
+            {materialsSinCodigo.map((m) => m.name).join(' · ')}.
+            Sin codigo ese material no se puede vender: el cliente ve "falta el codigo del pedido".
+          </div>
+        )}
         {materials.map((m, index) => (
           <div key={m.id} className={`border rounded-2xl overflow-hidden transition-shadow ${index < materialsShowMoreIndex ? 'border-slate-200 shadow-sm hover:shadow-md' : 'border-slate-300 opacity-60 bg-slate-100'}`}>
             {/* Línea divisoria "Ver más" */}
@@ -67,7 +76,7 @@ export const AdminMaterialsPanel: React.FC<AdminMaterialsPanelProps> = ({
                   <button onClick={() => moveMaterial(index, -1)} disabled={index === 0} className={`p-1 rounded-md bg-white border shadow-sm ${index === 0 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Subir"><ArrowUp className="w-3 h-3" /></button>
                   <button onClick={() => moveMaterial(index, 1)} disabled={index === materials.length - 1} className={`p-1 rounded-md bg-white border shadow-sm ${index === materials.length - 1 ? 'text-slate-300 border-slate-200' : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-blue-600'}`} title="Bajar"><ArrowDown className="w-3 h-3" /></button>
                 </div>
-                <input type="number" value={m.code ?? ''} onChange={(e) => updateMaterial(m.id, 'code', e.target.value)} className="w-16 p-1.5 text-sm border border-slate-300 rounded-lg text-center font-mono focus:ring-2 focus:ring-blue-500 outline-none flex-shrink-0" title="Código estable y único del material" placeholder="cód." />
+                <input type="number" value={m.code ?? ''} onChange={(e) => updateMaterial(m.id, 'code', e.target.value)} className={`w-16 p-1.5 text-sm border rounded-lg text-center font-mono focus:ring-2 focus:ring-blue-500 outline-none flex-shrink-0 ${m.code == null ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-300'}`} title="Codigo estable y unico del material (obligatorio para vender)" placeholder="cod." />
                 <input type="text" value={m.name} onChange={(e) => updateMaterial(m.id, 'name', e.target.value)} className="font-black text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:outline-none px-2 py-1 w-full max-w-sm transition-all text-lg" placeholder="Nombre del Material" />
               </div>
               <div className="flex flex-col gap-2">

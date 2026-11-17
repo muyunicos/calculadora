@@ -26,6 +26,8 @@ interface OrderSummaryProps {
   sizeText: string;
   formatoLabel: string;
   orderCode: string | null;
+  /** Spec 038 (F-COD): causa concreta si el codigo no se puede armar. */
+  codigoFaltante?: string;
   consultLink: string;
   // URL pública del pedido (misma que se comparte por WhatsApp). Se manda al
   // carrito para que "Editar" vuelva a esta cotización, sin hardcodear dominio.
@@ -55,6 +57,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   sizeText,
   formatoLabel,
   orderCode,
+  codigoFaltante,
   consultLink,
   shareUrl = '',
   setOrder,
@@ -240,7 +243,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   return;
                 }
                 if (!orderCode) {
-                  showToast('error', 'Falta el código del pedido. Revisá que el material y el tamaño tengan código asignado.');
+                  // Spec 038 (F-COD): nombrar la causa (material/tamanio sin codigo).
+                  showToast('error', codigoFaltante
+                    ? `Falta el código de ${codigoFaltante}. Sin eso no se puede armar el pedido.`
+                    : 'Falta el código del pedido. Revisá que el material y el tamaño tengan código asignado.');
                   return;
                 }
                 if (!results?.finalPrice) return;

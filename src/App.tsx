@@ -9,7 +9,7 @@ import {
 
 import type { A4Layout, Config, DeliveryFormat, DesignType, GalleryItem, Order, DeliveryOption, DesignOption, Diseno, PlantillaCotizador, TiraItem } from './types';
 import { ASSETS_URL, CAN_BE_ADMIN } from './core/wp';
-import { decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
+import { codigoFaltante, decodeAnyOrder, encodeOrderCode } from './core/orderCodec';
 import { calcA4Layout } from './core/a4Layout';
 import { calcularPrecio, autoComplexity, missingSelections, galleryPricing } from './core/priceEngine';
 import { buildShareUrl, buildWhatsappMessage, buildConsultWhatsappMessage, buildWhatsappLink } from './core/whatsapp';
@@ -713,6 +713,8 @@ const App = () => {
   const consultMessage = buildConsultWhatsappMessage(order, results, sizeText, shareUrl, formatoLabel);
   const consultLink = buildWhatsappLink(consultMessage);
   const orderCode = materials && shapesCatalog && deliveryOptions && designOptions ? encodeOrderCode(order, materials, shapesCatalog, deliveryOptions, designOptions, customRectMath.adjustedW, customRectMath.adjustedH) : null;
+  // Spec 038 (F-COD): causa por la que no se puede armar el codigo (material/tamano sin codigo).
+  const causaCodigo = orderCode ? '' : codigoFaltante(order, materials || [], shapesCatalog || {}, customRectMath.adjustedW, customRectMath.adjustedH);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-28 lg:pb-0">
@@ -878,6 +880,7 @@ const App = () => {
               sizeText={sizeText}
               formatoLabel={formatoLabel}
               orderCode={orderCode}
+              codigoFaltante={causaCodigo}
               shareUrl={shareUrl}
               consultLink={consultLink}
               setOrder={setOrder}

@@ -234,3 +234,37 @@ export function decodeAnyOrder(
   if (isOrderCode(param)) return decodeOrderCode(param, materials, shapesCatalog, deliveryOptions, designOptions);
   return null;
 }
+
+/**
+ * Cual es el dato que impide armar el codigo del pedido (spec 038, F-COD).
+ *
+ * `encodeOrderCode()` devuelve `null` cuando falta el codigo de un material, el de
+ * un tamano o las medidas del rectangulo. El cliente veia un mensaje generico
+ * ("Falta el codigo del pedido") que no decia QUE era: con esto el aviso nombra la
+ * causa y el admin sabe donde tocar.
+ *
+ * Devuelve '' si el codigo se puede armar.
+ */
+export function codigoFaltante(
+  order: Order,
+  materials: Material[],
+  shapesCatalog: ShapesCatalog,
+  adjustedW?: number,
+  adjustedH?: number,
+): string {
+  const material = (materials || []).find((m) => m.id === order.materialId);
+  if (!material || material.code == null) {
+    return material ? `material «${material.name}»` : 'material';
+  }
+  if (order.shapeType === RECT_CATEGORY) {
+    const w = adjustedW && adjustedW > 0 ? adjustedW : Number(order.customRectW);
+    const h = adjustedH && adjustedH > 0 ? adjustedH : Number(order.customRectH);
+    if (!w || !h || w <= 0 || h <= 0) { return 'medidas del rectangulo'; }
+    return '';
+  }
+  const item = shapesCatalog?.[order.shapeType]?.[order.sizeIndex];
+  if (!item || item.code == null) {
+    return item ? `tamanio «${item.size}» (${order.shapeType})` : `tamanio (${order.shapeType})`;
+  }
+  return '';
+}

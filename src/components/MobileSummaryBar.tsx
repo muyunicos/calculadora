@@ -12,6 +12,8 @@ interface MobileSummaryBarProps {
   formatoLabel: string;
   designLabel: string;
   orderCode?: string | null;
+  /** Spec 038 (F-COD): causa concreta si el codigo no se puede armar. */
+  codigoFaltante?: string;
   // URL pública de la cotización (para el link "Editar" del carrito).
   shareUrl?: string;
   /** Diseno del cotizador cargado (spec 037). */
@@ -69,6 +71,7 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
   order, results, missing,
   sizeText, materialName, formatoLabel, designLabel,
   orderCode = null,
+  codigoFaltante,
   shareUrl = '',
   diseno = null,
   subiendo = false,
@@ -142,7 +145,10 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
                     return;
                   }
                   if (!orderCode) {
-                    showToast('error', 'Falta el código del pedido. Revisá que el material y el tamaño tengan código asignado.');
+                    // Spec 038 (F-COD): nombrar la causa (material/tamano sin codigo).
+                    showToast('error', codigoFaltante
+                      ? `Falta el código de ${codigoFaltante}. Sin eso no se puede armar el pedido.`
+                      : 'Falta el código del pedido. Revisá que el material y el tamaño tengan código asignado.');
                     return;
                   }
                   if (!results?.finalPrice) return;
