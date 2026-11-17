@@ -85,6 +85,8 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   const sidRef = useRef('');
   // Spec 038 (F5h): URL del mockup 300x300 guardado en el item (preview aprobado).
   const previaRef = useRef('');
+  // Spec 038 (T116-bis): nombre del archivo guardado (mockup-*.webp).
+  const mockupNombreRef = useRef('');
 
   // Guarda el mockup del preview en el item: el carrito lo reutiliza sin volver a
   // componer (ni bajar la imagen de 3000 px, ni montar el motor y la plantilla).
@@ -105,8 +107,10 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     fd.append('mockup', blob, 'mockup.webp');
     try {
       const res = await fetch(PMU_POST, { method: 'POST', credentials: 'same-origin', body: fd });
-      const j = (await res.json()) as { success?: boolean; data?: { url?: string } };
-      if (j && j.success && j.data && j.data.url) previaRef.current = String(j.data.url);
+      const j = (await res.json()) as { success?: boolean; data?: { url?: string; nombre?: string } };
+      if (j && j.success && j.data && j.data.url) { previaRef.current = String(j.data.url); }
+      const nom = (j && j.data && j.data.nombre) ? String(j.data.nombre) : '';
+      if (nom) { mockupNombreRef.current = nom; }
     } catch {
       // Sin mockup guardado el carrito cae al respaldo del servidor.
     }
@@ -166,6 +170,9 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       receta: String(fila.receta ?? ''),
       url: String(fila.url ?? urlsRef.current[id] ?? ''),
       previa: previaRef.current || undefined,
+      // Spec 038 (T116-bis): nombre del archivo del mockup (para que el carrito arme
+      // la URL exacta sin adivinar; si falta, el plugin busca `mockup-*.webp`).
+      mockupId: mockupNombreRef.current || undefined,
     });
   }, [onDiseno, guardarMockup]);
 // Monta el CargadorPMU cuando los modulos estan disponibles.

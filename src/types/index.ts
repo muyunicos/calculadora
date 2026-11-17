@@ -313,6 +313,8 @@ export interface Diseno {
   url?: string;
   /** Spec 038 (F5h): URL del mockup 300x300 guardado (preview aprobado). */
   previa?: string;
+  /** Spec 038 (T116-bis): nombre del archivo del mockup (`mockup-*.webp`). */
+  mockupId?: string;
 }
 
 /** Foto del precio al momento de guardar la idea (D7). */
