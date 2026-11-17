@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { PMU_AJAX, PMU_NONCE } from '../core/wp';
+import { PMU_AJAX, PMU_NONCE, PMU_POST } from '../core/wp';
 import { gidPara, sizeToPx } from '../core/mockups';
 import type { Diseno } from '../types';
 import type { PmuAssetsApi } from '../hooks/usePmuAssets';
@@ -80,6 +80,34 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   const urlsRef = useRef<Record<string, string>>({});
   const filasRef = useRef<Record<string, FilaSubida>>({});
   const claveRef = useRef<string>(itemKey);
+  // Spec 038 (F5h): URL del mockup 300x300 guardado en el item (preview aprobado).
+  const previaRef = useRef('');
+
+  // Guarda el mockup del preview en el item: el carrito lo reutiliza sin volver a
+  // componer (ni bajar la imagen de 3000 px, ni montar el motor y la plantilla).
+  const guardarMockup = useCallback(async (itemKey: string) => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      'canvas[aria-label="Vista previa de tu diseno en el producto"]',
+    );
+    if (!canvas || !itemKey) return;
+    const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/webp', 0.82));
+    if (!blob) return;
+    const fd = new FormData();
+    const filaMock = filasRef.current[itemKey] || {};
+    fd.append('action', 'pmu_cotizador');
+    fd.append('op', 'mockup_guardar');
+    fd.append('_wpnonce', PMU_NONCE);
+    fd.append('sid', String(filaMock.sid || ''));
+    fd.append('item_key', itemKey);
+    fd.append('mockup', blob, 'mockup.webp');
+    try {
+      const res = await fetch(PMU_POST, { method: 'POST', credentials: 'same-origin', body: fd });
+      const j = (await res.json()) as { success?: boolean; data?: { url?: string } };
+      if (j && j.success && j.data && j.data.url) previaRef.current = String(j.data.url);
+    } catch {
+      // Sin mockup guardado el carrito cae al respaldo del servidor.
+    }
+  }, []);
 
   useEffect(() => { claveRef.current = itemKey; }, [itemKey]);
 
@@ -120,9 +148,11 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     return fila;
   }, [onItemKey, pdf]);
 
-  const publicarDiseno = useCallback((id: string) => {
+  const publicarDiseno = useCallback(async (id: string) => {
     const fila = filasRef.current[id] ?? {};
     const params = fila.params ?? {};
+    // Spec 038 (F5h): guarda el mockup 300x300 antes de publicar (viaja con el carrito).
+    await guardarMockup(String(fila.item_key ?? claveRef.current ?? ''));
     onDiseno({
       id,
       itemKey: String(fila.item_key ?? claveRef.current ?? ''),
@@ -131,8 +161,9 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       h: Number(params.h ?? 0) || 0,
       receta: String(fila.receta ?? ''),
       url: String(fila.url ?? urlsRef.current[id] ?? ''),
+      previa: previaRef.current || undefined,
     });
-  }, [onDiseno]);
+  }, [onDiseno, guardarMockup]);
 // Monta el CargadorPMU cuando los modulos estan disponibles.
   useEffect(() => {
     type Ctor = new (el: HTMLElement, cfg: Record<string, unknown>) => CargadorApi;

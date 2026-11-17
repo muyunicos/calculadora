@@ -311,6 +311,8 @@ export interface Diseno {
   receta: string;
   /** URL del original (la devuelve el endpoint de subida). */
   url?: string;
+  /** Spec 038 (F5h): URL del mockup 300x300 guardado (preview aprobado). */
+  previa?: string;
 }
 
 /** Foto del precio al momento de guardar la idea (D7). */
