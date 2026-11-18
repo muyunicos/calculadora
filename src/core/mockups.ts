@@ -179,3 +179,19 @@ export function mockupsDePlantilla(
   sumar(localPayload);
   return out;
 }
+/**
+ * Espera (hasta `ms`) a que el preview del mockup este listo.
+ *
+ * Spec 038 (T121): el boton COMPRAR puede clickearse antes de que la exportacion
+ * del mockup (`mockup_guardar`) propague `diseno.previa`. Sin esta espera el
+ * carrito se quedaba sin miniatura. Devuelve la URL (o '').
+ */
+export async function esperarPrevia(obtener: () => string, ms = 2500): Promise<string> {
+  const t0 = Date.now();
+  let url = String(obtener() || '');
+  while (!url && Date.now() - t0 < ms) {
+    await new Promise((r) => setTimeout(r, 120));
+    url = String(obtener() || '');
+  }
+  return url;
+}

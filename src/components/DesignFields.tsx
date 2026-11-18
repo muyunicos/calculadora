@@ -87,6 +87,8 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   const previaRef = useRef('');
   // Spec 038 (T116-bis): nombre del archivo guardado (mockup-*.webp).
   const mockupNombreRef = useRef('');
+  // Spec 038 (T121): timer del debounce de la exportacion del mockup.
+  const mockupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const marcarSubiendo = useCallback((valor: boolean) => {
     setSubiendo(valor);
@@ -152,7 +154,28 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     const fila = filasRef.current[id] ?? {};
     const params = fila.params ?? {};
     // Spec 038 (F5h): guarda el mockup 300x300 antes de publicar (viaja con el carrito).
-    await guardarMockup(String(fila.item_key ?? claveRef.current ?? ''));
+    // Spec 038 (F5h/T121): el mockup se EXPORTA con debounce (600 ms): guardarlo aca
+    // dispararia un POST por cada tecla del editor. El boton COMPRAR espera `previa`.
+    if (mockupTimer.current) { clearTimeout(mockupTimer.current); }
+    const claveMock = String(fila.item_key ?? claveRef.current ?? '');
+    if (claveMock) {
+      mockupTimer.current = setTimeout(async () => {
+        await guardarMockup(claveMock);
+        // Spec 038 (T121): re-publica con la `previa` recien guardada.
+        const idM = fila.id ?? '';
+        onDiseno({
+          id: idM,
+          itemKey: String(fila.item_key ?? claveMock),
+          sid: String(fila.sid ?? sidRef.current ?? ''),
+          w: Number(params.w ?? 0) || 0,
+          h: Number(params.h ?? 0) || 0,
+          receta: String(fila.receta ?? ''),
+          url: String(fila.url ?? urlsRef.current[String(idM)] ?? ''),
+          previa: previaRef.current || undefined,
+          mockupId: mockupNombreRef.current || undefined,
+        });
+      }, 600);
+    }
     onDiseno({
       id,
       itemKey: String(fila.item_key ?? claveRef.current ?? ''),
@@ -166,7 +189,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       // la URL exacta sin adivinar; si falta, el plugin busca `mockup-*.webp`).
       mockupId: mockupNombreRef.current || undefined,
     });
-  }, [onDiseno, guardarMockup]);
+  }, [onDiseno, guardarMockup, onItemKey]);
     const filaReusada = useCallback((dato: { fila?: Record<string, unknown> }) => {
       const f = dato && dato.fila ? dato.fila : {};
       const id = String(f.id ?? '');

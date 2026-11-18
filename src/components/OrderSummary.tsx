@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Calculator, Printer, Clock, Package, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Order, Config, Material, ShapesCatalog, PriceResult, DeliveryOption, DesignOption, Diseno } from '../types';
 import PriceTable from './PriceTable';
 import { useToast } from './ToastProvider';
-import { calcularPrecio } from '../core/priceEngine';
+import { calcularPrecio } from '../core/priceEngine'
+import { esperarPrevia } from '../core/mockups';;
 
 // Escalones del incentivo "comprando más planchas" (economía de escala).
 const INCENTIVE_STEPS = [1, 2, 3, 5, 10, 25, 50, 100];
@@ -69,6 +70,9 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   adjustedH,
 }) => {
   const { showToast } = useToast();
+  // Spec 038 (T121): la ultima version publicada del diseno (para esperar `previa`).
+  const disenoRef = useRef<Diseno | null>(diseno);
+  useEffect(() => { disenoRef.current = diseno; }, [diseno]);
 
   // Incentivo de economía de escala: precio por plancha del siguiente escalón.
   const offer = React.useMemo(() => {
@@ -235,7 +239,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="relative z-10 flex cl-gap-md mt-6">
             <button
               disabled={subiendo}
-              onClick={() => {
+              onClick={async () => {
                 if (subiendo) return; // FR-014: no se compra con el arte subiendo
                 const addToCart = typeof window !== 'undefined' ? (window as any).addToCartFromCalculator : null;
                 if (typeof addToCart !== 'function') {
@@ -250,6 +254,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   return;
                 }
                 if (!results?.finalPrice) return;
+                // Spec 038 (T121): la exportacion del mockup es async: se espera (hasta
+                // 2,5 s) a que `previa` este lista, si no el carrito sale sin miniatura.
+                let disenoFinal = diseno ?? undefined;
+                if (disenoFinal && !disenoFinal.previa && disenoRef.current) {
+                  disenoFinal = { ...disenoFinal, previa: await esperarPrevia(() => disenoRef.current?.previa ?? '') || undefined };
+                }
                 addToCart({
                   price: results.finalPrice,
                   orderCode,
@@ -261,7 +271,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   sheets: order.sheetsQty,
                   // Spec 037: el diseno (original + receta) viaja con la linea; el
                   // carrito guarda _mu_origen/_mu_diseno_id/_pmu_sid/_pmu_item_key.
-                  diseno: diseno ?? undefined,
+                  diseno: disenoFinal,
                 });
               }}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 px-6 cl-rounded-md cl-transition-colors text-lg cl-shadow-lg shadow-emerald-900/50 cl-flex-center cl-gap-md"

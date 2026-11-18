@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Package, ChevronUp, MessageCircle } from 'lucide-react';
 import type { Order, PriceResult, Diseno } from '../types';
 import { useToast } from './ToastProvider';
+import { esperarPrevia } from '../core/mockups';
 
 interface MobileSummaryBarProps {
   order: Order;
@@ -78,6 +79,9 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
 }) => {
   const isComplete = !!results;
   const { showToast } = useToast();
+  // Spec 038 (T121): ultima version del diseno publicada (para esperar `previa`).
+  const disenoRef = useRef<Diseno | null>(diseno);
+  useEffect(() => { disenoRef.current = diseno; }, [diseno]);
   const [isVisible, setIsVisible] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const scrollToSummary = useScrollToSummary();
@@ -138,7 +142,7 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
 
             {isComplete ? (
               <button
-                onClick={() => {
+                onClick={async () => {
                   const addToCart = typeof window !== 'undefined' ? (window as any).addToCartFromCalculator : null;
                   if (typeof addToCart !== 'function') {
                     showToast('error', 'El carrito no está disponible en esta página. Probá desde el producto Cotizador.');
@@ -152,6 +156,11 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
                     return;
                   }
                   if (!results?.finalPrice) return;
+                  // Spec 038 (T121): la exportacion del mockup es async: esperar `previa`.
+                  let disenoFinal = diseno ?? undefined;
+                  if (disenoFinal && !disenoFinal.previa && disenoRef.current) {
+                    disenoFinal = { ...disenoFinal, previa: await esperarPrevia(() => disenoRef.current?.previa ?? '') || undefined };
+                  }
                   addToCart({
                     price: results.finalPrice,
                     orderCode,
@@ -162,7 +171,7 @@ const MobileSummaryBar: React.FC<MobileSummaryBarProps> = ({
                     quantity: results.totalStickers,
                     sheets: order.sheetsQty,
                     // Spec 037: el diseno viaja con la linea (original + receta).
-                    diseno: diseno ?? undefined,
+                    diseno: disenoFinal,
                   });
                 }}
                 disabled={subiendo}
