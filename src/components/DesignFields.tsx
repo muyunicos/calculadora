@@ -88,58 +88,10 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   // Spec 038 (T116-bis): nombre del archivo guardado (mockup-*.webp).
   const mockupNombreRef = useRef('');
 
-    // Spec 038 (T116): el camino `usado` (foto ya subida a la biblioteca) no llena
-    // `filasRef` porque no pasa por `subir`. El cargador avisa aca.
-    // `refPublicar` evita el ciclo (filaReusada se declara antes que publicarDiseno).
-    const refPublicar = useRef<(id: string) => void>(() => {});
-    const filaReusada = useCallback((dato: { fila?: Record<string, unknown> }) => {
-      const f = dato && dato.fila ? dato.fila : {};
-      const id = String(f.id ?? '');
-      if (!id) return;
-      filasRef.current[id] = f as unknown as FilaSubida;
-      if (f.sid) sidRef.current = String(f.sid);
-      if (f.item_key) onItemKey(String(f.item_key));
-      if (f.url) urlsRef.current[id] = String(f.url);
-      // La foto cambio: hay que recomponer y re-publicar (y el mockup se guarda).
-      refPublicar.current(id);
-    }, [onItemKey]);
-
-  // Guarda el mockup del preview en el item: el carrito lo reutiliza sin volver a
-  // componer (ni bajar la imagen de 3000 px, ni montar el motor y la plantilla).
-  const guardarMockup = useCallback(async (itemKey: string) => {
-    const canvas = document.querySelector<HTMLCanvasElement>(
-      'canvas[aria-label="Vista previa de tu diseno en el producto"]',
-    );
-    if (!canvas || !itemKey) return;
-    const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/webp', 0.82));
-    if (!blob) return;
-    const fd = new FormData();
-    const filaMock = filasRef.current[itemKey] || {};
-    fd.append('action', 'pmu_cotizador');
-    fd.append('op', 'mockup_guardar');
-    fd.append('_wpnonce', PMU_NONCE);
-    fd.append('sid', String(filaMock.sid || sidRef.current || ''));
-    fd.append('item_key', itemKey);
-    fd.append('mockup', blob, 'mockup.webp');
-    try {
-      const res = await fetch(PMU_POST, { method: 'POST', credentials: 'same-origin', body: fd });
-      const j = (await res.json()) as { success?: boolean; data?: { url?: string; nombre?: string } };
-      if (j && j.success && j.data && j.data.url) { previaRef.current = String(j.data.url); }
-      const nom = (j && j.data && j.data.nombre) ? String(j.data.nombre) : '';
-      if (nom) { mockupNombreRef.current = nom; }
-    } catch {
-      // Sin mockup guardado el carrito cae al respaldo del servidor.
-    }
-  }, []);
-
-  useEffect(() => { claveRef.current = itemKey; }, [itemKey]);
-
   const marcarSubiendo = useCallback((valor: boolean) => {
     setSubiendo(valor);
     onSubiendo(valor);
   }, [onSubiendo]);
-
-  /** POST al endpoint vigente; guarda la fila y devuelve `{id}` al cargador. */
   const subirAlPlugin = useCallback(async (
     blob: Blob,
     params?: Record<string, unknown>,
@@ -171,7 +123,31 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
     if (fila.item_key) onItemKey(String(fila.item_key));
     return fila;
   }, [onItemKey, pdf]);
-
+  const guardarMockup = useCallback(async (itemKey: string) => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      'canvas[aria-label="Vista previa de tu diseno en el producto"]',
+    );
+    if (!canvas || !itemKey) return;
+    const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/webp', 0.82));
+    if (!blob) return;
+    const fd = new FormData();
+    const filaMock = filasRef.current[itemKey] || {};
+    fd.append('action', 'pmu_cotizador');
+    fd.append('op', 'mockup_guardar');
+    fd.append('_wpnonce', PMU_NONCE);
+    fd.append('sid', String(filaMock.sid || sidRef.current || ''));
+    fd.append('item_key', itemKey);
+    fd.append('mockup', blob, 'mockup.webp');
+    try {
+      const res = await fetch(PMU_POST, { method: 'POST', credentials: 'same-origin', body: fd });
+      const j = (await res.json()) as { success?: boolean; data?: { url?: string; nombre?: string } };
+      if (j && j.success && j.data && j.data.url) { previaRef.current = String(j.data.url); }
+      const nom = (j && j.data && j.data.nombre) ? String(j.data.nombre) : '';
+      if (nom) { mockupNombreRef.current = nom; }
+    } catch {
+      // Sin mockup guardado el carrito cae al respaldo del servidor.
+    }
+  }, []);
   const publicarDiseno = useCallback(async (id: string) => {
     const fila = filasRef.current[id] ?? {};
     const params = fila.params ?? {};
@@ -191,9 +167,17 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       mockupId: mockupNombreRef.current || undefined,
     });
   }, [onDiseno, guardarMockup]);
-  // Spec 038 (T116): `filaReusada` llama a `publicarDiseno` a traves del ref
-  // (se declara antes y el ciclo de declaraciones romperia el typecheck).
-  useEffect(() => { refPublicar.current = (id: string) => { publicarDiseno(id); }; }, [publicarDiseno]);
+    const filaReusada = useCallback((dato: { fila?: Record<string, unknown> }) => {
+      const f = dato && dato.fila ? dato.fila : {};
+      const id = String(f.id ?? '');
+      if (!id) return;
+      filasRef.current[id] = f as unknown as FilaSubida;
+      if (f.sid) sidRef.current = String(f.sid);
+      if (f.item_key) onItemKey(String(f.item_key));
+      if (f.url) urlsRef.current[id] = String(f.url);
+      // La foto cambio: hay que recomponer y re-publicar (y el mockup se guarda).
+      publicarDiseno(id);
+    }, [onItemKey, publicarDiseno]);
 // Monta el CargadorPMU cuando los modulos estan disponibles.
   useEffect(() => {
     type Ctor = new (el: HTMLElement, cfg: Record<string, unknown>) => CargadorApi;
