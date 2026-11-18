@@ -88,6 +88,22 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   // Spec 038 (T116-bis): nombre del archivo guardado (mockup-*.webp).
   const mockupNombreRef = useRef('');
 
+    // Spec 038 (T116): el camino `usado` (foto ya subida a la biblioteca) no llena
+    // `filasRef` porque no pasa por `subir`. El cargador avisa aca.
+    // `refPublicar` evita el ciclo (filaReusada se declara antes que publicarDiseno).
+    const refPublicar = useRef<(id: string) => void>(() => {});
+    const filaReusada = useCallback((dato: { fila?: Record<string, unknown> }) => {
+      const f = dato && dato.fila ? dato.fila : {};
+      const id = String(f.id ?? '');
+      if (!id) return;
+      filasRef.current[id] = f as unknown as FilaSubida;
+      if (f.sid) sidRef.current = String(f.sid);
+      if (f.item_key) onItemKey(String(f.item_key));
+      if (f.url) urlsRef.current[id] = String(f.url);
+      // La foto cambio: hay que recomponer y re-publicar (y el mockup se guarda).
+      refPublicar.current(id);
+    }, [onItemKey]);
+
   // Guarda el mockup del preview en el item: el carrito lo reutiliza sin volver a
   // componer (ni bajar la imagen de 3000 px, ni montar el motor y la plantilla).
   const guardarMockup = useCallback(async (itemKey: string) => {
@@ -175,6 +191,9 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       mockupId: mockupNombreRef.current || undefined,
     });
   }, [onDiseno, guardarMockup]);
+  // Spec 038 (T116): `filaReusada` llama a `publicarDiseno` a traves del ref
+  // (se declara antes y el ciclo de declaraciones romperia el typecheck).
+  useEffect(() => { refPublicar.current = (id: string) => { publicarDiseno(id); }; }, [publicarDiseno]);
 // Monta el CargadorPMU cuando los modulos estan disponibles.
   useEffect(() => {
     type Ctor = new (el: HTMLElement, cfg: Record<string, unknown>) => CargadorApi;
@@ -213,6 +232,10 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
         }
       },
       urlDe: (id: string) => urlsRef.current[id] ?? '',
+      // Spec 038 (T116): el camino `usado` (foto de la biblioteca, 0 bytes) avisa
+      // aca en vez de pasar por `subir` — sin esto `filasRef` quedaba vacio y el
+      // mockup no se guardaba (el carrito se quedaba sin miniatura).
+      onFila: (dato: { fila?: Record<string, unknown> }) => filaReusada(dato),
       // Spec 038 (A/FR-009): reutilizar la familia ya subida (0 bytes). Sin esto el
       // cotizador mandaba los bytes otra vez y nunca aparecia "Elegir ya subida".
       usar: async (madre: string, params?: Record<string, unknown>) => {
