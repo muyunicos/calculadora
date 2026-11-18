@@ -106,7 +106,11 @@ export function cerrarVisor(): void {
  * la tira (regular vs. por mayor + ahorro) y la nota del calculo.
  */
 export function metaDeItem(
-  item: GalleryItem,
+  // Spec 038 (F6): entrada de solo lectura. `GalleryItem` completo (el caso del
+  // cotizador) o el subconjunto que usa el motor (`title`/`caption`, mas `categoria`
+  // si el consumidor lo declara): antes se pasaba con `as never` y TS no avisaba
+  // si la firma cambiaba.
+  item: Pick<GalleryItem, 'title' | 'caption'> & Partial<Pick<GalleryItem, 'categoria'>>,
   pricing: GalleryPricing | null,
   descripcion?: string
 ): Record<string, unknown> | null {
