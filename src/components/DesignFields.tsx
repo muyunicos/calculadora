@@ -89,6 +89,10 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
   const mockupNombreRef = useRef('');
   // Spec 038 (T121): timer del debounce de la exportacion del mockup.
   const mockupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Spec 041 (C1): "un click" = el boton monta el cargador Y abre el recorte. La
+  // bandera se consume en el efecto de montaje (un remontaje por cambio de tamano
+  // NO debe volver a abrir el modal solo).
+  const abrirPendiente = useRef(false);
 
   const marcarSubiendo = useCallback((valor: boolean) => {
     setSubiendo(valor);
@@ -239,30 +243,12 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
         }
       },
       urlDe: (id: string) => urlsRef.current[id] ?? '',
-      // Spec 038 (T116): el camino `usado` (foto de la biblioteca, 0 bytes) avisa
-      // aca en vez de pasar por `subir` — sin esto `filasRef` quedaba vacio y el
-      // mockup no se guardaba (el carrito se quedaba sin miniatura).
-      onFila: (dato: { fila?: Record<string, unknown> }) => filaReusada(dato),
-      // Spec 038 (A/FR-009): reutilizar la familia ya subida (0 bytes). Sin esto el
-      // cotizador mandaba los bytes otra vez y nunca aparecia "Elegir ya subida".
-      usar: async (madre: string, params?: Record<string, unknown>) => {
-        const bib = (window as unknown as {
-          PMUBiblioteca?: { usar?: (m: string, d: Record<string, unknown>) => Promise<unknown> };
-        }).PMUBiblioteca;
-        if (!bib || typeof bib.usar !== 'function') return { coincide: false };
-        try {
-          return await bib.usar(String(madre || ''), {
-            item_key: claveRef.current,
-            pdf: pdf || '',
-            grupo: gidPara(categoria, size),
-            indice: 0,
-            params: params || {},
-          });
-        } catch {
-          // Si la familia no coincide, el selector cae al camino normal (subir).
-          return { coincide: false };
-        }
-      },
+      // Spec 041 (A6): usar una imagen YA subida publica su recorte con los params
+      // (cero bytes). Sin esto `filasRef` quedaba vacio y el diseno salia w/h 0.
+      onRecorte: (id: string, url: string, params?: Record<string, unknown>) =>
+        filaReusada({ fila: { id, url, params: params || {} } }),
+      // (Spec 041 A6: el reuso 0 bytes pasa por `onRecorte`; `usar`/`onFila` se
+      // retiraron con el modelo de familias de la 039.)
       // `CargadorPMU.prototype.estadoActual()` devuelve `{ids, listo, faltan, ...}`
       // (no `{ranuras}`: ese campo es la CANTIDAD de ranuras). El contrato de la
       // ficha es `PMU_API.montarCargador`, que si expone `ranuras[]`.
@@ -272,6 +258,11 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       },
     });
     cargador.montar();
+    if (abrirPendiente.current) {
+      abrirPendiente.current = false;
+      const api = cargador as unknown as { abrir?: (i?: number) => void };
+      if (typeof api.abrir === 'function') { api.abrir(0); }
+    }
     return () => {
       try {
         cargador.desmontar?.();
@@ -292,6 +283,7 @@ export const DesignFields: React.FC<DesignFieldsProps> = ({
       input?.click();
       return;
     }
+    abrirPendiente.current = true;
     setMontado(true);
   }, [assets, montado]);
 
