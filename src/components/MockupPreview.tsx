@@ -36,7 +36,9 @@ interface MockupPreviewProps {
  * (el mismo núcleo que la ficha), así que placeholders y **envolturas automáticas**
  * se respetan sin reimplementar nada acá. El arte del comprador reemplaza al
  * placeholder; si todavía no subió nada, se dibuja la escena + un marco punteado
- * y la subida sigue disponible (el mockup es accesorio, FR-036).
+ * y la subida sigue disponible (el mockup es accesorio, FR-036). Si no hay mockup
+ * aplicable **no se renderiza nada** (ni el marco ni el aviso): el comprador ve
+ * solo los campos de subida del paso "Tu diseno".
  */
 export const MockupPreview: React.FC<MockupPreviewProps> = ({
   mockupsPdf,
@@ -84,15 +86,11 @@ export const MockupPreview: React.FC<MockupPreviewProps> = ({
     })).catch(() => setError('mockup:componer'));
   }, [capas, imagenes, arteUrl, mockupsPdf]);
 
+  // Sin mockup no se muestra el elemento (antes: un marco punteado con el aviso
+  // "Sin mockup para esta forma y tamaño"). El paso "Tu diseno" sigue ofreciendo
+  // la subida del arte: el mockup es accesorio (D11/FR-036).
   if (!mockupsPdf || capas.length === 0) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-slate-50 border border-dashed border-slate-300 rounded-xl text-xs text-slate-500 ${className}`}
-        style={{ width: lado, height: lado }}
-      >
-        Sin mockup para esta forma y tamaño
-      </div>
-    );
+    return null;
   }
 
   const pct = (n: number) => `${((Number(n) || 0) / 300) * 100}%`;

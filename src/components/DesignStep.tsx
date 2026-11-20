@@ -65,6 +65,11 @@ export const DesignStep: React.FC<DesignStepProps> = ({
     tienePdf: pdf !== '',
   });
   const activo = lista.length > 0 ? Math.min(sel, lista.length - 1) : 0;
+  // Sin mockup aplicable no se muestra el elemento (antes: el marco con el aviso
+  // "Sin mockup para esta forma y tamaño"): el paso queda solo con la subida.
+  const mockupActual = lista[activo]?.payload ?? null;
+  const indiceActual = lista[activo]?.indice ?? 0;
+  const hayMockup = (mockupActual?.mockups?.[indiceActual]?.capas ?? []).length > 0;
   useEffect(() => {
     if (sel > lista.length - 1) setSel(0);
   }, [lista.length, sel]);
@@ -92,27 +97,29 @@ export const DesignStep: React.FC<DesignStepProps> = ({
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start">
-      <div className="space-y-2">
-        <MockupPreview
-          mockupsPdf={lista[activo]?.payload ?? null}
-          indice={lista[activo]?.indice ?? 0}
-          arteUrl={diseno?.url}
-        />
-        {lista.length > 1 && (
-          <div className="flex flex-wrap gap-1">
-            {lista.map((m, i) => (
-              <button
-                key={`${m.payload.pdf}-${m.indice}`}
-                type="button"
-                onClick={() => setSel(i)}
-                className={`px-2 py-1 rounded-md text-[11px] font-semibold border ${i === activo ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'}`}
-              >
-                {m.payload.mockups[m.indice]?.titulo || `Vista ${i + 1}`}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {hayMockup && (
+        <div className="space-y-2">
+          <MockupPreview
+            mockupsPdf={mockupActual}
+            indice={indiceActual}
+            arteUrl={diseno?.url}
+          />
+          {lista.length > 1 && (
+            <div className="flex flex-wrap gap-1">
+              {lista.map((m, i) => (
+                <button
+                  key={`${m.payload.pdf}-${m.indice}`}
+                  type="button"
+                  onClick={() => setSel(i)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold border ${i === activo ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300'}`}
+                >
+                  {m.payload.mockups[m.indice]?.titulo || `Vista ${i + 1}`}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <DesignFields
         categoria={categoria}
         size={size}
