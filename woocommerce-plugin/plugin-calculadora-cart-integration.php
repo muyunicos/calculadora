@@ -233,11 +233,11 @@ class CalculadoraCartIntegration {
         }
         
         $calculator_data = $cart_item['calculator_data'];
-        $description = $calculator_data['description'] ?? '';
+        $resumen = $this->resumen_item_html($calculator_data);
         
-        if ($description) {
+        if ($resumen !== '') {
             // Agregar descripción después del nombre del producto
-            $name .= '<div class="calculator-item-description" style="font-size: 12px; color: #666; margin-top: 4px; line-height: 1.4;">' . esc_html($description) . '</div>';
+            $name .= $resumen;
             
             // Agregar URL del cotizador como texto oculto
             if (!empty($calculator_data['cotizadorUrl'])) {
@@ -249,6 +249,110 @@ class CalculadoraCartIntegration {
     }
     
     /**
+     * Resumen del item en HTML: dos lineas, lo que se compra y como es.
+     *
+     * Misma informacion y MISMO orden que `buildItemDescription()` de
+     * `cart-integration.js` (el texto plano del email y de la meta del pedido):
+     * primero planchas y unidades, despues medida, material y formato. Aca va en
+     * dos lineas porque el HTML respira; alla todo en una porque el texto plano
+     * no tiene como.
+     *
+     * El codigo del pedido NO se muestra (spec 038, F5f): el admin lo tiene en la
+     * ficha del pedido y en el PDF, y el servidor lo usa para recalcular el precio.
+     *
+     * @param  array $data `calculator_data` del item (carrito) o `_calculator_resumen` (pedido).
+     * @return string HTML (vacio si no hay nada que mostrar).
+     */
+    private function resumen_item_html($data) {
+        if (!is_array($data)) {
+            return '';
+        }
+
+        $planchas = isset($data['sheets']) ? max(0, (int) $data['sheets']) : 0;
+        $unidades = isset($data['quantity']) ? max(0, (int) $data['quantity']) : 0;
+
+        $linea1 = array();
+        if ($planchas > 0) {
+            // "5 planchas de 60": solo con mas de una plancha y division exacta
+            // (con una sola, "1 plancha de 60 · 60 u" repite el mismo numero).
+            $porPlancha = ($planchas > 1 && $unidades > 0 && $unidades % $planchas === 0)
+                ? intdiv($unidades, $planchas)
+                : 0;
+            $linea1[] = number_format($planchas, 0, ',', '.')
+                . ($planchas === 1 ? ' plancha' : ' planchas')
+                . ($porPlancha > 1 ? ' de ' . number_format($porPlancha, 0, ',', '.') : '');
+        }
+        if ($unidades > 0) {
+            $linea1[] = number_format($unidades, 0, ',', '.') . ' u';
+        }
+
+        $linea2 = array();
+        foreach (array('medida', 'material', 'formato') as $clave) {
+            $valor = isset($data[$clave]) ? trim((string) $data[$clave]) : '';
+            if ($valor !== '') {
+                $linea2[] = $valor;
+            }
+        }
+
+        $estilo = 'display: block; margin-top: 4px; font-size: 12px; line-height: 1.45; color: #64748b;';
+
+        if (!$linea1 && !$linea2) {
+            // Respaldo: items sin campos (carrito o pedido viejos) traen el texto plano.
+            $plano = isset($data['description']) ? trim((string) $data['description']) : '';
+            return $plano !== ''
+                ? '<span class="calculator-item-description" style="' . $estilo . '">' . esc_html($plano) . '</span>'
+                : '';
+        }
+
+        $html = '<span class="calculator-item-description" style="' . $estilo . '">';
+        if ($linea1) {
+            $html .= '<span style="display: block; color: #334155; font-weight: 600;">'
+                . esc_html(implode(' · ', $linea1)) . '</span>';
+        }
+        if ($linea2) {
+            $html .= '<span style="display: block;">' . esc_html(implode(' · ', $linea2)) . '</span>';
+        }
+
+        return $html . '</span>';
+    }
+
+    /**
+     * Normaliza la descripcion vieja del carrito ("Material: X | Formato: Y | ...")
+     * a los campos del resumen.
+     *
+     * Los pedidos anteriores congelaron ese texto largo; sin esto seguirian
+     * mostrandolo asi. Devuelve array() si no reconoce el formato (ahi se muestra
+     * el texto tal como se guardo).
+     */
+    private function resumen_legacy_campos($plano) {
+        $campos = array();
+        foreach (explode('|', (string) $plano) as $parte) {
+            $parte = trim($parte);
+            $pos = strpos($parte, ':');
+            if ($pos === false) {
+                continue;
+            }
+            $clave = strtolower(trim(substr($parte, 0, $pos)));
+            $valor = trim(substr($parte, $pos + 1));
+            if ($valor === '') {
+                continue;
+            }
+            if ($clave === 'material') {
+                $campos['material'] = $valor;
+            } elseif ($clave === 'formato') {
+                $campos['formato'] = $valor;
+            } elseif ($clave === 'medida') {
+                $campos['medida'] = $valor;
+            } elseif ($clave === 'unidades') {
+                $campos['quantity'] = (int) preg_replace('/[^0-9]/', '', $valor);
+            } elseif ($clave === 'planchas') {
+                $campos['sheets'] = (int) preg_replace('/[^0-9]/', '', $valor);
+            }
+            // 'codigo' se descarta: no se muestra al comprador (spec 038, F5f).
+        }
+        return $campos;
+    }
+    /**
      * Agregar metadatos al pedido
      */
     public function add_order_item_meta($item, $cart_item_key, $values, $order) {
@@ -258,6 +362,15 @@ class CalculadoraCartIntegration {
             $item->add_meta_data('_calculator_order_code', $calculator_data['orderCode'] ?? '', true);
             $item->add_meta_data('_calculator_price', $calculator_data['price'] ?? 0, true);
             $item->add_meta_data('_calculator_description', $calculator_data['description'] ?? '', true);
+            // El resumen viaja estructurado: el detalle del pedido lo renderiza
+            // `resumen_item_html()` sin depender del texto plano que se congelo.
+            $item->add_meta_data('_calculator_resumen', array(
+                'sheets'   => isset($calculator_data['sheets']) ? (int) $calculator_data['sheets'] : 0,
+                'quantity' => isset($calculator_data['quantity']) ? (int) $calculator_data['quantity'] : 0,
+                'medida'   => isset($calculator_data['medida']) ? (string) $calculator_data['medida'] : '',
+                'material' => isset($calculator_data['material']) ? (string) $calculator_data['material'] : '',
+                'formato'  => isset($calculator_data['formato']) ? (string) $calculator_data['formato'] : '',
+            ), true);
             $item->add_meta_data('_calculator_url', $calculator_data['cotizadorUrl'] ?? '', true);
             // Spec 037: el plugin Personalizador PDF promueve el item del
             // cotizador con ESTAS metas (`_mu_origen` decide que NO se entregue PDF).
@@ -272,15 +385,40 @@ class CalculadoraCartIntegration {
     }
     
     /**
-     * Mostrar metadatos en el admin
+     * Resumen del item y datos de la calculadora en el pedido.
+     *
+     * `woocommerce_order_item_meta_end` corre en el admin Y en Mi cuenta: el
+     * resumen (lo que se compra) va arriba; despues el precio recalculado y el
+     * enlace al cotizador.
      */
     public function display_order_item_meta($item_id, $item, $order) {
         $calculator_url = $item->get_meta('_calculator_url');
         $calculator_price = $item->get_meta('_calculator_price');
+        // Pedidos nuevos: resumen estructurado. Pedidos viejos: el texto plano que
+        // se congelo al pagar; se reordena al vuelo (la metadata no se reescribe).
+        $lineas = '';
+        $guardado = $item->get_meta('_calculator_resumen', true);
+        $plano = (string) $item->get_meta('_calculator_description', true);
+        if (is_array($guardado) && $guardado) {
+            $lineas = $this->resumen_item_html($guardado);
+        } elseif ($plano !== '') {
+            // Pedido viejo: la metadata se congelo con el formato largo. Se
+            // reordena al vuelo (mismos campos, dos lineas); si no se reconoce,
+            // se muestra el texto tal como se guardo.
+            $lineas = $this->resumen_item_html($this->resumen_legacy_campos($plano));
+            if ($lineas === '') {
+            $lineas = '<span class="calculator-item-description" style="display: block; font-size: 12px; line-height: 1.45; color: #64748b;">'
+                    . esc_html($plano) . '</span>';
+            }
+        }
         
-        if ($calculator_url || $calculator_price) {
+        if ($calculator_url || $calculator_price || $lineas !== '') {
             echo '<div class="calculator-order-meta" style="background: #f0f9ff; padding: 10px; margin: 8px 0; border-radius: 4px; border-left: 4px solid #3b82f6;">';
             
+            if ($lineas !== '') {
+                echo $lineas;
+            }
+
             if ($calculator_price) {
                 echo '<div><strong>Precio Calculado:</strong> ' . wc_price($calculator_price) . '</div>';
             }

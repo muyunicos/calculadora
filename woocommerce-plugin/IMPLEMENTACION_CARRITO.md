@@ -74,7 +74,7 @@ El botón "COMPRAR" agrega el producto al carrito de WooCommerce con:
 5. **Loading indicator** aparece
 6. **Producto agregado al carrito** con:
    - Precio calculado
-   - Descripción: "Material: XXX | Formato: XXX | Medida: XXX | Cantidad: ~XXX | Planchas: XXX"
+   - Resumen en dos lineas: "5 planchas de 60 · 300 u" + "Circulares 3,0 cm · Papel adhesivo fotografico · Plancha medio corte" (sin "Codigo:": el codigo no se muestra al comprador, spec 038 F5f)
    - URL del cotizador guardada
 7. **Redirección al carrito** automáticamente
 8. En el carrito puede:

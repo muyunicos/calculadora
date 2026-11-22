@@ -111,29 +111,53 @@
         }).fail(handleFailure);
     };
 
-    /** Descripción del item (texto plano; el servidor la escapa al mostrarla). */
+    /**
+     * Resumen del item (texto plano; el servidor lo escapa al mostrarla).
+     *
+     * Orden por importancia: lo que se compra (planchas y unidades), despues la
+     * medida, el material y el formato. Sin etiquetas ("Material: "): el valor se
+     * explica solo y cada etiqueta son ~10 caracteres que nadie lee.
+     *
+     * El codigo del pedido NO viaja al comprador (spec 038, F5f): el admin lo tiene
+     * en la ficha del pedido y en el PDF, y el servidor lo usa para recalcular el
+     * precio (`_calculator_order_code`).
+     *
+     * El HTML del carrito y del pedido lo arma `resumen_item_html()` del PHP con
+     * estos mismos campos y en este mismo orden (dos lineas en vez de una).
+     */
     function buildItemDescription(data) {
-        var parts = [];
+        var partes = [];
+        var planchas = Math.max(0, parseInt(data.sheets, 10) || 0);
+        var unidades = Math.max(0, parseInt(data.quantity, 10) || 0);
+        // "5 planchas de 60": solo con mas de una plancha y division exacta
+        // (con una sola, "1 plancha de 60 · 60 u" repite el mismo numero).
+        var porPlancha = planchas > 1 && unidades > 0 && unidades % planchas === 0
+            ? unidades / planchas
+            : 0;
 
-        if (data.material) {
-            parts.push('Material: ' + data.material);
+        if (planchas > 0) {
+            partes.push(miles(planchas) + (planchas === 1 ? ' plancha' : ' planchas')
+                + (porPlancha > 1 ? ' de ' + miles(porPlancha) : ''));
         }
-        if (data.formato) {
-            parts.push('Formato: ' + data.formato);
+        if (unidades > 0) {
+            partes.push(miles(unidades) + ' u');
         }
         if (data.medida) {
-            parts.push('Medida: ' + data.medida);
+            partes.push(String(data.medida));
         }
-        if (data.quantity) {
-            parts.push('Unidades: ' + data.quantity);
+        if (data.material) {
+            partes.push(String(data.material));
         }
-        if (data.sheets) {
-            parts.push('Planchas: ' + data.sheets);
+        if (data.formato) {
+            partes.push(String(data.formato));
         }
-        // Spec 038 (F5f): el codigo NO se muestra al comprador (no le dice nada);
-        // el admin lo tiene en la ficha del pedido y en el PDF.
 
-        return parts.join(' | ');
+        return partes.join(' · ');
+    }
+
+    /** Miles con el separador de es-AR (1.000 en vez de 1000). */
+    function miles(n) {
+        return Number(n).toLocaleString('es-AR');
     }
 
     function ensureSpinnerStyle() {
