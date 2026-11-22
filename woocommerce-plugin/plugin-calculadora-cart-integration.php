@@ -224,6 +224,29 @@ class CalculadoraCartIntegration {
     }
     
     /**
+     * URL del cotizador guardada en el item del carrito.
+     *
+     * El servidor guarda la version saneada como `cotizador_url` (es la que viaja
+     * en `calculator_data`); el navegador la manda como `cotizadorUrl`. Se aceptan
+     * las dos: la primera es la de siempre, la segunda cubre carritos viejos.
+     *
+     * Sin esta tolerancia el boton "Editar" del carrito y el link del pedido no
+     * aparecian nunca: leian la clave camelCase, que el servidor no guarda.
+     */
+    private function url_cotizador($data) {
+        if (!is_array($data)) {
+            return '';
+        }
+        foreach (array('cotizador_url', 'cotizadorUrl') as $clave) {
+            $url = isset($data[$clave]) ? (string) $data[$clave] : '';
+            if ($url !== '') {
+                return $url;
+            }
+        }
+        return '';
+    }
+
+    /**
      * Modificar nombre del item en el carrito
      */
     public function modify_cart_item_name($name, $cart_item, $cart_item_key) {
@@ -240,8 +263,9 @@ class CalculadoraCartIntegration {
             $name .= $resumen;
             
             // Agregar URL del cotizador como texto oculto
-            if (!empty($calculator_data['cotizadorUrl'])) {
-                $name .= '<div class="calculator-order-code" style="display: none;">' . esc_url($calculator_data['cotizadorUrl']) . '</div>';
+            $urlCot = $this->url_cotizador($calculator_data);
+            if ($urlCot !== '') {
+                $name .= '<div class="calculator-order-code" style="display: none;">' . esc_url($urlCot) . '</div>';
             }
         }
         
@@ -371,7 +395,7 @@ class CalculadoraCartIntegration {
                 'material' => isset($calculator_data['material']) ? (string) $calculator_data['material'] : '',
                 'formato'  => isset($calculator_data['formato']) ? (string) $calculator_data['formato'] : '',
             ), true);
-            $item->add_meta_data('_calculator_url', $calculator_data['cotizadorUrl'] ?? '', true);
+            $item->add_meta_data('_calculator_url', $this->url_cotizador($calculator_data), true);
             // Spec 037: el plugin Personalizador PDF promueve el item del
             // cotizador con ESTAS metas (`_mu_origen` decide que NO se entregue PDF).
             if (!empty($calculator_data['diseno']) && is_array($calculator_data['diseno'])) {
@@ -440,7 +464,7 @@ class CalculadoraCartIntegration {
             return;
         }
         
-        $calculator_url = $cart_item['calculator_data']['cotizadorUrl'] ?? '';
+        $calculator_url = $this->url_cotizador($cart_item['calculator_data']);
         
         if ($calculator_url) {
             echo '<a href="' . esc_url($calculator_url) . '" class="button edit-calculator-item" style="font-size: 11px; padding: 4px 8px; margin-left: 8px; background: #10b981; color: white; border: none; border-radius: 3px; text-decoration: none; line-height: 1;">✏️ Editar</a>';
